@@ -52,6 +52,16 @@ export const Header: FC<HeaderProps> = ({ status, packetRate, lang, onLangToggle
         }}>
           {T(lang, 'appTitle')}
         </h1>
+        <span style={{
+          fontSize: 11,
+          color: 'rgba(120,150,190,0.55)',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          letterSpacing: '0.05em',
+          alignSelf: 'flex-end',
+          marginBottom: 2,
+        }}>
+          v{__APP_VERSION__}
+        </span>
       </div>
 
       {/* Right side: status + packet rate + lang toggle */}
