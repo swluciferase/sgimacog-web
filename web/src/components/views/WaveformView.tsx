@@ -10,6 +10,7 @@ export interface EventMarker {
   time: number;         // Date.now() at the moment of placement
   label: string;
   sweepPos: number;     // canvas write position (0 to windowPoints-1) at placement time
+  totalSweep: number;  // monotonically increasing sample counter at placement
 }
 
 export interface WaveformViewProps {
@@ -204,6 +205,9 @@ export const WaveformView = ({
   const markersRef = useRef<EventMarker[]>([]);
   const markerDivsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const sweepCursorRef = useRef<HTMLDivElement | null>(null);
+  const totalSweepRef = useRef<number>(0);
+  const lappedMarkersRef = useRef<Set<string>>(new Set());
+  const timeLabelDivsRef = useRef<HTMLDivElement[]>([]);
 
   // Precompute filter coefficients from filterParams
   const filterCoeffs = useMemo(() => {
@@ -256,7 +260,7 @@ export const WaveformView = ({
     const id = Math.random().toString(36).substring(2, 9);
     const time = Date.now();
     const label = `M${markersRef.current.length + 1}`;
-    const newMarker: EventMarker = { id, time, label, sweepPos: sweepPosRef.current };
+    const newMarker: EventMarker = { id, time, label, sweepPos: sweepPosRef.current, totalSweep: totalSweepRef.current };
     markersRef.current = [...markersRef.current, newMarker];
     setMarkers(markersRef.current);
     onEventMarker({ id, time, label });
@@ -381,6 +385,7 @@ export const WaveformView = ({
         }
 
         sweepPos = (sweepPos + 1) % windowPoints;
+        totalSweepRef.current++;
       }
 
       sweepPosRef.current = sweepPos;
@@ -390,16 +395,45 @@ export const WaveformView = ({
         sweepCursorRef.current.style.left = `${(sweepPos / windowPoints) * 100}%`;
       }
 
-      // Update marker positions (fixed in scan mode)
+      // Mark markers as lapped once the sweep cursor has gone past them (full revolution)
+      const nowTotal = totalSweepRef.current;
+      markersRef.current.forEach(marker => {
+        if (!lappedMarkersRef.current.has(marker.id) &&
+            nowTotal - marker.totalSweep >= windowPoints) {
+          lappedMarkersRef.current.add(marker.id);
+        }
+      });
+
+      // Update marker positions (fixed in scan mode, fade/hide when lapped)
       markersRef.current.forEach(marker => {
         const div = markerDivsRef.current.get(marker.id);
         if (!div) return;
         const leftPct = (marker.sweepPos / windowPoints) * 100;
         div.style.left = `${leftPct}%`;
-        // Fade the marker when the scan cursor is about to overwrite it
-        const dist = (sweepPos - marker.sweepPos + windowPoints) % windowPoints;
-        div.style.opacity = dist < CURSOR_GAP + 4 ? '0' : '1';
+        if (lappedMarkersRef.current.has(marker.id)) {
+          div.style.opacity = '0';
+        } else {
+          const dist = (sweepPos - marker.sweepPos + windowPoints) % windowPoints;
+          div.style.opacity = dist < CURSOR_GAP + 4 ? '0' : '1';
+        }
       });
+
+      // Update time tick labels (every second, system clock)
+      const numTicks = Math.floor(windowSeconds);
+      for (let k = 0; k < timeLabelDivsRef.current.length; k++) {
+        const div = timeLabelDivsRef.current[k];
+        if (!div) continue;
+        if (k >= numTicks) {
+          div.style.display = 'none';
+          continue;
+        }
+        const tickPos = (sweepPos - k * SAMPLE_RATE_HZ + windowPoints * 100) % windowPoints;
+        div.style.left = `${(tickPos / windowPoints) * 100}%`;
+        div.style.display = 'block';
+        const d = new Date(Date.now() - k * 1000);
+        const p2 = (n: number) => n.toString().padStart(2, '0');
+        div.textContent = `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+      }
 
       plot.clear();
       renderer.draw();
@@ -417,10 +451,14 @@ export const WaveformView = ({
       auxRef.current = null;
       linesRef.current = [];
       sweepPosRef.current = 0;
+      totalSweepRef.current = 0;
+      lappedMarkersRef.current = new Set();
     };
   }, [windowSeconds, filterBiquadRef]);
 
   const hasData = packets && packets.length > 0;
+
+  const MAX_TIME_TICKS = 20;
 
   const selectStyle: CSSProperties = {
     background: 'rgba(10, 20, 35, 0.9)',
@@ -679,7 +717,7 @@ export const WaveformView = ({
 
         {/* Channel labels */}
         <div style={{
-          position: 'absolute', top: 0, left: 0, bottom: 0, width: 56,
+          position: 'absolute', top: 0, left: 0, bottom: 0, width: 64,
           borderRight: '1px solid rgba(93,109,134,0.25)',
           background: 'linear-gradient(180deg, rgba(9,21,38,0.8), rgba(7,15,27,0.8))',
           zIndex: 10,
@@ -706,10 +744,41 @@ export const WaveformView = ({
               {label}
             </div>
           ))}
+          {/* Amplitude scale markers */}
+          {labels.map((label, i) => {
+            const formatAmp = (uv: number): string => {
+              if (uv >= 500000) return '±500m';
+              if (uv >= 50000) return '±50m';
+              if (uv >= 5000) return '±5m';
+              if (uv >= 1000) return '±1m';
+              if (uv >= 500) return '±500';
+              if (uv >= 200) return '±200';
+              if (uv >= 100) return '±100';
+              if (uv >= 50) return '±50';
+              return `±${uv}`;
+            };
+            return (
+              <div key={`amp-${label}`} style={{
+                position: 'absolute',
+                right: 2,
+                top: `${((i + 0.5) / CHANNEL_COUNT) * 100}%`,
+                transform: 'translateY(-50%)',
+                color: 'rgba(140,160,185,0.5)',
+                fontSize: 8,
+                lineHeight: '9px',
+                textAlign: 'right',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
+              }}>
+                {formatAmp(fullScaleUv)}
+              </div>
+            );
+          })}
         </div>
 
         {/* WebGL canvas */}
-        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 56 }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 64 }}>
           {/* Scan cursor line */}
           <div
             ref={sweepCursorRef}
@@ -732,7 +801,7 @@ export const WaveformView = ({
 
         {/* Marker overlays */}
         <div style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, left: 56,
+          position: 'absolute', top: 0, right: 0, bottom: 0, left: 64,
           pointerEvents: 'none', overflow: 'hidden', zIndex: 5,
         }}>
           {markers.map(m => (
@@ -761,6 +830,34 @@ export const WaveformView = ({
             </div>
           ))}
         </div>
+
+        {/* Time tick labels */}
+        <div style={{
+          position: 'absolute', top: 0, right: 0, bottom: 0, left: 64,
+          pointerEvents: 'none', overflow: 'hidden', zIndex: 6,
+        }}>
+          {Array.from({ length: MAX_TIME_TICKS }, (_, k) => (
+            <div
+              key={k}
+              ref={el => { timeLabelDivsRef.current[k] = el!; }}
+              style={{
+                position: 'absolute',
+                bottom: 4,
+                transform: 'translateX(-50%)',
+                color: 'rgba(180,200,235,0.55)',
+                fontSize: 10,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                whiteSpace: 'nowrap',
+                background: 'rgba(0,0,0,0.3)',
+                padding: '1px 3px',
+                borderRadius: 2,
+                display: 'none',
+                userSelect: 'none',
+                pointerEvents: 'none',
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Event markers log */}
@@ -778,7 +875,7 @@ export const WaveformView = ({
             {T(lang, 'signalMarkers')}
           </h3>
           <button
-            onClick={() => { markersRef.current = []; setMarkers([]); }}
+            onClick={() => { markersRef.current = []; lappedMarkersRef.current = new Set(); setMarkers([]); }}
             style={{
               background: 'transparent',
               border: '1px solid rgba(255,255,255,0.25)',

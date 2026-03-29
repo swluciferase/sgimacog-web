@@ -26,6 +26,7 @@ const ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
 
 // AC amplitude threshold below which we consider the electrode unconnected / no signal
 const NO_SIGNAL_AMPLITUDE_UV = 0.5;
+const LOW_IMPEDANCE_NA_KOHM = 10; // readings below this indicate no electrode contact
 
 // Quality thresholds (KΩ): <150 = excellent, <300 = good, <600 = poor, ≥600 = bad
 function getQuality(kohm: number): ImpedanceResult['quality'] {
@@ -196,7 +197,10 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
             {ELECTRODE_POSITIONS.map((pos, idx) => {
               const result = resultByIndex.get(idx);
               const kohm = result?.impedanceKohm;
-              const isNoSignal = result !== undefined && (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV;
+              const isNoSignal = result !== undefined && (
+                (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV ||
+                result.impedanceKohm < LOW_IMPEDANCE_NA_KOHM
+              );
               const quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal' =
                 result === undefined ? 'unknown'
                 : isNoSignal ? 'noSignal'
@@ -268,7 +272,10 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
             {ELECTRODE_POSITIONS.map((pos, idx) => {
               const result = resultByIndex.get(idx);
               const kohm = result?.impedanceKohm;
-              const isNoSignal = result !== undefined && (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV;
+              const isNoSignal = result !== undefined && (
+                (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV ||
+                result.impedanceKohm < LOW_IMPEDANCE_NA_KOHM
+              );
               const quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal' =
                 result === undefined ? 'unknown'
                 : isNoSignal ? 'noSignal'

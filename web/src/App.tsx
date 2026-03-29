@@ -190,11 +190,11 @@ function App() {
     shouldAutoStop,
   } = useQualityMonitor(latestPackets, isRecording, qualityConfig);
 
-  // After connection: set device ID from WebUSB serial (STEEG_XXXXXXXX format)
+  // After connection: set device ID from WebUSB serial (always takes priority)
   useEffect(() => {
     if (status !== 'connected') return;
     getAuthorizedFtdiDevices().then(devices => {
-      if (devices.length >= 1 && devices[0]?.serialNumber && !deviceIdSeenRef.current) {
+      if (devices.length >= 1 && devices[0]?.serialNumber) {
         const id = `STEEG_${devices[0].serialNumber}`;
         setDeviceId(id);
         updateRegistrySteegId(id);
