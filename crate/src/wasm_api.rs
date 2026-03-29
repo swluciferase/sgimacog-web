@@ -245,6 +245,7 @@ impl SteegParser {
                 &JsValue::from(r.impedance_kohm),
             );
             let _ = Reflect::set(&obj, &"quality".into(), &JsValue::from(r.quality()));
+            let _ = Reflect::set(&obj, &"acAmplitude".into(), &JsValue::from(r.ac_amplitude));
             arr.push(&obj);
         }
         arr.into()

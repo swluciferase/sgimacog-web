@@ -95,6 +95,38 @@ const translations: Record<string, Record<Lang, string>> = {
   kohm: { zh: 'kΩ', en: 'kΩ' },
   unknown: { zh: '未知', en: 'Unknown' },
   raw: { zh: '原始', en: 'Raw' },
+
+  // FTDI device scanner (HomeView)
+  homeScanDevices: { zh: '掃描裝置', en: 'Scan for Devices' },
+  homeAddDevice: { zh: '新增裝置', en: 'Add New Device' },
+  homeFoundDevices: { zh: '已偵測到的裝置', en: 'Detected Devices' },
+  homeNoDevicesFound: { zh: '未偵測到 FTDI 裝置', en: 'No FTDI devices found' },
+  homeWebUsbNotAvailable: { zh: '此瀏覽器不支援 WebUSB（需 Chrome / Edge）', en: 'WebUSB not available (requires Chrome / Edge)' },
+  homeSelectPortHint: { zh: '在瀏覽器彈出視窗中選擇對應的序列埠', en: 'Select the corresponding port in the browser picker' },
+  homeMultiDevice: { zh: '多設備：在不同瀏覽器分頁開啟此頁面即可連接多台設備', en: 'Multi-device: Open this page in separate browser tabs to connect multiple devices.' },
+
+  // Header device ID
+  headerDeviceId: { zh: '裝置', en: 'Device' },
+
+  // Impedance N/A
+  impedanceNoSignal: { zh: 'N/A = 未偵測到訊號 / No signal detected', en: 'N/A = No signal detected / 未偵測到訊號' },
+
+  // Sidebar mutual exclusion tooltips
+  sidebarImpedanceActiveHint: { zh: '阻抗量測進行中，請先停止量測', en: 'Impedance active — stop measurement first' },
+  sidebarSignalActiveHint: { zh: '訊號/頻譜檢視中，請先切換至阻抗頁面', en: 'Signal/FFT active — navigate away first' },
+
+  // Quality monitor (RecordView)
+  recordTargetDuration: { zh: '目標時長', en: 'Target Duration' },
+  recordDurationManual: { zh: '手動', en: 'Manual' },
+  recordSensitivity: { zh: '靈敏度', en: 'Sensitivity' },
+  recordSensitivityLenient: { zh: '寬鬆', en: 'Lenient' },
+  recordSensitivityStrict: { zh: '嚴格', en: 'Strict' },
+  recordQualityGrid: { zh: '訊號品質', en: 'Signal Quality' },
+  recordQualityEnabled: { zh: '啟用', en: 'Enable' },
+  recordQualityDisabled: { zh: '關閉', en: 'Off' },
+  recordGoodTime: { zh: '有效時間', en: 'Good Time' },
+  recordQualityPct: { zh: '品質百分比', en: 'Quality %' },
+  recordAutoStopped: { zh: '已達目標時長，自動停止', en: 'Target duration reached — auto stopped' },
 };
 
 export const T = (lang: Lang, key: string): string =>

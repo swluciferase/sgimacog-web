@@ -23,6 +23,9 @@ const ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
   { label: 'Pz',  cx: 100, cy: 148 },
 ];
 
+// AC amplitude threshold below which we consider the electrode unconnected / no signal
+const NO_SIGNAL_AMPLITUDE_UV = 0.5;
+
 // Quality thresholds (KΩ): <150 = excellent, <300 = good, <600 = poor, ≥600 = bad
 function getQuality(kohm: number): ImpedanceResult['quality'] {
   if (kohm < 150) return 'excellent';
@@ -31,7 +34,7 @@ function getQuality(kohm: number): ImpedanceResult['quality'] {
   return 'bad';
 }
 
-function qualityColor(quality: ImpedanceResult['quality'] | 'unknown'): string {
+function qualityColor(quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal'): string {
   switch (quality) {
     case 'excellent': return '#3fb950';
     case 'good':      return '#85e89d';
@@ -41,12 +44,13 @@ function qualityColor(quality: ImpedanceResult['quality'] | 'unknown'): string {
   }
 }
 
-function qualityLabel(quality: ImpedanceResult['quality'] | 'unknown', lang: Lang): string {
+function qualityLabel(quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal', lang: Lang): string {
   switch (quality) {
     case 'excellent': return T(lang, 'impedanceExcellent');
     case 'good':      return T(lang, 'impedanceGood');
     case 'poor':      return T(lang, 'impedancePoor');
     case 'bad':       return T(lang, 'impedanceBad');
+    case 'noSignal':  return 'N/A';
     default:          return '--';
   }
 }
@@ -185,14 +189,18 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
             {ELECTRODE_POSITIONS.map((pos, idx) => {
               const result = resultByIndex.get(idx);
               const kohm = result?.impedanceKohm;
-              const quality = kohm !== undefined ? getQuality(kohm) : 'unknown';
+              const isNoSignal = result !== undefined && (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV;
+              const quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal' =
+                result === undefined ? 'unknown'
+                : isNoSignal ? 'noSignal'
+                : getQuality(kohm!);
               const color = qualityColor(quality);
-              const isUnknown = quality === 'unknown';
+              const isDim = quality === 'unknown' || quality === 'noSignal';
 
               return (
                 <g key={pos.label}>
                   {/* Glow ring */}
-                  {!isUnknown && (
+                  {!isDim && (
                     <circle
                       cx={pos.cx} cy={pos.cy}
                       r={16}
@@ -206,25 +214,25 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                   <circle
                     cx={pos.cx} cy={pos.cy}
                     r={12}
-                    fill={isUnknown ? 'rgba(30,42,60,0.9)' : `${color}22`}
+                    fill={isDim ? 'rgba(30,42,60,0.9)' : `${color}22`}
                     stroke={color}
-                    strokeWidth={isUnknown ? 1 : 2}
-                    opacity={isUnknown ? 0.5 : 1}
+                    strokeWidth={isDim ? 1 : 2}
+                    opacity={isDim ? 0.5 : 1}
                   />
                   {/* Channel label */}
                   <text
                     x={pos.cx} y={pos.cy + 1}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill={isUnknown ? 'rgba(150,165,185,0.5)' : color}
+                    fill={isDim ? 'rgba(150,165,185,0.5)' : color}
                     fontSize="7"
                     fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
                     fontWeight="700"
                   >
                     {pos.label}
                   </text>
-                  {/* Impedance value below */}
-                  {kohm !== undefined && (
+                  {/* Impedance value or N/A below */}
+                  {result !== undefined && (
                     <text
                       x={pos.cx} y={pos.cy + 21}
                       textAnchor="middle"
@@ -232,7 +240,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                       fontSize="6"
                       fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
                     >
-                      {kohm.toFixed(0)}kΩ
+                      {isNoSignal ? 'N/A' : `${kohm!.toFixed(0)}kΩ`}
                     </text>
                   )}
                 </g>
@@ -253,15 +261,20 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
             {ELECTRODE_POSITIONS.map((pos, idx) => {
               const result = resultByIndex.get(idx);
               const kohm = result?.impedanceKohm;
-              const quality = kohm !== undefined ? getQuality(kohm) : 'unknown';
+              const isNoSignal = result !== undefined && (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV;
+              const quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal' =
+                result === undefined ? 'unknown'
+                : isNoSignal ? 'noSignal'
+                : getQuality(kohm!);
               const color = qualityColor(quality);
+              const isDim = quality === 'unknown' || quality === 'noSignal';
 
               return (
                 <div
                   key={pos.label}
                   style={{
                     background: 'rgba(8,17,30,0.8)',
-                    border: `1px solid ${quality !== 'unknown' ? color + '55' : 'rgba(60,75,95,0.4)'}`,
+                    border: `1px solid ${!isDim ? color + '55' : 'rgba(60,75,95,0.4)'}`,
                     borderRadius: 10,
                     padding: '12px 14px',
                     transition: 'border-color 0.3s',
@@ -271,7 +284,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                     <span style={{
                       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                       fontSize: 14, fontWeight: 700,
-                      color: quality !== 'unknown' ? color : 'rgba(140,160,190,0.7)',
+                      color: !isDim ? color : 'rgba(140,160,190,0.7)',
                     }}>
                       {pos.label}
                     </span>
@@ -282,7 +295,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                       border: `1px solid ${color}44`,
                       borderRadius: 4,
                       padding: '2px 6px',
-                      opacity: quality === 'unknown' ? 0.4 : 1,
+                      opacity: isDim ? 0.5 : 1,
                     }}>
                       {qualityLabel(quality, lang)}
                     </span>
@@ -290,11 +303,15 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                   <div style={{
                     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                     fontSize: 18, fontWeight: 700,
-                    color: quality !== 'unknown' ? color : 'rgba(100,115,135,0.5)',
+                    color: !isDim ? color : 'rgba(100,115,135,0.5)',
                   }}>
-                    {kohm !== undefined ? kohm.toFixed(1) : '--'}
+                    {result === undefined
+                      ? '--'
+                      : isNoSignal
+                        ? 'N/A'
+                        : kohm!.toFixed(1)}
                     <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 3 }}>
-                      {kohm !== undefined ? T(lang, 'kohm') : ''}
+                      {result !== undefined && !isNoSignal ? T(lang, 'kohm') : ''}
                     </span>
                   </div>
                 </div>
@@ -315,10 +332,10 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               {(
                 [
-                  { quality: 'excellent' as ImpedanceResult['quality'], range: '< 150 kΩ' },
-                  { quality: 'good'      as ImpedanceResult['quality'], range: '< 300 kΩ' },
-                  { quality: 'poor'      as ImpedanceResult['quality'], range: '< 600 kΩ' },
-                  { quality: 'bad'       as ImpedanceResult['quality'], range: '≥ 600 kΩ' },
+                  { quality: 'excellent' as const, range: '< 150 kΩ' },
+                  { quality: 'good'      as const, range: '< 300 kΩ' },
+                  { quality: 'poor'      as const, range: '< 600 kΩ' },
+                  { quality: 'bad'       as const, range: '≥ 600 kΩ' },
                 ]
               ).map(item => (
                 <div key={item.quality} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -334,6 +351,28 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                   </span>
                 </div>
               ))}
+              {/* N/A legend entry */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: '50%',
+                  background: '#555e6a',
+                }} />
+                <span style={{ fontSize: 12, color: '#555e6a' }}>N/A</span>
+                <span style={{ fontSize: 11, color: 'rgba(130,150,175,0.6)' }}>
+                  無訊號
+                </span>
+              </div>
+            </div>
+            {/* N/A explanation note */}
+            <div style={{
+              marginTop: 10,
+              fontSize: 11,
+              color: 'rgba(130,150,175,0.65)',
+              padding: '5px 8px',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: 5,
+            }}>
+              {T(lang, 'impedanceNoSignal')}
             </div>
           </div>
 

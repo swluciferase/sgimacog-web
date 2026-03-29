@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FC, type CSSProperties } from 'react';
 import type { SubjectInfo } from '../../types/eeg';
+import { CHANNEL_LABELS, CHANNEL_COUNT } from '../../types/eeg';
 import type { RecordedSample } from '../../services/csvWriter';
 import { generateCsv, downloadCsv, buildCsvFilename } from '../../services/csvWriter';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
+import type { QualityConfig } from '../../hooks/useQualityMonitor';
 
 export interface RecordViewProps {
   lang: Lang;
@@ -21,6 +23,13 @@ export interface RecordViewProps {
   onEventMarker: (marker: { id: string; time: number; label: string }) => void;
   eventMarkers: { id: string; time: number; label: string }[];
   onClearEventMarkers: () => void;
+  // Quality monitor props
+  qualityConfig: QualityConfig;
+  onQualityConfigChange: (config: QualityConfig) => void;
+  currentWindowStds: Float32Array;
+  goodTimeSec: number;
+  goodPercent: number;
+  shouldAutoStop: boolean;
 }
 
 function formatDuration(ms: number): string {
@@ -39,6 +48,23 @@ function formatTime(ts: number): string {
   return `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}.${p3(d.getMilliseconds())}`;
 }
 
+const TARGET_DURATION_OPTIONS = [
+  { value: 30,       label: '30s'  },
+  { value: 60,       label: '60s'  },
+  { value: 90,       label: '90s'  },
+  { value: 120,      label: '2min' },
+  { value: 150,      label: '2:30' },
+  { value: 180,      label: '3min' },
+  { value: 300,      label: '5min' },
+  { value: Infinity, label: ''     }, // label set dynamically via i18n
+];
+
+function formatGoodTime(sec: number): string {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
 export const RecordView: FC<RecordViewProps> = ({
   lang,
   isConnected,
@@ -55,9 +81,16 @@ export const RecordView: FC<RecordViewProps> = ({
   onEventMarker,
   eventMarkers,
   onClearEventMarkers,
+  qualityConfig,
+  onQualityConfigChange,
+  currentWindowStds,
+  goodTimeSec,
+  goodPercent,
+  shouldAutoStop,
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoStoppedRef = useRef(false);
 
   useEffect(() => {
     if (isRecording) {
@@ -91,6 +124,23 @@ export const RecordView: FC<RecordViewProps> = ({
       downloadCsv(content, filename);
     }
   };
+
+  // Auto-stop when quality target is reached
+  // handleStop is a plain function (not useCallback) so we use onStopRecording ref approach
+  const onStopRecordingRef = useRef(onStopRecording);
+  onStopRecordingRef.current = onStopRecording;
+  useEffect(() => {
+    if (!isRecording) {
+      autoStoppedRef.current = false;
+      return;
+    }
+    if (shouldAutoStop && !autoStoppedRef.current) {
+      autoStoppedRef.current = true;
+      // Trigger App-level stop; the CSV download also happens via handleStop on button click,
+      // but auto-stop just needs to end the recording; App.tsx handles the stop too.
+      onStopRecordingRef.current();
+    }
+  }, [shouldAutoStop, isRecording]);
 
   const addMarker = () => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -204,6 +254,185 @@ export const RecordView: FC<RecordViewProps> = ({
             style={{ ...inputStyle, resize: 'vertical', minHeight: 52 }}
           />
         </div>
+      </div>
+
+      {/* Quality monitor card */}
+      <div style={{
+        background: 'rgba(8,17,30,0.85)',
+        border: '1px solid rgba(93,109,134,0.3)',
+        borderRadius: 14,
+        padding: '18px 24px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: qualityConfig.enabled ? 14 : 0 }}>
+          <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+            {T(lang, 'recordQualityGrid')}
+          </h3>
+          {/* Toggle */}
+          <button
+            onClick={() => !isRecording && onQualityConfigChange({ ...qualityConfig, enabled: !qualityConfig.enabled })}
+            disabled={isRecording}
+            style={{
+              background: qualityConfig.enabled ? 'rgba(63,185,80,0.15)' : 'rgba(30,50,80,0.4)',
+              border: `1px solid ${qualityConfig.enabled ? 'rgba(63,185,80,0.5)' : 'rgba(93,109,134,0.4)'}`,
+              borderRadius: 6,
+              color: qualityConfig.enabled ? '#3fb950' : 'rgba(130,155,185,0.6)',
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '4px 12px',
+              cursor: isRecording ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s',
+              minWidth: 52,
+            }}
+          >
+            {qualityConfig.enabled ? T(lang, 'recordQualityEnabled') : T(lang, 'recordQualityDisabled')}
+          </button>
+        </div>
+
+        {qualityConfig.enabled && (<>
+
+        {/* Target duration + sensitivity row */}
+        <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)' }}>
+              {T(lang, 'recordTargetDuration')}:
+            </label>
+            <select
+              value={isFinite(qualityConfig.targetDurationSec) ? qualityConfig.targetDurationSec : 'Infinity'}
+              onChange={e => {
+                const raw = e.target.value;
+                const val = raw === 'Infinity' ? Infinity : Number(raw);
+                onQualityConfigChange({ ...qualityConfig, targetDurationSec: val });
+              }}
+              disabled={isRecording}
+              style={{
+                background: 'rgba(10,20,35,0.85)',
+                border: '1px solid rgba(93,109,134,0.45)',
+                borderRadius: 6,
+                color: '#cdd6e8',
+                fontSize: 12,
+                padding: '4px 8px',
+                cursor: isRecording ? 'not-allowed' : 'pointer',
+                outline: 'none',
+              }}
+            >
+              {TARGET_DURATION_OPTIONS.map(opt => (
+                <option key={String(opt.value)} value={String(opt.value)}>
+                  {isFinite(opt.value) ? opt.label : T(lang, 'recordDurationManual')}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)' }}>
+              {T(lang, 'recordSensitivity')}:
+            </label>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {([1, 2, 3, 4, 5] as const).map(level => (
+                <button
+                  key={level}
+                  onClick={() => !isRecording && onQualityConfigChange({ ...qualityConfig, sensitivity: level })}
+                  disabled={isRecording}
+                  style={{
+                    width: 28, height: 28,
+                    borderRadius: 5,
+                    border: `1px solid ${qualityConfig.sensitivity === level ? 'rgba(88,166,255,0.7)' : 'rgba(93,109,134,0.4)'}`,
+                    background: qualityConfig.sensitivity === level ? 'rgba(88,166,255,0.2)' : 'transparent',
+                    color: qualityConfig.sensitivity === level ? '#8ecfff' : 'rgba(160,180,210,0.6)',
+                    fontSize: 12, fontWeight: 600,
+                    cursor: isRecording ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+            <span style={{ fontSize: 11, color: 'rgba(130,155,185,0.55)' }}>
+              {T(lang, 'recordSensitivityLenient')} → {T(lang, 'recordSensitivityStrict')}
+            </span>
+          </div>
+        </div>
+
+        {/* 8-channel STD grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(8, 1fr)',
+          gap: 6,
+          marginBottom: 14,
+        }}>
+          {Array.from({ length: CHANNEL_COUNT }, (_, ch) => {
+            const std = currentWindowStds[ch] ?? 0;
+            const thresholds = [200, 150, 100, 60, 30];
+            const threshold = thresholds[(qualityConfig.sensitivity - 1)] ?? 100;
+            const color = std < threshold
+              ? '#3fb950'
+              : std < threshold * 1.5
+                ? '#e3a030'
+                : '#f85149';
+            return (
+              <div key={ch} style={{
+                padding: '6px 4px',
+                background: `${color}12`,
+                border: `1px solid ${color}44`,
+                borderRadius: 6,
+                textAlign: 'center',
+              }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700,
+                  color: 'rgba(160,180,210,0.7)',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  marginBottom: 2,
+                }}>
+                  {CHANNEL_LABELS[ch]}
+                </div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700,
+                  color,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                }}>
+                  {isRecording ? `${std.toFixed(0)}` : '--'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Progress bar (only during recording) */}
+        {isRecording && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)' }}>
+                {T(lang, 'recordGoodTime')}: <span style={{ color: '#3fb950', fontWeight: 700 }}>{formatGoodTime(goodTimeSec)}</span>
+                {isFinite(qualityConfig.targetDurationSec) && (
+                  <span style={{ color: 'rgba(130,155,185,0.6)' }}>
+                    {' '}/ {formatGoodTime(qualityConfig.targetDurationSec)} ({T(lang, 'recordTargetDuration')})
+                  </span>
+                )}
+              </span>
+              <span style={{ fontSize: 12, color: '#7ec8f5', fontWeight: 700 }}>
+                {T(lang, 'recordQualityPct')}: {goodPercent}%
+              </span>
+            </div>
+            {isFinite(qualityConfig.targetDurationSec) && (
+              <div style={{
+                height: 6,
+                background: 'rgba(30,50,80,0.7)',
+                borderRadius: 3,
+                overflow: 'hidden',
+                border: '1px solid rgba(93,109,134,0.3)',
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(100, (goodTimeSec / qualityConfig.targetDurationSec) * 100)}%`,
+                  background: 'linear-gradient(90deg, #3fb950, #85e89d)',
+                  borderRadius: 3,
+                  transition: 'width 0.5s ease',
+                }} />
+              </div>
+            )}
+          </div>
+        )}
+        </>)}
       </div>
 
       {/* Recording controls */}

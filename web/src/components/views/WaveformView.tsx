@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
-import { ColorRGBA, WebglLineRoll, WebglPlot } from 'webgl-plot';
+import { ColorRGBA, WebglAux, WebglLine, WebglPlot } from 'webgl-plot';
 import type { EegPacket, FilterParams, FilterBiquadState } from '../../types/eeg';
 import { CHANNEL_LABELS, CHANNEL_COUNT, SAMPLE_RATE_HZ } from '../../types/eeg';
 import type { Lang } from '../../i18n';
@@ -181,7 +181,9 @@ export const WaveformView = ({
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
-  const rollRef = useRef<WebglLineRoll | null>(null);
+  const auxRef = useRef<WebglAux | null>(null);
+  const linesRef = useRef<WebglLine[]>([]);
+  const sweepPosRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const packetQueueRef = useRef<EegPacket[]>([]);
   const latestUvRef = useRef<Float32Array | null>(null);
@@ -307,30 +309,41 @@ export const WaveformView = ({
       backgroundColor: [0.02, 0.035, 0.07, 1],
     });
 
-    const roll = new WebglLineRoll(wglp.gl, windowPoints, CHANNEL_COUNT);
-    CHANNEL_COLORS.forEach((color, idx) => {
-      roll.setLineColor(
-        new ColorRGBA(color[0] * 255, color[1] * 255, color[2] * 255, color[3] * 255),
-        idx,
-      );
+    // Sweep (scan) mode: pre-allocate full window for each channel.
+    // WebglLine.xy is a flat array: [x0,y0, x1,y1, ... xN,yN]
+    // lineSpaceX(N) fills x values evenly from -1 to +1 and resets y to 0.
+    // We write y directly via line.xy[i*2+1].
+    const aux = new WebglAux(wglp.gl);
+
+    const lines: WebglLine[] = Array.from({ length: CHANNEL_COUNT }, (_, ch) => {
+      const [r, g, b, a] = CHANNEL_COLORS[ch]!;
+      // Construct with default empty xy, then use lineSpaceX to allocate + set x values
+      const line = new WebglLine(undefined, new ColorRGBA(r, g, b, a));
+      line.lineSpaceX(windowPoints); // allocates xy[windowPoints*2], spaces x from -1 to +1
+      // Initialise all y to channel baseline (y is at odd indices)
+      const baseline = toClipY(0, ch, fullScaleUvRef.current);
+      for (let i = 0; i < windowPoints; i++) {
+        line.xy[i * 2 + 1] = baseline;
+      }
+      aux.addLine(line);
+      return line;
     });
 
-    // Fill baseline
-    const baseline = Array.from({ length: CHANNEL_COUNT }, (_, ch) =>
-      new Float32Array(windowPoints).fill(toClipY(0, ch, fullScaleUvRef.current)),
-    );
-    roll.addPoints(baseline);
-
     wglpRef.current = wglp;
-    rollRef.current = roll;
+    auxRef.current = aux;
+    linesRef.current = lines;
+    sweepPosRef.current = 0;
 
     const ro = new ResizeObserver(() => resizeCanvas());
     ro.observe(canvas);
 
+    const CURSOR_GAP = 20; // number of points blanked ahead of sweep pen
+
     const renderFrame = () => {
-      const lineRoll = rollRef.current;
       const plot = wglpRef.current;
-      if (!lineRoll || !plot) {
+      const renderer = auxRef.current;
+      const lines = linesRef.current;
+      if (!plot || !renderer || lines.length === 0) {
         rafRef.current = requestAnimationFrame(renderFrame);
         return;
       }
@@ -341,22 +354,37 @@ export const WaveformView = ({
       const biquad = filterBiquadRef.current;
       const { hp, lp, notch } = filterCoeffsRef.current;
 
-      const channelSamples: number[][] = Array.from({ length: CHANNEL_COUNT }, () => []);
       const pendingPackets = packetQueueRef.current.splice(0, packetQueueRef.current.length);
+      let sweepPos = sweepPosRef.current;
+      let addedSamples = 0;
 
       for (const packet of pendingPackets) {
         const channels = packet.eegChannels;
         if (!channels || channels.length < CHANNEL_COUNT) continue;
+
         for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
-          let uv = visible[ch] ? (channels[ch] ?? 0) : 0;
+          let uv = 0;
           if (visible[ch]) {
+            uv = channels[ch] ?? 0;
             uv = applyFilterChain(uv, ch, biquad, fp, hp, lp, notch);
           }
-          channelSamples[ch].push(toClipY(uv, ch, scale));
+          // Write y value directly into the flat xy array at this sweep position
+          lines[ch]!.xy[sweepPos * 2 + 1] = toClipY(uv, ch, scale);
         }
+
+        // Cursor gap: blank points ahead of the pen (creates visible scan cursor)
+        for (let k = 0; k < CURSOR_GAP; k++) {
+          const gapPos = (sweepPos + 1 + k) % windowPoints;
+          for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+            lines[ch]!.xy[gapPos * 2 + 1] = toClipY(0, ch, scale);
+          }
+        }
+
+        sweepPos = (sweepPos + 1) % windowPoints;
+        addedSamples++;
       }
 
-      const addedSamples = pendingPackets.length;
+      sweepPosRef.current = sweepPos;
 
       if (addedSamples > 0) {
         markersRef.current.forEach(marker => {
@@ -375,12 +403,8 @@ export const WaveformView = ({
         });
       }
 
-      if (channelSamples.some(s => s.length > 0)) {
-        lineRoll.addPoints(channelSamples.map(s => Float32Array.from(s)));
-      }
-
       plot.clear();
-      lineRoll.draw();
+      renderer.draw();
 
       rafRef.current = requestAnimationFrame(renderFrame);
     };
@@ -392,7 +416,9 @@ export const WaveformView = ({
       ro.disconnect();
       wglp.clear();
       wglpRef.current = null;
-      rollRef.current = null;
+      auxRef.current = null;
+      linesRef.current = [];
+      sweepPosRef.current = 0;
     };
   }, [windowSeconds, filterBiquadRef]);
 

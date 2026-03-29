@@ -9,6 +9,8 @@ import { WaveformView } from './components/views/WaveformView';
 import { FftView } from './components/views/FftView';
 import { RecordView } from './components/views/RecordView';
 import { useEegStream } from './hooks/useEegStream';
+import { useQualityMonitor } from './hooks/useQualityMonitor';
+import type { QualityConfig } from './hooks/useQualityMonitor';
 import { serialService } from './services/serial';
 import type { ConnectionStatus } from './services/serial';
 import { wasmService } from './services/wasm';
@@ -77,6 +79,7 @@ function App() {
 
   // Impedance mode tracking
   const impedanceModeActiveRef = useRef(false);
+  const [isImpedanceActive, setIsImpedanceActive] = useState(false);
 
   // ── Shared filter state ──
   // filterParams is React state (drives UI re-renders)
@@ -120,6 +123,14 @@ function App() {
   const recordSamplesRef = useRef<RecordedSample[]>([]);
   const recordTimestampRef = useRef<number>(0); // seconds from start
 
+  // ── Quality monitor config ──
+  const [qualityConfig, setQualityConfig] = useState<QualityConfig>({
+    enabled: true,
+    sensitivity: 3,
+    targetDurationSec: 60,
+    windowSec: 2,
+  });
+
   // ── Event markers (shared between signal + record views) ──
   const [eventMarkers, setEventMarkers] = useState<{ id: string; time: number; label: string }[]>([]);
   const pendingMarkerRef = useRef<{ id: string; time: number; label: string } | null>(null);
@@ -162,7 +173,14 @@ function App() {
     serial, parser, handleParserError,
   );
 
-  // Extract device ID — prefer machineInfo response, fall back to serial number
+  const {
+    currentWindowStds,
+    goodTimeSec,
+    goodPercent,
+    shouldAutoStop,
+  } = useQualityMonitor(latestPackets, isRecording, qualityConfig);
+
+  // Extract device ID — only from machineInfo (TAG_COMMAND response)
   useEffect(() => {
     if (deviceIdSeenRef.current) return;
     for (const pkt of latestPackets) {
@@ -170,14 +188,6 @@ function App() {
         setDeviceId(pkt.machineInfo);
         deviceIdSeenRef.current = true;
         return;
-      }
-    }
-    // Fallback: construct from packet serial number field
-    for (const pkt of latestPackets) {
-      if (pkt.serialNumber !== null) {
-        setDeviceId(`STEEG_${pkt.serialNumber.toString(16).toUpperCase().padStart(8, '0')}`);
-        // Don't mark as seen — keep looking for machineInfo response
-        break;
       }
     }
   }, [latestPackets]);
@@ -259,6 +269,7 @@ function App() {
     const cmds = getCommands();
     if (!serial || !cmds) return;
     impedanceModeActiveRef.current = true;
+    setIsImpedanceActive(true);
     await serial.write(cmds.cmd_impedance_ac_on('reference'));
     parser?.enable_impedance(config.sampleRate, config.sampleRate);
   }, [serial, getCommands, parser, config.sampleRate]);
@@ -268,6 +279,7 @@ function App() {
     if (!serial || !cmds) return;
     await serial.write(cmds.cmd_impedance_ac_off());
     impedanceModeActiveRef.current = false;
+    setIsImpedanceActive(false);
     parser?.disable_impedance?.();
     setTimeout(async () => {
       try {
@@ -299,6 +311,20 @@ function App() {
     }, 2000);
     return () => clearInterval(id);
   }, [isRecording]);
+
+  // Auto-stop recording when quality monitor signals target reached
+  // (RecordView also calls onStopRecording, but we guard here too)
+  const autoStopFiredRef = useRef(false);
+  useEffect(() => {
+    if (!isRecording) {
+      autoStopFiredRef.current = false;
+      return;
+    }
+    if (shouldAutoStop && !autoStopFiredRef.current) {
+      autoStopFiredRef.current = true;
+      handleStopRecording();
+    }
+  }, [shouldAutoStop, isRecording, handleStopRecording]);
 
   // ── Event marker handler (from waveform OR record views) ──
   const handleEventMarker = useCallback((marker: { id: string; time: number; label: string }) => {
@@ -393,6 +419,12 @@ function App() {
             onEventMarker={handleEventMarker}
             eventMarkers={eventMarkers}
             onClearEventMarkers={() => setEventMarkers([])}
+            qualityConfig={qualityConfig}
+            onQualityConfigChange={setQualityConfig}
+            currentWindowStds={currentWindowStds}
+            goodTimeSec={goodTimeSec}
+            goodPercent={goodPercent}
+            shouldAutoStop={shouldAutoStop}
           />
         );
 
@@ -413,6 +445,7 @@ function App() {
       <Header
         status={status}
         packetRate={deviceStats.packetRate}
+        deviceId={deviceId}
         lang={lang}
         onLangToggle={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
       />
@@ -422,6 +455,7 @@ function App() {
           onTabChange={handleTabChange}
           lang={lang}
           isConnected={isConnected}
+          isImpedanceActive={isImpedanceActive}
         />
         <main className="content-area">
           {renderContent()}

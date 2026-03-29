@@ -6,11 +6,12 @@ import { T } from '../../i18n';
 export interface HeaderProps {
   status: ConnectionStatus;
   packetRate: number;
+  deviceId: string | null;
   lang: Lang;
   onLangToggle: () => void;
 }
 
-export const Header: FC<HeaderProps> = ({ status, packetRate, lang, onLangToggle }) => {
+export const Header: FC<HeaderProps> = ({ status, packetRate, deviceId, lang, onLangToggle }) => {
   const statusText = (() => {
     switch (status) {
       case 'connected':    return T(lang, 'connected');
@@ -64,8 +65,20 @@ export const Header: FC<HeaderProps> = ({ status, packetRate, lang, onLangToggle
         </span>
       </div>
 
-      {/* Right side: status + packet rate + lang toggle */}
+      {/* Right side: device ID + status + packet rate + lang toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Device ID (only when connected) */}
+        {status === 'connected' && (
+          <span style={{
+            fontSize: 12,
+            color: 'rgba(126,200,245,0.85)',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            letterSpacing: '0.04em',
+          }}>
+            {T(lang, 'headerDeviceId')}: {deviceId ?? '—'}
+          </span>
+        )}
+
         {/* Packet rate (only when connected) */}
         {status === 'connected' && (
           <span style={{

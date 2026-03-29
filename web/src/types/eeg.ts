@@ -18,6 +18,7 @@ export interface ImpedanceResult {
   channel: number;
   impedanceKohm: number;
   quality: 'excellent' | 'good' | 'poor' | 'bad';
+  acAmplitude: number;  // µV — AC signal amplitude; < 0.5 means no signal detected
 }
 
 export interface DeviceStats {

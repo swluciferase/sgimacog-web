@@ -9,6 +9,7 @@ export interface SidebarProps {
   onTabChange: (tab: TabType) => void;
   lang: Lang;
   isConnected: boolean;
+  isImpedanceActive: boolean;
 }
 
 // SVG icons as inline elements
@@ -48,7 +49,9 @@ const RecordIcon = () => (
   </svg>
 );
 
-export const Sidebar: FC<SidebarProps> = ({ activeTab, onTabChange, lang, isConnected }) => {
+export const Sidebar: FC<SidebarProps> = ({
+  activeTab, onTabChange, lang, isConnected, isImpedanceActive,
+}) => {
   const tabs: { id: TabType; labelKey: string; icon: ReactNode; requiresConnect: boolean }[] = [
     { id: 'home',      labelKey: 'tabHome',       icon: <HomeIcon />,      requiresConnect: false },
     { id: 'impedance', labelKey: 'tabImpedance',  icon: <ImpedanceIcon />, requiresConnect: true },
@@ -56,6 +59,8 @@ export const Sidebar: FC<SidebarProps> = ({ activeTab, onTabChange, lang, isConn
     { id: 'fft',       labelKey: 'tabFft',        icon: <FftIcon />,       requiresConnect: true },
     { id: 'record',    labelKey: 'tabRecord',     icon: <RecordIcon />,    requiresConnect: true },
   ];
+
+  const isSignalOrFftActive = activeTab === 'signal' || activeTab === 'fft';
 
   return (
     <aside style={{
@@ -70,12 +75,26 @@ export const Sidebar: FC<SidebarProps> = ({ activeTab, onTabChange, lang, isConn
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0 8px' }}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
-          const isDisabled = tab.requiresConnect && !isConnected;
+          const notConnected = tab.requiresConnect && !isConnected;
+
+          // Mutual exclusion: impedance ↔ signal/FFT
+          const impedanceLocked =
+            (tab.id === 'signal' || tab.id === 'fft') && isImpedanceActive;
+          const signalFftLocked =
+            tab.id === 'impedance' && isSignalOrFftActive && isConnected;
+
+          const isDisabled = notConnected || impedanceLocked || signalFftLocked;
+
+          let title: string | undefined;
+          if (impedanceLocked) title = T(lang, 'sidebarImpedanceActiveHint');
+          else if (signalFftLocked) title = T(lang, 'sidebarSignalActiveHint');
+
           return (
             <button
               key={tab.id}
               onClick={() => !isDisabled && onTabChange(tab.id)}
               disabled={isDisabled}
+              title={title}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -97,6 +116,7 @@ export const Sidebar: FC<SidebarProps> = ({ activeTab, onTabChange, lang, isConn
                 textAlign: 'left',
                 transition: 'all 0.15s ease',
                 outline: 'none',
+                pointerEvents: isDisabled ? 'none' : 'auto',
               }}
             >
               <span style={{

@@ -17,12 +17,19 @@ interface EegStreamState {
   latestImpedance: ImpedanceResult[] | null;
 }
 
+type RawImpedanceResult = {
+  channel: number;
+  impedanceKohm: number;
+  quality: ImpedanceResult['quality'];
+  acAmplitude: number;
+};
+
 type RawPacket = {
   serialNumber?: number | null;
   channels?: Float32Array | null;
   battery?: number | null;
   gsensor?: Float32Array | null;
-  impedanceResults?: ImpedanceResult[] | null;
+  impedanceResults?: RawImpedanceResult[] | null;
   machineInfo?: string | null;
 };
 
@@ -117,7 +124,12 @@ export function useEegStream(
         if (rawPackets.length > 0) {
           const lastPacket = rawPackets[rawPackets.length - 1];
           if (lastPacket?.impedanceResults && lastPacket.impedanceResults.length > 0) {
-            impedance = lastPacket.impedanceResults;
+            impedance = lastPacket.impedanceResults.map(r => ({
+              channel: r.channel,
+              impedanceKohm: r.impedanceKohm,
+              quality: r.quality,
+              acAmplitude: r.acAmplitude ?? 0,
+            }));
           }
         }
 
