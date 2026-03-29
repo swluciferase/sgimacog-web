@@ -49,14 +49,14 @@ function formatTime(ts: number): string {
 }
 
 const TARGET_DURATION_OPTIONS = [
-  { value: 30,       label: '30s'  },
-  { value: 60,       label: '60s'  },
-  { value: 90,       label: '90s'  },
-  { value: 120,      label: '2min' },
-  { value: 150,      label: '2:30' },
-  { value: 180,      label: '3min' },
-  { value: 300,      label: '5min' },
-  { value: Infinity, label: ''     }, // label set dynamically via i18n
+  { value: 30,       label: '30'  },
+  { value: 60,       label: '60'  },
+  { value: 90,       label: '90'  },
+  { value: 120,      label: '120' },
+  { value: 150,      label: '150' },
+  { value: 180,      label: '180' },
+  { value: 300,      label: '300' },
+  { value: Infinity, label: ''    },
 ];
 
 function formatGoodTime(sec: number): string {
@@ -210,14 +210,13 @@ export const RecordView: FC<RecordViewProps> = ({
             />
           </div>
 
-          {/* Age */}
+          {/* Date of birth */}
           <div>
-            <label style={labelStyle}>{T(lang, 'recordAge')}</label>
+            <label style={labelStyle}>{T(lang, 'recordDob')}</label>
             <input
-              type="number"
-              min="1" max="120"
-              value={subjectInfo.age}
-              onChange={e => onSubjectInfoChange({ ...subjectInfo, age: e.target.value })}
+              type="date"
+              value={subjectInfo.dob}
+              onChange={e => onSubjectInfoChange({ ...subjectInfo, dob: e.target.value })}
               disabled={isRecording}
               style={inputStyle}
             />
@@ -269,8 +268,7 @@ export const RecordView: FC<RecordViewProps> = ({
           </h3>
           {/* Toggle */}
           <button
-            onClick={() => !isRecording && onQualityConfigChange({ ...qualityConfig, enabled: !qualityConfig.enabled })}
-            disabled={isRecording}
+            onClick={() => onQualityConfigChange({ ...qualityConfig, enabled: !qualityConfig.enabled })}
             style={{
               background: qualityConfig.enabled ? 'rgba(63,185,80,0.15)' : 'rgba(30,50,80,0.4)',
               border: `1px solid ${qualityConfig.enabled ? 'rgba(63,185,80,0.5)' : 'rgba(93,109,134,0.4)'}`,
@@ -279,7 +277,7 @@ export const RecordView: FC<RecordViewProps> = ({
               fontSize: 12,
               fontWeight: 600,
               padding: '4px 12px',
-              cursor: isRecording ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               transition: 'all 0.15s',
               minWidth: 52,
             }}
@@ -321,6 +319,7 @@ export const RecordView: FC<RecordViewProps> = ({
                 </option>
               ))}
             </select>
+            <span style={{ fontSize: 12, color: 'rgba(160,180,210,0.6)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>(S)</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -74,6 +74,7 @@ const translations: Record<string, Record<Lang, string>> = {
   recordSubjectId: { zh: '受試者編號', en: 'Subject ID' },
   recordSubjectName: { zh: '姓名', en: 'Name' },
   recordAge: { zh: '年齡', en: 'Age' },
+  recordDob: { zh: '出生年月日', en: 'Date of Birth' },
   recordSex: { zh: '性別', en: 'Sex' },
   recordSexMale: { zh: '男', en: 'Male' },
   recordSexFemale: { zh: '女', en: 'Female' },
@@ -110,12 +111,14 @@ const translations: Record<string, Record<Lang, string>> = {
   connectModalConnect:      { zh: '連線', en: 'Connect' },
   connectModalOnePortReady: { zh: '已找到 1 個已授權的序列埠，點連線即可直接開啟', en: '1 authorized port found — click Connect to open directly' },
   connectModalMultiPortReady: { zh: '已找到 {n} 個已授權的序列埠，請在彈出視窗中選擇', en: '{n} authorized ports found — select one in the picker' },
+  connectModalClearAll: { zh: '清除所有裝置授權', en: 'Clear all device authorizations' },
 
   // Header device ID
   headerDeviceId: { zh: '裝置', en: 'Device' },
 
   // Impedance N/A
   impedanceNoSignal: { zh: 'N/A = 未偵測到訊號 / No signal detected', en: 'N/A = No signal detected / 未偵測到訊號' },
+  impedanceBlockedByRecording: { zh: '錄製中無法量測阻抗', en: 'Cannot measure impedance while recording' },
 
   // Sidebar mutual exclusion tooltips
   sidebarImpedanceActiveHint: { zh: '阻抗量測進行中，請先停止量測', en: 'Impedance active — stop measurement first' },

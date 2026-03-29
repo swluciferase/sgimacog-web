@@ -9,7 +9,7 @@ export interface EventMarker {
   id: string;
   time: number;         // Date.now() at the moment of placement
   label: string;
-  samplesAgo: number;   // updated each frame
+  sweepPos: number;     // canvas write position (0 to windowPoints-1) at placement time
 }
 
 export interface WaveformViewProps {
@@ -203,6 +203,7 @@ export const WaveformView = ({
   const [markers, setMarkers] = useState<EventMarker[]>([]);
   const markersRef = useRef<EventMarker[]>([]);
   const markerDivsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const sweepCursorRef = useRef<HTMLDivElement | null>(null);
 
   // Precompute filter coefficients from filterParams
   const filterCoeffs = useMemo(() => {
@@ -255,7 +256,7 @@ export const WaveformView = ({
     const id = Math.random().toString(36).substring(2, 9);
     const time = Date.now();
     const label = `M${markersRef.current.length + 1}`;
-    const newMarker: EventMarker = { id, time, label, samplesAgo: 0 };
+    const newMarker: EventMarker = { id, time, label, sweepPos: sweepPosRef.current };
     markersRef.current = [...markersRef.current, newMarker];
     setMarkers(markersRef.current);
     onEventMarker({ id, time, label });
@@ -356,7 +357,6 @@ export const WaveformView = ({
 
       const pendingPackets = packetQueueRef.current.splice(0, packetQueueRef.current.length);
       let sweepPos = sweepPosRef.current;
-      let addedSamples = 0;
 
       for (const packet of pendingPackets) {
         const channels = packet.eegChannels;
@@ -381,27 +381,25 @@ export const WaveformView = ({
         }
 
         sweepPos = (sweepPos + 1) % windowPoints;
-        addedSamples++;
       }
 
       sweepPosRef.current = sweepPos;
 
-      if (addedSamples > 0) {
-        markersRef.current.forEach(marker => {
-          marker.samplesAgo += addedSamples;
-        });
-        markersRef.current.forEach(marker => {
-          const div = markerDivsRef.current.get(marker.id);
-          if (div) {
-            if (marker.samplesAgo > windowPoints) {
-              div.style.display = 'none';
-            } else {
-              div.style.display = 'block';
-              div.style.left = `${(1 - marker.samplesAgo / windowPoints) * 100}%`;
-            }
-          }
-        });
+      // Update scan cursor line position
+      if (sweepCursorRef.current) {
+        sweepCursorRef.current.style.left = `${(sweepPos / windowPoints) * 100}%`;
       }
+
+      // Update marker positions (fixed in scan mode)
+      markersRef.current.forEach(marker => {
+        const div = markerDivsRef.current.get(marker.id);
+        if (!div) return;
+        const leftPct = (marker.sweepPos / windowPoints) * 100;
+        div.style.left = `${leftPct}%`;
+        // Fade the marker when the scan cursor is about to overwrite it
+        const dist = (sweepPos - marker.sweepPos + windowPoints) % windowPoints;
+        div.style.opacity = dist < CURSOR_GAP + 4 ? '0' : '1';
+      });
 
       plot.clear();
       renderer.draw();
@@ -712,6 +710,20 @@ export const WaveformView = ({
 
         {/* WebGL canvas */}
         <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 56 }}>
+          {/* Scan cursor line */}
+          <div
+            ref={sweepCursorRef}
+            style={{
+              position: 'absolute',
+              top: 0, bottom: 0,
+              width: 2,
+              background: 'rgba(255, 255, 255, 0.45)',
+              boxShadow: '0 0 5px rgba(255,255,255,0.3)',
+              pointerEvents: 'none',
+              zIndex: 4,
+              left: '0%',
+            }}
+          />
           <canvas
             ref={canvasRef}
             style={{ width: '100%', height: '100%', display: 'block', borderRadius: '0 10px 10px 0' }}
@@ -733,8 +745,8 @@ export const WaveformView = ({
               style={{
                 position: 'absolute', top: 0, bottom: 0, width: 0,
                 borderLeft: '2px dashed rgba(255,255,0,0.65)',
-                left: '100%',
-                display: m.samplesAgo > windowSeconds * SAMPLE_RATE_HZ ? 'none' : 'block',
+                left: '0%',
+                display: 'block',
               }}
             >
               <div style={{

@@ -16,15 +16,9 @@ impl ImpedanceResult {
     }
 
     pub fn quality(&self) -> &str {
-        if self.impedance_kohm < 5.0 {
-            return "good";
-        }
-        if self.impedance_kohm < 20.0 {
-            return "acceptable";
-        }
-        if self.impedance_kohm < 50.0 {
-            return "poor";
-        }
+        if self.impedance_kohm < 150.0 { return "excellent"; }
+        if self.impedance_kohm < 300.0 { return "good"; }
+        if self.impedance_kohm < 600.0 { return "poor"; }
         "bad"
     }
 }
@@ -146,29 +140,12 @@ mod tests {
 
     #[test]
     fn test_impedance_result_quality_thresholds() {
-        let good = ImpedanceResult {
-            channel: 0,
-            ac_amplitude: 1.0,
-            impedance_kohm: 3.0,
-        };
-        let acceptable = ImpedanceResult {
-            channel: 1,
-            ac_amplitude: 1.0,
-            impedance_kohm: 10.0,
-        };
-        let poor = ImpedanceResult {
-            channel: 2,
-            ac_amplitude: 1.0,
-            impedance_kohm: 30.0,
-        };
-        let bad = ImpedanceResult {
-            channel: 3,
-            ac_amplitude: 1.0,
-            impedance_kohm: 100.0,
-        };
-
+        let excellent = ImpedanceResult { channel: 0, ac_amplitude: 1.0, impedance_kohm: 100.0 };
+        let good = ImpedanceResult { channel: 1, ac_amplitude: 1.0, impedance_kohm: 200.0 };
+        let poor = ImpedanceResult { channel: 2, ac_amplitude: 1.0, impedance_kohm: 400.0 };
+        let bad = ImpedanceResult { channel: 3, ac_amplitude: 1.0, impedance_kohm: 700.0 };
+        assert_eq!(excellent.quality(), "excellent");
         assert_eq!(good.quality(), "good");
-        assert_eq!(acceptable.quality(), "acceptable");
         assert_eq!(poor.quality(), "poor");
         assert_eq!(bad.quality(), "bad");
     }

@@ -5,11 +5,14 @@ import {
   getAuthorizedFtdiDevices,
   requestNewFtdiDevice,
   isWebUsbAvailable,
+  forgetAllFtdiDevices,
+  forgetAllFtdiPorts,
   type FtdiDeviceInfo,
 } from '../../services/ftdiScanner';
 import {
   getOtherTabDevices,
   onRegistryChange,
+  clearRegistry,
   type RegistryEntry,
 } from '../../services/deviceRegistry';
 
@@ -106,6 +109,13 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
     await requestNewFtdiDevice();
     await refresh();
   }, [webUsbAvailable, refresh]);
+
+  const handleClearAll = useCallback(async () => {
+    setScanning(true);
+    await Promise.all([forgetAllFtdiDevices(), forgetAllFtdiPorts()]);
+    clearRegistry();
+    await refresh();
+  }, [refresh]);
 
   // Overlay click closes modal
   const handleOverlayClick = useCallback((e: MouseEvent) => {
@@ -252,6 +262,22 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
               }}
             >
               {T(lang, 'connectModalAuthorizeNew')}
+            </button>
+            <button
+              onClick={handleClearAll}
+              disabled={scanning}
+              style={{
+                ...btnBase,
+                background: 'rgba(248,81,73,0.07)',
+                border: '1px solid rgba(248,81,73,0.25)',
+                color: 'rgba(248,81,73,0.7)',
+                width: '100%',
+                opacity: scanning ? 0.5 : 1,
+                cursor: scanning ? 'not-allowed' : 'pointer',
+                marginTop: 8,
+              }}
+            >
+              {T(lang, 'connectModalClearAll')}
             </button>
           </div>
         )}

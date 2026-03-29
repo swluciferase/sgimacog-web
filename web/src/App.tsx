@@ -14,6 +14,7 @@ import { useQualityMonitor } from './hooks/useQualityMonitor';
 import type { QualityConfig } from './hooks/useQualityMonitor';
 import { serialService } from './services/serial';
 import type { ConnectionStatus } from './services/serial';
+import { getAuthorizedFtdiDevices } from './services/ftdiScanner';
 import {
   registerConnected,
   registerDisconnected,
@@ -120,7 +121,7 @@ function App() {
 
   // ── Subject info ──
   const [subjectInfo, setSubjectInfo] = useState<SubjectInfo>({
-    id: '', name: '', age: '', sex: '', notes: '',
+    id: '', name: '', dob: '', sex: '', notes: '',
   });
 
   // ── Recording state ──
@@ -189,14 +190,28 @@ function App() {
     shouldAutoStop,
   } = useQualityMonitor(latestPackets, isRecording, qualityConfig);
 
+  // After connection: set device ID from WebUSB serial (STEEG_XXXXXXXX format)
+  useEffect(() => {
+    if (status !== 'connected') return;
+    getAuthorizedFtdiDevices().then(devices => {
+      if (devices.length >= 1 && devices[0]?.serialNumber && !deviceIdSeenRef.current) {
+        const id = `STEEG_${devices[0].serialNumber}`;
+        setDeviceId(id);
+        updateRegistrySteegId(id);
+        deviceIdSeenRef.current = true;
+      }
+    }).catch(() => {});
+  }, [status]);
+
   // Extract device ID — only from machineInfo (TAG_COMMAND response)
   useEffect(() => {
     if (deviceIdSeenRef.current) return;
     for (const pkt of latestPackets) {
       if (pkt.machineInfo) {
-        setDeviceId(pkt.machineInfo);
+        const id = pkt.machineInfo.startsWith('STEEG_') ? pkt.machineInfo : `STEEG_${pkt.machineInfo}`;
+        setDeviceId(id);
         deviceIdSeenRef.current = true;
-        updateRegistrySteegId(pkt.machineInfo);
+        updateRegistrySteegId(id);
         return;
       }
     }
@@ -285,13 +300,14 @@ function App() {
 
   // ── Impedance handlers ──
   const handleEnterImpedance = useCallback(async () => {
+    if (isRecording) return;
     const cmds = getCommands();
     if (!serial || !cmds) return;
     impedanceModeActiveRef.current = true;
     setIsImpedanceActive(true);
     await serial.write(cmds.cmd_impedance_ac_on('reference'));
-    parser?.enable_impedance(config.sampleRate, config.sampleRate);
-  }, [serial, getCommands, parser, config.sampleRate]);
+    parser?.enable_impedance(config.impedanceWindow, config.sampleRate);
+  }, [isRecording, serial, getCommands, parser, config.impedanceWindow, config.sampleRate]);
 
   const handleExitImpedance = useCallback(async () => {
     const cmds = getCommands();
@@ -390,6 +406,7 @@ function App() {
           <ImpedanceView
             impedanceResults={latestImpedance ?? undefined}
             isConnected={isConnected}
+            isRecording={isRecording}
             lang={lang}
             onEnterImpedanceMode={handleEnterImpedance}
             onExitImpedanceMode={handleExitImpedance}

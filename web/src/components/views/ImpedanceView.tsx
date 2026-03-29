@@ -6,6 +6,7 @@ import { T } from '../../i18n';
 export interface ImpedanceViewProps {
   impedanceResults?: ImpedanceResult[];
   isConnected: boolean;
+  isRecording: boolean;
   lang: Lang;
   onEnterImpedanceMode: () => void;
   onExitImpedanceMode: () => void;
@@ -58,6 +59,7 @@ function qualityLabel(quality: ImpedanceResult['quality'] | 'unknown' | 'noSigna
 export const ImpedanceView: FC<ImpedanceViewProps> = ({
   impedanceResults,
   isConnected,
+  isRecording,
   lang,
   onEnterImpedanceMode,
   onExitImpedanceMode,
@@ -73,7 +75,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
   }
 
   const handleToggle = () => {
-    if (!isConnected) return;
+    if (!isConnected || isRecording) return;
     if (isActive) {
       setIsActive(false);
       onExitImpedanceMode();
@@ -106,9 +108,14 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
               {T(lang, 'impedanceNotConnected')}
             </span>
           )}
+          {isRecording && (
+            <span style={{ fontSize: 12, color: 'rgba(248,81,73,0.8)' }}>
+              {T(lang, 'impedanceBlockedByRecording')}
+            </span>
+          )}
           <button
             onClick={handleToggle}
-            disabled={!isConnected}
+            disabled={!isConnected || isRecording}
             style={{
               background: isActive
                 ? 'rgba(248,81,73,0.18)'
@@ -119,8 +126,8 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
               fontSize: 13,
               fontWeight: 600,
               padding: '8px 18px',
-              cursor: isConnected ? 'pointer' : 'not-allowed',
-              opacity: isConnected ? 1 : 0.4,
+              cursor: (isConnected && !isRecording) ? 'pointer' : 'not-allowed',
+              opacity: (isConnected && !isRecording) ? 1 : 0.4,
               transition: 'all 0.15s',
             }}
           >

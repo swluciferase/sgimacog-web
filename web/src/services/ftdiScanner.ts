@@ -81,3 +81,36 @@ export async function requestNewFtdiDevice(): Promise<FtdiDeviceInfo | null> {
 export function isWebUsbAvailable(): boolean {
   return getUsb() !== null;
 }
+
+/**
+ * Revoke browser permission for all authorized FTDI USB devices.
+ * Uses device.forget() which is available in Chrome 122+.
+ */
+export async function forgetAllFtdiDevices(): Promise<void> {
+  const usb = getUsb();
+  if (!usb) return;
+  try {
+    const devices = await usb.getDevices();
+    const ftdi = devices.filter(d => d.vendorId === FTDI_VENDOR_ID && d.productId === FTDI_PRODUCT_ID);
+    for (const device of ftdi) {
+      const d = device as UsbDeviceLike & { forget?: () => Promise<void> };
+      if (typeof d.forget === 'function') await d.forget();
+    }
+  } catch { /* ignore */ }
+}
+
+/**
+ * Revoke browser permission for all authorized FTDI Web Serial ports.
+ */
+export async function forgetAllFtdiPorts(): Promise<void> {
+  try {
+    const ports = await navigator.serial.getPorts();
+    const ftdi = ports.filter(p => {
+      const info = p.getInfo();
+      return info.usbVendorId === 0x0403 && info.usbProductId === 0x6001;
+    });
+    for (const port of ftdi) {
+      await port.forget();
+    }
+  } catch { /* ignore */ }
+}

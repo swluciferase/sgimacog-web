@@ -141,6 +141,13 @@ export function registerDisconnected(): void {
   broadcast();
 }
 
+/** Clear all registry entries (all tabs). */
+export function clearRegistry(): void {
+  stopHeartbeat();
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  broadcast();
+}
+
 // Clean up on page unload so stale entries don't linger
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {

@@ -32,7 +32,7 @@ export interface DeviceStats {
 export interface SubjectInfo {
   id: string;
   name: string;
-  age: string;
+  dob: string;
   sex: 'M' | 'F' | 'Other' | '';
   notes: string;
 }
