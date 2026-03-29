@@ -1,0 +1,103 @@
+:root {
+  --bg-primary: #080f1a;
+  --bg-secondary: #0d1520;
+  --bg-tertiary: #111e30;
+  --text-primary: #dce9f8;
+  --text-secondary: #8b949e;
+  --accent-green: #3fb950;
+  --accent-red: #f85149;
+  --accent-blue: #58a6ff;
+  --border: rgba(93, 109, 134, 0.3);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  text-align: left;
+  display: block;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.content-area {
+  flex: 1;
+  background: var(--bg-primary);
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+/* Scrollbar styling */
+.content-area::-webkit-scrollbar {
+  width: 6px;
+}
+.content-area::-webkit-scrollbar-track {
+  background: rgba(15, 25, 40, 0.5);
+}
+.content-area::-webkit-scrollbar-thumb {
+  background: rgba(93, 109, 134, 0.4);
+  border-radius: 3px;
+}
+
+/* Pulse animation for status dots and recording indicator */
+@keyframes pulse {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.35; }
+  100% { opacity: 1; }
+}
+
+/* Generic number input — remove spinners in WebKit */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Focus ring for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(88, 166, 255, 0.6);
+  outline-offset: 1px;
+}
+
+/* Dark select / input color fix (Firefox) */
+select option {
+  background: #0d1520;
+  color: #cdd6e8;
+}
