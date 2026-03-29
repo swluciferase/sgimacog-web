@@ -8,11 +8,17 @@ import { ImpedanceView } from './components/views/ImpedanceView';
 import { WaveformView } from './components/views/WaveformView';
 import { FftView } from './components/views/FftView';
 import { RecordView } from './components/views/RecordView';
+import { ConnectModal } from './components/modals/ConnectModal';
 import { useEegStream } from './hooks/useEegStream';
 import { useQualityMonitor } from './hooks/useQualityMonitor';
 import type { QualityConfig } from './hooks/useQualityMonitor';
 import { serialService } from './services/serial';
 import type { ConnectionStatus } from './services/serial';
+import {
+  registerConnected,
+  registerDisconnected,
+  updateRegistrySteegId,
+} from './services/deviceRegistry';
 import { wasmService } from './services/wasm';
 import type {
   SubjectInfo,
@@ -66,6 +72,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [lang, setLang] = useState<Lang>('zh');
+  const [showConnectModal, setShowConnectModal] = useState(false);
 
   // Serial + parser (reactive refs drive useEegStream)
   const [serial, setSerial] = useState<typeof serialService | null>(null);
@@ -147,10 +154,12 @@ function App() {
       setStatus(s);
       if (s === 'connected') {
         setSerial(serialService);
-      } else {
+        registerConnected(null);
+      } else if (s === 'disconnected' || s === 'error') {
         setSerial(null);
         setDeviceId(null);
         deviceIdSeenRef.current = false;
+        registerDisconnected();
       }
     };
 
@@ -187,6 +196,7 @@ function App() {
       if (pkt.machineInfo) {
         setDeviceId(pkt.machineInfo);
         deviceIdSeenRef.current = true;
+        updateRegistrySteegId(pkt.machineInfo);
         return;
       }
     }
@@ -245,9 +255,18 @@ function App() {
   }, [status, getCommands]);
 
   // ── Connection handlers ──
-  const handleConnect = useCallback(async () => {
+  const handleConnect = useCallback(() => {
+    setShowConnectModal(true);
+  }, []);
+
+  const handleModalConnect = useCallback(async (port: SerialPort | null) => {
+    setShowConnectModal(false);
+    if (!port) {
+      // No port returned (user cancelled picker)
+      return;
+    }
     try {
-      await serialService.connect({ baudRate: config.baudRate });
+      await serialService.connectToPort(port, { baudRate: config.baudRate });
     } catch (e) {
       console.error('Connect failed:', e);
     }
@@ -487,6 +506,15 @@ function App() {
             {T(lang, 'signalRecording')} — {recordedSamples.length.toLocaleString()} samples
           </span>
         </div>
+      )}
+
+      {/* Connect Modal */}
+      {showConnectModal && (
+        <ConnectModal
+          lang={lang}
+          onConnect={handleModalConnect}
+          onClose={() => setShowConnectModal(false)}
+        />
       )}
     </div>
   );

@@ -96,14 +96,20 @@ const translations: Record<string, Record<Lang, string>> = {
   unknown: { zh: '未知', en: 'Unknown' },
   raw: { zh: '原始', en: 'Raw' },
 
-  // FTDI device scanner (HomeView)
-  homeScanDevices: { zh: '掃描裝置', en: 'Scan for Devices' },
-  homeAddDevice: { zh: '新增裝置', en: 'Add New Device' },
-  homeFoundDevices: { zh: '已偵測到的裝置', en: 'Detected Devices' },
-  homeNoDevicesFound: { zh: '未偵測到 FTDI 裝置', en: 'No FTDI devices found' },
+  // FTDI device scanner (HomeView – kept for legacy key refs)
   homeWebUsbNotAvailable: { zh: '此瀏覽器不支援 WebUSB（需 Chrome / Edge）', en: 'WebUSB not available (requires Chrome / Edge)' },
-  homeSelectPortHint: { zh: '在瀏覽器彈出視窗中選擇對應的序列埠', en: 'Select the corresponding port in the browser picker' },
   homeMultiDevice: { zh: '多設備：在不同瀏覽器分頁開啟此頁面即可連接多台設備', en: 'Multi-device: Open this page in separate browser tabs to connect multiple devices.' },
+
+  // Connect Modal
+  connectModalTitle:        { zh: '連線裝置', en: 'Connect Device' },
+  connectModalDetectedDevices: { zh: '已授權的 FTDI 裝置（序列號）', en: 'Authorized FTDI Devices (serial numbers)' },
+  connectModalRefresh:      { zh: '重新掃描', en: 'Refresh' },
+  connectModalPaired:       { zh: '已配對（其他視窗）', en: 'Paired (other window)' },
+  connectModalAuthorizeNew: { zh: '授權新裝置（首次使用）', en: 'Authorize new device (first time)' },
+  connectModalNoDevices:    { zh: '未找到授權裝置，請點「授權新裝置」', en: 'No authorized devices found. Click "Authorize new device".' },
+  connectModalConnect:      { zh: '連線', en: 'Connect' },
+  connectModalOnePortReady: { zh: '已找到 1 個已授權的序列埠，點連線即可直接開啟', en: '1 authorized port found — click Connect to open directly' },
+  connectModalMultiPortReady: { zh: '已找到 {n} 個已授權的序列埠，請在彈出視窗中選擇', en: '{n} authorized ports found — select one in the picker' },
 
   // Header device ID
   headerDeviceId: { zh: '裝置', en: 'Device' },

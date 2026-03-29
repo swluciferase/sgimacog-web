@@ -63,7 +63,9 @@ export class SerialService {
     this.stopped = false;
     this.onStatusChange('connecting');
     try {
-      this.port = await navigator.serial.requestPort();
+      this.port = await navigator.serial.requestPort({
+        filters: [{ usbVendorId: 0x0403, usbProductId: 0x6001 }],
+      });
       // CRITICAL: bufferSize default is 255 (5ms at 1Mbaud) — MUST set to 65536
       await this.port.open({
         baudRate: options.baudRate,
@@ -72,6 +74,30 @@ export class SerialService {
       this.onStatusChange('connected');
       this.startReadLoop(); // fire-and-forget async loop
     } catch (e) {
+      this.onStatusChange('error');
+      this.onError(e instanceof Error ? e : new Error(String(e)));
+      throw e;
+    }
+  }
+
+  /** Connect to a specific pre-selected SerialPort (no browser picker). */
+  async connectToPort(port: SerialPort, options: SerialOptions): Promise<void> {
+    if (this.port !== null && !this.stopped) {
+      return;
+    }
+
+    this.stopped = false;
+    this.onStatusChange('connecting');
+    try {
+      this.port = port;
+      await this.port.open({
+        baudRate: options.baudRate,
+        bufferSize: options.bufferSize ?? 65536,
+      });
+      this.onStatusChange('connected');
+      this.startReadLoop();
+    } catch (e) {
+      this.port = null;
       this.onStatusChange('error');
       this.onError(e instanceof Error ? e : new Error(String(e)));
       throw e;

@@ -1,14 +1,8 @@
-import { type FC, type ReactNode, useState, useEffect, useCallback } from 'react';
+import { type FC, type ReactNode } from 'react';
 import type { ConnectionStatus } from '../../services/serial';
 import type { DeviceStats } from '../../types/eeg';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
-import {
-  getAuthorizedFtdiDevices,
-  requestNewFtdiDevice,
-  isWebUsbAvailable,
-  type FtdiDeviceInfo,
-} from '../../services/ftdiScanner';
 
 export interface HomeViewProps {
   status: ConnectionStatus;
@@ -70,30 +64,6 @@ export const HomeView: FC<HomeViewProps> = ({
 }) => {
   const isConnected = status === 'connected';
   const isConnecting = status === 'connecting';
-
-  // ── FTDI Device Scanner ──
-  const webUsbAvailable = isWebUsbAvailable();
-  const [ftdiDevices, setFtdiDevices] = useState<FtdiDeviceInfo[]>([]);
-  const [scanning, setScanning] = useState(false);
-
-  const refreshDevices = useCallback(async () => {
-    if (!webUsbAvailable) return;
-    setScanning(true);
-    const devices = await getAuthorizedFtdiDevices();
-    setFtdiDevices(devices);
-    setScanning(false);
-  }, [webUsbAvailable]);
-
-  // Auto-scan on mount
-  useEffect(() => {
-    void refreshDevices();
-  }, [refreshDevices]);
-
-  const handleAddDevice = useCallback(async () => {
-    if (!webUsbAvailable) return;
-    await requestNewFtdiDevice();
-    await refreshDevices();
-  }, [webUsbAvailable, refreshDevices]);
 
   const statusColor =
     isConnected   ? '#3fb950' :
@@ -276,116 +246,6 @@ export const HomeView: FC<HomeViewProps> = ({
             </div>
           ))}
         </div>
-      </div>
-
-      {/* FTDI Device Scanner card */}
-      <div style={{
-        background: 'rgba(10, 18, 30, 0.7)',
-        border: '1px solid rgba(93,109,134,0.25)',
-        borderRadius: 14,
-        padding: '18px 22px',
-        marginBottom: 20,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{
-            margin: 0,
-            fontSize: '0.92rem',
-            fontWeight: 600,
-            color: 'rgba(180,200,230,0.85)',
-            letterSpacing: '0.03em',
-          }}>
-            {T(lang, 'homeFoundDevices')}
-          </h3>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={refreshDevices}
-              disabled={scanning || !webUsbAvailable}
-              style={{
-                background: 'rgba(88,166,255,0.1)',
-                border: '1px solid rgba(88,166,255,0.35)',
-                borderRadius: 6,
-                color: '#58a6ff',
-                fontSize: 12,
-                fontWeight: 600,
-                padding: '5px 12px',
-                cursor: (!webUsbAvailable || scanning) ? 'not-allowed' : 'pointer',
-                opacity: (!webUsbAvailable || scanning) ? 0.5 : 1,
-              }}
-            >
-              {scanning ? '...' : T(lang, 'homeScanDevices')}
-            </button>
-            <button
-              onClick={handleAddDevice}
-              disabled={!webUsbAvailable}
-              style={{
-                background: 'rgba(63,185,80,0.1)',
-                border: '1px solid rgba(63,185,80,0.35)',
-                borderRadius: 6,
-                color: '#3fb950',
-                fontSize: 12,
-                fontWeight: 600,
-                padding: '5px 12px',
-                cursor: !webUsbAvailable ? 'not-allowed' : 'pointer',
-                opacity: !webUsbAvailable ? 0.5 : 1,
-              }}
-            >
-              {T(lang, 'homeAddDevice')}
-            </button>
-          </div>
-        </div>
-
-        {!webUsbAvailable ? (
-          <div style={{ fontSize: 12, color: 'rgba(248,81,73,0.7)', padding: '4px 0' }}>
-            {T(lang, 'homeWebUsbNotAvailable')}
-          </div>
-        ) : ftdiDevices.length === 0 ? (
-          <div style={{ fontSize: 12, color: 'rgba(130,150,180,0.55)', padding: '4px 0' }}>
-            {T(lang, 'homeNoDevicesFound')}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {ftdiDevices.map((dev, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 12px',
-                background: 'rgba(63,185,80,0.06)',
-                border: '1px solid rgba(63,185,80,0.2)',
-                borderRadius: 8,
-              }}>
-                <div style={{
-                  width: 9, height: 9, borderRadius: '50%',
-                  background: '#3fb950',
-                  boxShadow: '0 0 6px #3fb950',
-                  flexShrink: 0,
-                }} />
-                <span style={{
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontSize: 13, fontWeight: 700,
-                  color: '#7ec8f5',
-                }}>
-                  {dev.serialNumber ? `STEEG_${dev.serialNumber}` : dev.productName}
-                </span>
-                <span style={{ fontSize: 11, color: 'rgba(130,155,185,0.55)', marginLeft: 'auto' }}>
-                  {dev.manufacturerName}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {webUsbAvailable && ftdiDevices.length > 0 && (
-          <div style={{
-            marginTop: 10,
-            fontSize: 11,
-            color: 'rgba(135,175,220,0.6)',
-            padding: '6px 10px',
-            background: 'rgba(88,166,255,0.05)',
-            border: '1px solid rgba(88,166,255,0.15)',
-            borderRadius: 6,
-          }}>
-            ℹ {T(lang, 'homeSelectPortHint')}
-          </div>
-        )}
       </div>
 
       {/* Browser requirement note */}
