@@ -213,6 +213,21 @@ impl SteegParser {
         };
         let _ = Reflect::set(&obj, &"gsensor".into(), &gsensor_val);
 
+        // machineInfo — raw bytes from TAG_COMMAND response (device ID string)
+        let machine_info_val = match &packet.machine_info {
+            Some(bytes) if !bytes.is_empty() => {
+                // Try UTF-8 decode; fall back to hex string
+                let s = std::str::from_utf8(bytes)
+                    .map(|s| s.trim_matches('\0').to_string())
+                    .unwrap_or_else(|_| {
+                        bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("")
+                    });
+                JsValue::from_str(&s)
+            }
+            _ => JsValue::NULL,
+        };
+        let _ = Reflect::set(&obj, &"machineInfo".into(), &machine_info_val);
+
         // impedanceResults — starts null, overridden by feed() if available
         let _ = Reflect::set(&obj, &"impedanceResults".into(), &JsValue::NULL);
 
@@ -276,6 +291,14 @@ pub fn cmd_impedance_dc_on(code_set: &str) -> Box<[u8]> {
 #[wasm_bindgen]
 pub fn cmd_impedance_dc_off() -> Box<[u8]> {
     commands::cmd_impedance_off(CodeSet::Reference).into_boxed_slice()
+}
+
+/// Request machine / device info from the device.
+/// Send this command after connecting; the response arrives as a TAG_COMMAND
+/// packet with `machineInfo` set to the device ID string (e.g. "STEEG_DG819452").
+#[wasm_bindgen]
+pub fn cmd_machine_info() -> Box<[u8]> {
+    commands::cmd_machine_info().into_boxed_slice()
 }
 
 /// Start data acquisition (alias for cmd_adc_on).

@@ -82,13 +82,12 @@ export const RecordView: FC<RecordViewProps> = ({
     if (recordedSamples.length > 0 && startTime) {
       const content = generateCsv(
         recordedSamples,
-        subjectInfo,
         startTime,
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
       );
-      const filename = buildCsvFilename(subjectInfo.id, startTime);
+      const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
     }
   };

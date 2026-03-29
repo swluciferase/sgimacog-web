@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 
 use crate::impedance::{compute_all_channel_impedances, ImpedanceResult};
-use crate::types::EegPacket;
+use crate::types::{EegPacket, EEG_UV_SCALE};
 
 pub struct ImpedanceMonitor {
     window_size: usize,
     sample_rate: f64,
     num_channels: usize,
-    buffers: HashMap<usize, Vec<i32>>,
+    // Buffers store µV values (raw counts × EEG_UV_SCALE) so the
+    // impedance polynomial (calibrated in µV) receives the correct units.
+    buffers: HashMap<usize, Vec<f64>>,
 }
 
 impl ImpedanceMonitor {
@@ -33,7 +35,10 @@ impl ImpedanceMonitor {
 
         for (i, raw) in eeg_data.channels.iter().enumerate() {
             if i < self.num_channels {
-                self.buffers.entry(i).or_default().push(*raw);
+                // Convert raw ADC counts → µV before storing.
+                // The impedance polynomial was calibrated in µV units.
+                let uv = *raw as f64 * EEG_UV_SCALE;
+                self.buffers.entry(i).or_default().push(uv);
             }
         }
 
@@ -75,36 +80,31 @@ mod tests {
     #[test]
     fn test_impedance_monitor_accumulates_samples() {
         let mut monitor = ImpedanceMonitor::new(5, 1001.0, 2);
-
+        // raw counts are converted to µV internally
         let mut result = None;
         for _ in 0..3 {
             result = monitor.feed_packet(&packet(vec![100, 200]));
         }
-
         assert!(result.is_none());
     }
 
     #[test]
     fn test_impedance_monitor_computes_after_window() {
         let mut monitor = ImpedanceMonitor::new(5, 1001.0, 2);
-
         let mut result = None;
         for _ in 0..5 {
             result = monitor.feed_packet(&packet(vec![100, 200]));
         }
-
         assert!(result.is_some());
     }
 
     #[test]
     fn test_impedance_monitor_output_format() {
         let mut monitor = ImpedanceMonitor::new(5, 1001.0, 2);
-
         let mut result = None;
         for _ in 0..5 {
             result = monitor.feed_packet(&packet(vec![100, 200]));
         }
-
         let output = result.expect("expected monitor output after full window");
         assert_eq!(output.len(), 2);
         for item in output {
@@ -124,11 +124,9 @@ mod tests {
     #[test]
     fn test_impedance_monitor_clears_buffers_after_compute() {
         let mut monitor = ImpedanceMonitor::new(3, 1001.0, 1);
-
         for _ in 0..3 {
             let _ = monitor.feed_packet(&packet(vec![100]));
         }
-
         let result = monitor.feed_packet(&packet(vec![100]));
         assert!(result.is_none());
     }

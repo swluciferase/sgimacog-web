@@ -45,6 +45,7 @@ interface WasmCommands {
   cmd_adc_off(): Uint8Array;
   cmd_impedance_ac_on(code_set: string): Uint8Array;
   cmd_impedance_ac_off(): Uint8Array;
+  cmd_machine_info(): Uint8Array;
 }
 
 // ── App-level filter param helpers ──
@@ -161,14 +162,21 @@ function App() {
     serial, parser, handleParserError,
   );
 
-  // Extract device ID from first packet that has a serial number
+  // Extract device ID — prefer machineInfo response, fall back to serial number
   useEffect(() => {
     if (deviceIdSeenRef.current) return;
     for (const pkt of latestPackets) {
-      if (pkt.serialNumber !== null) {
-        const hexId = `STEEG_${pkt.serialNumber.toString(16).toUpperCase().padStart(8, '0')}`;
-        setDeviceId(hexId);
+      if (pkt.machineInfo) {
+        setDeviceId(pkt.machineInfo);
         deviceIdSeenRef.current = true;
+        return;
+      }
+    }
+    // Fallback: construct from packet serial number field
+    for (const pkt of latestPackets) {
+      if (pkt.serialNumber !== null) {
+        setDeviceId(`STEEG_${pkt.serialNumber.toString(16).toUpperCase().padStart(8, '0')}`);
+        // Don't mark as seen — keep looking for machineInfo response
         break;
       }
     }
@@ -209,13 +217,17 @@ function App() {
     return wasmService.api as unknown as WasmCommands;
   }, []);
 
-  // Send ADC on when connected (after brief delay to let device stabilize)
+  // On connect: request machine info then start ADC
   useEffect(() => {
     if (status !== 'connected') return;
     const cmds = getCommands();
     if (!cmds) return;
     const t = setTimeout(async () => {
       try {
+        // Request device ID — response arrives as machineInfo in next packet
+        await serialService.write(cmds.cmd_machine_info());
+        // Small gap before ADC on so device processes info request first
+        await new Promise(r => setTimeout(r, 100));
         await serialService.write(cmds.cmd_adc_on());
       } catch { /* ignore */ }
     }, 300);

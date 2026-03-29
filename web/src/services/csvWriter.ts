@@ -1,5 +1,3 @@
-import type { SubjectInfo } from '../types/eeg';
-
 export interface RecordedSample {
   timestamp: number;        // seconds from recording start
   serialNumber: number | null;
@@ -20,7 +18,6 @@ function formatDatetime(d: Date): string {
 
 export function generateCsv(
   samples: RecordedSample[],
-  subjectInfo: SubjectInfo,
   startTime: Date,
   deviceId: string,
   filterDesc: string,
@@ -28,7 +25,7 @@ export function generateCsv(
 ): string {
   const lines: string[] = [];
 
-  // Header block — matches Cygnus format exactly
+  // Header block — exactly 10 lines matching Cygnus CSV format
   lines.push('Cygnus version: 0.28.0.7,File version: 2021.11');
   lines.push('Operative system: Browser');
   lines.push(`Record datetime: ${formatDatetime(startTime)}`);
@@ -40,14 +37,7 @@ export function generateCsv(
   lines.push(`Bandpass filter: ${filterDesc}`);
   lines.push(`Notch filter: ${notchDesc}`);
 
-  // Subject info comment lines (non-standard extension, harmless)
-  if (subjectInfo.id) lines.push(`Subject ID: ${subjectInfo.id}`);
-  if (subjectInfo.name) lines.push(`Subject Name: ${subjectInfo.name}`);
-  if (subjectInfo.age) lines.push(`Subject Age: ${subjectInfo.age}`);
-  if (subjectInfo.sex) lines.push(`Subject Sex: ${subjectInfo.sex}`);
-  if (subjectInfo.notes) lines.push(`Notes: ${subjectInfo.notes}`);
-
-  // Column headers
+  // Column headers (line 11 — must not be shifted by extra rows)
   lines.push(
     'Timestamp,Serial Number,Fp1,Fp2,T7,T8,O1,O2,Fz,Pz,Event Id,Event Date,Event Duration,Software Marker,Software Marker Name',
   );

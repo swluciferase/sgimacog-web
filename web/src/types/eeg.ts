@@ -11,6 +11,7 @@ export interface EegPacket {
     gyroX: number; gyroY: number; gyroZ: number;
     accelX: number; accelY: number; accelZ: number;
   } | null;
+  machineInfo: string | null; // device ID string from TAG_COMMAND response
 }
 
 export interface ImpedanceResult {

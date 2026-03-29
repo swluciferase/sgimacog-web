@@ -41,7 +41,7 @@ pub fn amplitude_to_impedance(ac_amp: f64) -> f64 {
 }
 
 pub fn compute_impedance_from_samples(
-    samples: &[i32],
+    samples: &[f64],
     channel: usize,
     sample_rate: f64,
 ) -> ImpedanceResult {
@@ -54,8 +54,8 @@ pub fn compute_impedance_from_samples(
     let mut imag_sum = 0.0;
     for (i, sample) in samples.iter().enumerate() {
         let angle = -2.0 * std::f64::consts::PI * freq_idx as f64 * i as f64 / n as f64;
-        real_sum += *sample as f64 * angle.cos();
-        imag_sum += *sample as f64 * angle.sin();
+        real_sum += sample * angle.cos();
+        imag_sum += sample * angle.sin();
     }
 
     let magnitude = (real_sum.powi(2) + imag_sum.powi(2)).sqrt();
@@ -70,7 +70,7 @@ pub fn compute_impedance_from_samples(
 }
 
 pub fn compute_all_channel_impedances(
-    channel_windows: &HashMap<usize, Vec<i32>>,
+    channel_windows: &HashMap<usize, Vec<f64>>,
     sample_rate: f64,
 ) -> Vec<ImpedanceResult> {
     let mut keys: Vec<usize> = channel_windows.keys().copied().collect();
@@ -176,25 +176,28 @@ mod tests {
     #[test]
     fn test_compute_impedance_from_samples_pure_sine_at_target_freq() {
         let n = 500;
-        let samples: Vec<i32> = (0..n)
+        // Input is in µV — 1000 µV peak sine at 7.8 Hz
+        let samples: Vec<f64> = (0..n)
             .map(|i| {
-                (1000.0
+                1000.0
                     * (2.0 * std::f64::consts::PI * IMPEDANCE_FREQ_HZ * i as f64 / SAMPLE_RATE)
-                        .sin()) as i32
+                        .sin()
             })
             .collect();
 
         let result = compute_impedance_from_samples(&samples, 0, SAMPLE_RATE);
         assert_eq!(result.channel, 0);
-        let expected_python_amplitude = 937.4867778723;
+        // DFT magnitude / (n/2) for a 1000 µV peak sine ≈ 937.49 µV
+        let expected_amplitude = 937.4867778723;
         println!("rust_dft_amplitude={:.10}", result.ac_amplitude);
-        assert!((result.ac_amplitude - expected_python_amplitude).abs() < 1e-6);
+        assert!((result.ac_amplitude - expected_amplitude).abs() < 1e-6);
         assert!(result.impedance_kohm > 0.0);
     }
 
     #[test]
     fn test_compute_impedance_from_samples_dc_signal_low_amplitude() {
-        let samples = vec![1000; 500];
+        // DC signal in µV — 7.8 Hz component should be near zero
+        let samples = vec![1000.0_f64; 500];
         let result = compute_impedance_from_samples(&samples, 5, SAMPLE_RATE);
         assert_eq!(result.channel, 5);
         assert!(result.ac_amplitude < 1.0);
