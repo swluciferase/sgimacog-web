@@ -82,13 +82,13 @@ function bwd(L: M, b: number[]): number[] {
   }
   return x;
 }
-// Solve  Cxx X = B  (Cxx given as L factor) for every column of B
-function cholSolveM(L: M, B: M): M {
+// Solve  L X = B  (forward substitution only) for every column of B → returns L^{-1} B
+function fwdSolveM(L: M, B: M): M {
   const n = L.length, nc = B[0].length;
   const X = mz(n, nc);
   for (let j = 0; j < nc; j++) {
     const bj = Array.from({ length: n }, (_, i) => B[i][j]!);
-    const xj = bwd(L, fwd(L, bj));
+    const xj = fwd(L, bj);
     for (let i = 0; i < n; i++) X[i][j] = xj[i]!;
   }
   return X;
@@ -291,10 +291,10 @@ function ccaWindow(
   const L = chol(Cxx);
 
   // Whitened symmetric problem: A = L^{-1} Csym L^{-T}
-  const B   = cholSolveM(L, Csym);
-  const BT  = mt(B);
-  const AT  = cholSolveM(L, BT);
-  const A   = mt(AT);
+  // Step 1: C1 = L^{-1} Csym  (fwd only — NOT the full Cholesky solve)
+  // Step 2: A  = L^{-1} C1^T  = L^{-1} (L^{-1} Csym)^T = L^{-1} Csym L^{-T}  (A is symmetric)
+  const C1 = fwdSolveM(L, Csym);
+  const A  = fwdSolveM(L, mt(C1));
 
   const { vals, vecs: V } = jacobiSym(A);
 

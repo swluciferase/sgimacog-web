@@ -744,7 +744,7 @@ export async function analyzeEeg(
     FAA:  toTScore(FAA,  faaNorm(age)),
     PAF:  toTScore(PAF,  pafNorm(age)),
     RSA:  toTScore(RSA,  rsaNorm(age)),
-    COH:  Math.sqrt(Math.max(0, toTScore(COH, cohNorm(age)))) * 10,
+    COH:  Math.round(Math.sqrt(Math.max(0, toTScore(COH, cohNorm(age)))) * 10),
     EnTP: toTScore(EnTP, entpNorm(age)),
   };
 
