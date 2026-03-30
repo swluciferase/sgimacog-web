@@ -60,6 +60,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   const [otherTabDevices, setOtherTabDevices] = useState<RegistryEntry[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanningPorts, setScanningPorts] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [selectedSerial, setSelectedSerial] = useState<string>('');
   /**
@@ -138,25 +139,26 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   const handleScanPorts = useCallback(async () => {
     if (allPorts.length === 0) return;
     setScanningPorts(true);
+    setScanStatus(null);
     try {
       const results = await scanPortSerials(allPorts);
       if (results.length > 0) {
         setPortPairings(prev => {
           const next = new Map(prev);
-          for (const r of results) {
-            next.set(r.serialNumber, r.port);
-          }
+          for (const r of results) next.set(r.serialNumber, r.port);
           return next;
         });
-        // Auto-select if only one identified device
         if (results.length === 1 && results[0]) {
           setSelectedSerial(results[0].serialNumber);
         }
+        setScanStatus(T(lang, 'connectModalScanOk').replace('{n}', String(results.length)).replace('{total}', String(allPorts.length)));
+      } else {
+        setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', String(allPorts.length)));
       }
     } finally {
       setScanningPorts(false);
     }
-  }, [allPorts]);
+  }, [allPorts, lang]);
 
   /** Manually pair a COM port to a device via browser picker */
   const handlePairPort = useCallback(async (dev: UnifiedDevice) => {
@@ -430,6 +432,20 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
             </>
           )}
         </div>
+
+        {/* Scan result feedback */}
+        {scanStatus && (
+          <div style={{
+            marginBottom: 10, fontSize: 11,
+            color: scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.85)' : 'rgba(248,81,73,0.8)',
+            padding: '6px 12px',
+            background: scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.07)' : 'rgba(248,81,73,0.07)',
+            border: `1px solid ${scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.25)' : 'rgba(248,81,73,0.25)'}`,
+            borderRadius: 6,
+          }}>
+            {scanStatus}
+          </div>
+        )}
 
         {/* Scan hint — shown when devices exist but ports not yet identified */}
         {devices.some(d => !getEffectivePort(d) && !isPaired(d.serialNumber)) && (

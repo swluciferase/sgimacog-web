@@ -124,6 +124,14 @@ const translations: Record<string, Record<Lang, string>> = {
     zh: '點「掃描連接埠」自動識別各 COM port 對應的裝置（需 2–3 秒）',
     en: 'Click "Scan Ports" to auto-identify which COM port belongs to which device (takes 2–3 s)',
   },
+  connectModalScanOk: {
+    zh: '✓ 掃描完成：{n}/{total} 個連接埠已識別',
+    en: '✓ Scan complete: {n}/{total} port(s) identified',
+  },
+  connectModalScanFail: {
+    zh: '⚠ 掃描 {total} 個連接埠，未能識別任何裝置（請確認裝置已上電）',
+    en: '⚠ Scanned {total} port(s) — no devices identified (check device power)',
+  },
   connectModalMismatchWarning: {
     zh: '⚠️ COM port 不符！\n選取的裝置是 {device}，但此 COM port 屬於序號 {port}。\n請選擇正確的 COM port。',
     en: '⚠️ COM port mismatch!\nSelected device is {device}, but this COM port belongs to serial {port}.\nPlease select the correct COM port.',

@@ -1,24 +1,21 @@
 /**
  * Port Scanner — D2XX-inspired browser equivalent of FT_GetDeviceInfoDetail.
  *
- * D2XX achieves productName↔COM mapping via:
- *   FT_GetDeviceInfoList → Description + SerialNumber per device
- *   FT_GetComPortNumber  → device handle → Windows COM port number
+ * Opens each authorized FTDI COM port briefly, sends cmd_machine_info,
+ * and parses the firmware response to extract the device's USB serial number.
+ * That serial maps to the WebUSB device's productName (e.g. "STEEG_DG085134").
  *
- * In a browser we cannot call D2XX. Instead, we briefly open each authorized
- * FTDI COM port via Web Serial, send cmd_machine_info, and parse the firmware
- * response — which contains the device's USB serial number (e.g. "AV0KHCQP").
- * That serial number maps directly to the WebUSB device that has the full
- * productName (e.g. "STEEG_DG085134"), completing the lookup.
- *
- * This works even when Chrome's SerialPortInfo.usbSerialNumber is unavailable
- * (common on Windows with VCP drivers older than Chrome 121).
+ * Works on Windows VCP where SerialPortInfo.usbSerialNumber is unavailable.
  */
 
 import { wasmService } from './wasm';
+import { DEFAULT_CONFIG } from '../types/eeg';
 
-const SCAN_BAUD_RATE = 1_000_000;
-const SCAN_TIMEOUT_MS = 2_500;
+const SCAN_BAUD_RATE = DEFAULT_CONFIG.baudRate;   // 1_000_000
+const SCAN_CHANNELS  = DEFAULT_CONFIG.channels;
+const SCAN_SR        = DEFAULT_CONFIG.sampleRate;
+const SCAN_TIMEOUT_MS = 3_000;
+const PORT_SETTLE_MS  = 150;  // wait after open before writing
 
 interface WasmCmds {
   cmd_machine_info(): Uint8Array;
@@ -44,13 +41,22 @@ export interface PortScanResult {
  * Ports that are already open or unresponsive are silently skipped.
  */
 export async function scanPortSerials(ports: SerialPort[]): Promise<PortScanResult[]> {
-  if (!wasmService.isInitialized || ports.length === 0) return [];
+  // Ensure WASM is initialized (safe to call repeatedly — idempotent)
+  if (!wasmService.isInitialized) {
+    try {
+      await wasmService.init();
+    } catch {
+      return [];
+    }
+  }
+  if (ports.length === 0) return [];
 
   const cmds = wasmService.api as unknown as WasmCmds;
   let cmdBytes: Uint8Array;
   try {
     cmdBytes = cmds.cmd_machine_info();
-  } catch {
+  } catch (e) {
+    console.error('[portScanner] cmd_machine_info failed:', e);
     return [];
   }
 
@@ -66,20 +72,31 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
   // Open port — skip if already in use
   try {
     await port.open({ baudRate: SCAN_BAUD_RATE });
-  } catch {
+  } catch (e) {
+    console.warn('[portScanner] port.open failed (already open?):', e);
     return null;
   }
 
   let serialNumber: string | null = null;
 
   try {
-    // Create a temporary parser instance
+    // SteegParser requires (channels, sampleRate) — must match App.tsx instantiation
     const api = wasmService.api as Record<string, unknown>;
-    const ParserCtor = api['SteegParser'] as new () => {
+    const ParserCtor = api['SteegParser'] as new (ch: number, sr: number) => {
       feed(data: Uint8Array): unknown;
       free?(): void;
     };
-    const parser = new ParserCtor();
+    const parser = new ParserCtor(SCAN_CHANNELS, SCAN_SR);
+
+    // Get reader BEFORE writing so we don't miss fast responses
+    const reader = port.readable?.getReader();
+    if (!reader) {
+      parser.free?.();
+      return null;
+    }
+
+    // Allow the FTDI chip to settle after open
+    await new Promise(r => setTimeout(r, PORT_SETTLE_MS));
 
     // Send machine_info command
     if (port.writable) {
@@ -91,38 +108,36 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
       }
     }
 
-    // Read until machineInfo arrives or timeout
-    if (port.readable) {
-      const reader = port.readable.getReader();
-      const deadline = Date.now() + SCAN_TIMEOUT_MS;
+    // Read until machineInfo packet arrives or timeout
+    const deadline = Date.now() + SCAN_TIMEOUT_MS;
+    loop: while (Date.now() < deadline) {
+      const remaining = Math.max(10, deadline - Date.now());
+      const chunk = await Promise.race([
+        reader.read(),
+        new Promise<{ done: true; value: undefined }>(resolve =>
+          setTimeout(() => resolve({ done: true, value: undefined }), remaining)
+        ),
+      ]);
 
-      loop: while (Date.now() < deadline) {
-        const remaining = Math.max(0, deadline - Date.now());
-        const chunk = await Promise.race([
-          reader.read(),
-          new Promise<{ done: true; value: undefined }>(resolve =>
-            setTimeout(() => resolve({ done: true, value: undefined }), remaining)
-          ),
-        ]);
+      if (chunk.done) break;
+      if (!chunk.value?.length) continue;
 
-        if (chunk.done) break;
-        if (!chunk.value?.length) continue;
-
-        const result = parser.feed(chunk.value) as RawParseResult | null;
-        for (const pkt of result?.packets ?? []) {
-          if (pkt.machineInfo) {
-            const raw = pkt.machineInfo;
-            serialNumber = raw.startsWith('STEEG_') ? raw.slice(6) : raw;
-            break loop;
-          }
+      const result = parser.feed(chunk.value) as RawParseResult | null;
+      for (const pkt of result?.packets ?? []) {
+        if (pkt.machineInfo) {
+          const raw = pkt.machineInfo;
+          serialNumber = raw.startsWith('STEEG_') ? raw.slice(6) : raw;
+          console.log('[portScanner] identified port →', serialNumber);
+          break loop;
         }
       }
-
-      await reader.cancel().catch(() => {});
-      reader.releaseLock();
     }
 
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
     parser.free?.();
+  } catch (e) {
+    console.error('[portScanner] probe error:', e);
   } finally {
     await port.close().catch(() => {});
   }
