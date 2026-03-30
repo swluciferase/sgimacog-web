@@ -8,6 +8,7 @@ import { T } from '../../i18n';
 import type { QualityConfig } from '../../hooks/useQualityMonitor';
 import { analyzeEeg, SAMPLE_RATE } from '../../services/eegReport';
 import { generateReportPdf } from '../../services/reportPdf';
+import { parseCsv } from '../../services/csvParser';
 
 export interface RecordViewProps {
   lang: Lang;
@@ -93,6 +94,9 @@ export const RecordView: FC<RecordViewProps> = ({
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
+  const [fileStatus, setFileStatus] = useState<'idle' | 'parsing' | 'analyzing' | 'done' | 'error'>('idle');
+  const [fileStatusMsg, setFileStatusMsg] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
 
@@ -168,6 +172,44 @@ export const RecordView: FC<RecordViewProps> = ({
       console.error('Report generation error:', err);
       alert(T(lang, 'recordReportError'));
       setReportStatus('error');
+    }
+  };
+
+  const handleFileReport = async (file: File) => {
+    setFileStatus('parsing');
+    setFileStatusMsg('');
+    try {
+      const text = await file.text();
+      const parsed = parseCsv(text);
+      if (parsed.error || parsed.samples.length === 0) {
+        setFileStatus('error');
+        setFileStatusMsg(T(lang, 'recordFromFileErrParse') + (parsed.error ? ` (${parsed.error})` : ''));
+        return;
+      }
+      const dur = parsed.samples.length / SAMPLE_RATE;
+      if (dur < 90) {
+        setFileStatus('error');
+        setFileStatusMsg(T(lang, 'recordFromFileErrShort') + ` (${dur.toFixed(1)} s)`);
+        return;
+      }
+      setFileStatus('analyzing');
+      const result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', useArtifactRemoval);
+      if (result.error) {
+        setFileStatus('error');
+        setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis') + `: ${result.error}`);
+        return;
+      }
+      // Build a synthetic SubjectInfo with whatever the CSV has (deviceId from file)
+      const fileSubject = { ...subjectInfo };
+      generateReportPdf(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+      setFileStatus('done');
+      setFileStatusMsg(
+        `${T(lang, 'recordFromFileSamples')}: ${parsed.samples.length.toLocaleString()}  |  ${T(lang, 'recordFromFileDuration')}: ${Math.floor(dur / 60)}m ${Math.floor(dur % 60)}s`,
+      );
+    } catch (err) {
+      console.error('File report error:', err);
+      setFileStatus('error');
+      setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis'));
     }
   };
 
@@ -668,6 +710,79 @@ export const RecordView: FC<RecordViewProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* File report card */}
+      <div style={{
+        background: 'rgba(8,17,30,0.85)',
+        border: '1px solid rgba(93,109,134,0.3)',
+        borderRadius: 14,
+        padding: '18px 24px',
+      }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+          {T(lang, 'recordFromFile')}
+        </h3>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) handleFileReport(file);
+              // Reset so same file can be re-selected
+              e.target.value = '';
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={fileStatus === 'parsing' || fileStatus === 'analyzing'}
+            style={{
+              background: (fileStatus === 'parsing' || fileStatus === 'analyzing')
+                ? 'rgba(88,166,255,0.07)'
+                : 'rgba(88,166,255,0.13)',
+              border: '1px solid rgba(88,166,255,0.45)',
+              borderRadius: 8,
+              color: (fileStatus === 'parsing' || fileStatus === 'analyzing')
+                ? 'rgba(88,166,255,0.45)'
+                : '#58a6ff',
+              fontSize: 13,
+              fontWeight: 600,
+              padding: '9px 20px',
+              cursor: (fileStatus === 'parsing' || fileStatus === 'analyzing') ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {fileStatus === 'parsing'
+              ? T(lang, 'recordFromFileParsing')
+              : fileStatus === 'analyzing'
+                ? T(lang, 'recordFromFileAnalyzing')
+                : T(lang, 'recordFromFile')}
+          </button>
+
+          {/* Status message */}
+          {fileStatus !== 'idle' && (
+            <span style={{
+              fontSize: 12,
+              color: fileStatus === 'done'
+                ? '#3fb950'
+                : fileStatus === 'error'
+                  ? '#f85149'
+                  : 'rgba(160,180,210,0.7)',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            }}>
+              {fileStatus === 'done'
+                ? `✓ ${T(lang, 'recordFromFileSuccess')}  ${fileStatusMsg}`
+                : fileStatus === 'error'
+                  ? `✗ ${fileStatusMsg}`
+                  : fileStatusMsg || '…'}
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '10px 0 0', fontSize: 11, color: 'rgba(120,140,165,0.6)' }}>
+          {T(lang, 'recordFromFileHint')} · {T(lang, 'recordArtifactRemoval')}: {useArtifactRemoval ? '✓' : '✗'}
+        </p>
       </div>
 
       {/* Event markers log */}

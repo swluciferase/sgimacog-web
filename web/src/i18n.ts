@@ -150,6 +150,16 @@ const translations: Record<string, Record<Lang, string>> = {
 
   // Report generation
   recordArtifactRemoval:  { zh: '去雜訊 (CCA)', en: 'Artifact Removal (CCA)' },
+  recordFromFile:         { zh: '讀取 CSV 生成報告', en: 'Load CSV & Generate Report' },
+  recordFromFileHint:     { zh: '選擇先前錄製的 CSV 檔案', en: 'Select a previously recorded CSV file' },
+  recordFromFileParsing:  { zh: '解析中…', en: 'Parsing…' },
+  recordFromFileAnalyzing:{ zh: '分析中…', en: 'Analyzing…' },
+  recordFromFileSuccess:  { zh: '報告已產生', en: 'Report generated' },
+  recordFromFileErrParse: { zh: 'CSV 格式錯誤', en: 'CSV parse error' },
+  recordFromFileErrShort: { zh: '資料不足 90 秒', en: 'Recording too short (< 90 s)' },
+  recordFromFileErrAnalysis: { zh: '分析失敗', en: 'Analysis failed' },
+  recordFromFileSamples:  { zh: '樣本數', en: 'Samples' },
+  recordFromFileDuration: { zh: '時長', en: 'Duration' },
   recordStopReport:       { zh: '停止並生成報告', en: 'Stop & Generate Report' },
   recordReportTooShort:   { zh: '錄製時間不足 90 秒，無法生成報告', en: 'Recording must be at least 90 seconds to generate a report' },
   recordGeneratingReport: { zh: '分析中，請稍候…', en: 'Analyzing EEG, please wait…' },
