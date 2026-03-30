@@ -281,24 +281,22 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
               {T(lang, 'connectModalDetectedDevices')}
             </span>
             <div style={{ display: 'flex', gap: 6 }}>
-              {/* Scan Ports button — the D2XX-inspired firmware query approach */}
-              {allPorts.length > 0 && (
-                <button
-                  onClick={handleScanPorts}
-                  disabled={isBusy}
-                  title={T(lang, 'connectModalScanPortsHint')}
-                  style={{
-                    background: scanningPorts ? 'rgba(240,168,48,0.15)' : 'rgba(240,168,48,0.08)',
-                    border: '1px solid rgba(240,168,48,0.4)',
-                    borderRadius: 5, color: '#f0a830',
-                    fontSize: 11, fontWeight: 600, padding: '3px 9px',
-                    cursor: isBusy ? 'not-allowed' : 'pointer',
-                    opacity: isBusy ? 0.5 : 1,
-                  }}
-                >
-                  {scanningPorts ? T(lang, 'connectModalScanning') : T(lang, 'connectModalScanPorts')}
-                </button>
-              )}
+              {/* Scan Ports button — always visible, D2XX-inspired firmware query */}
+              <button
+                onClick={handleScanPorts}
+                disabled={isBusy || allPorts.length === 0}
+                title={T(lang, 'connectModalScanPortsHint')}
+                style={{
+                  background: scanningPorts ? 'rgba(240,168,48,0.15)' : 'rgba(240,168,48,0.08)',
+                  border: '1px solid rgba(240,168,48,0.4)',
+                  borderRadius: 5, color: '#f0a830',
+                  fontSize: 11, fontWeight: 600, padding: '3px 9px',
+                  cursor: (isBusy || allPorts.length === 0) ? 'not-allowed' : 'pointer',
+                  opacity: (isBusy || allPorts.length === 0) ? 0.4 : 1,
+                }}
+              >
+                {scanningPorts ? T(lang, 'connectModalScanning') : T(lang, 'connectModalScanPorts')}
+              </button>
               <button
                 onClick={refresh}
                 disabled={isBusy}
@@ -433,8 +431,8 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
           )}
         </div>
 
-        {/* Scan hint — shown when ports are authorized but not yet identified */}
-        {allPorts.length > 0 && devices.some(d => !getEffectivePort(d) && !isPaired(d.serialNumber)) && (
+        {/* Scan hint — shown when devices exist but ports not yet identified */}
+        {devices.some(d => !getEffectivePort(d) && !isPaired(d.serialNumber)) && (
           <div style={{
             marginBottom: 12, fontSize: 11,
             color: 'rgba(240,168,48,0.75)',
