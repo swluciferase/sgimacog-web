@@ -115,7 +115,9 @@ const translations: Record<string, Record<Lang, string>> = {
   connectModalSelectDevice: { zh: '請點選要連線的裝置', en: 'Click a device to select it' },
   connectModalSelectedHint: { zh: '已選取 {id}，請在彈出視窗選擇對應的 COM port', en: 'Selected {id} — pick its COM port from the browser picker' },
   connectModalNoSelection: { zh: '請先點選一台裝置', en: 'Please select a device first' },
-  connectModalPortReady:   { zh: '直連', en: 'Direct' },
+  connectModalPortReady:    { zh: '已配對 COM port，可直接連線', en: 'COM port paired — ready to connect' },
+  connectModalNeedsPairing: { zh: '尚未配對 COM port', en: 'COM port not yet paired' },
+  connectModalPairPort:     { zh: '配對 COM Port', en: 'Pair COM Port' },
 
   // Header device ID
   headerDeviceId: { zh: '裝置', en: 'Device' },
