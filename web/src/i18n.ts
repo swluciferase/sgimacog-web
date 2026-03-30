@@ -124,6 +124,10 @@ const translations: Record<string, Record<Lang, string>> = {
     zh: '點「掃描連接埠」自動識別各 COM port 對應的裝置（需 2–3 秒）',
     en: 'Click "Scan Ports" to auto-identify which COM port belongs to which device (takes 2–3 s)',
   },
+  connectModalScanPrompt: {
+    zh: '請在彈出視窗選擇任意 COM port（剩 {n} 台未識別）',
+    en: 'Pick any COM port in the popup ({n} device(s) still unidentified)',
+  },
   connectModalScanOk: {
     zh: '✓ 掃描完成：{n}/{total} 個連接埠已識別',
     en: '✓ Scan complete: {n}/{total} port(s) identified',

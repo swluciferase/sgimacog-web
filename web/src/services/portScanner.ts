@@ -25,10 +25,6 @@ interface RawPacket {
   machineInfo?: string | null;
 }
 
-interface RawParseResult {
-  packets?: RawPacket[];
-}
-
 export interface PortScanResult {
   port: SerialPort;
   /** USB serial as reported by firmware machineInfo (e.g. "AV0KHCQP") */
@@ -122,8 +118,8 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
       if (chunk.done) break;
       if (!chunk.value?.length) continue;
 
-      const result = parser.feed(chunk.value) as RawParseResult | null;
-      for (const pkt of result?.packets ?? []) {
+      const packets = parser.feed(chunk.value) as RawPacket[] | null;
+      for (const pkt of packets ?? []) {
         if (pkt.machineInfo) {
           const raw = pkt.machineInfo;
           serialNumber = raw.startsWith('STEEG_') ? raw.slice(6) : raw;

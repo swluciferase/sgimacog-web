@@ -136,50 +136,75 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
    * (and its productName). Equivalent to D2XX FT_GetDeviceInfoList +
    * FT_GetComPortNumber — but done via Web Serial + WASM parser.
    */
+  /**
+   * Sequential scan: user doesn't need to know which COM = which device.
+   * Step 1 — scan already-authorized ports (fast, no picker).
+   * Step 2 — for each remaining unidentified device, show picker ("pick any COM"),
+   *           scan immediately after pick, show which device it is, repeat.
+   */
   const handleScanPorts = useCallback(async () => {
     setScanningPorts(true);
     setScanStatus(null);
-    try {
-      // Build list of ports to scan — start from already-authorized ports
-      let portsToScan = [...allPorts];
 
-      // If no Web Serial ports authorized yet, prompt user to select them now.
-      // The browser picker already shows productNames (e.g. "STEEG_DG085134"),
-      // so the user can identify and authorize each device one at a time.
-      if (portsToScan.length === 0) {
-        while (true) {
-          const port = await requestFtdiPort();
-          if (!port) break; // user cancelled
-          if (!portsToScan.some(p => p === port)) portsToScan.push(port);
-          // If we've authorized one per known WebUSB device, stop; else ask for more
-          if (portsToScan.length >= Math.max(devices.length, 1)) break;
-        }
-        if (portsToScan.length === 0) return;
-        // Persist newly authorized ports into state so refresh picks them up
-        setAllPorts(portsToScan);
-      }
+    const newPairings = new Map(portPairings);
+    let currentPorts = [...allPorts];
+    let totalIdentified = 0;
 
-      const results = await scanPortSerials(portsToScan);
-      if (results.length > 0) {
-        setPortPairings(prev => {
-          const next = new Map(prev);
-          for (const r of results) next.set(r.serialNumber, r.port);
-          return next;
-        });
-        if (results.length === 1 && results[0]) {
-          setSelectedSerial(results[0].serialNumber);
-        }
-        setScanStatus(T(lang, 'connectModalScanOk')
-          .replace('{n}', String(results.length))
-          .replace('{total}', String(portsToScan.length)));
-      } else {
-        setScanStatus(T(lang, 'connectModalScanFail')
-          .replace('{total}', String(portsToScan.length)));
+    // Step 1: scan already-authorized ports first (no picker needed)
+    if (currentPorts.length > 0) {
+      const results = await scanPortSerials(currentPorts);
+      for (const r of results) {
+        newPairings.set(r.serialNumber, r.port);
+        totalIdentified++;
       }
-    } finally {
-      setScanningPorts(false);
     }
-  }, [allPorts, devices.length, lang]);
+
+    // Step 2: for each device still unidentified, prompt picker + scan
+    const getUnidentified = () =>
+      devices.filter(d => !d.port && !newPairings.has(d.serialNumber));
+
+    let unidentified = getUnidentified();
+    while (unidentified.length > 0) {
+      setScanStatus(T(lang, 'connectModalScanPrompt').replace('{n}', String(unidentified.length)));
+
+      const port = await requestFtdiPort();
+      if (!port) break; // user cancelled
+
+      if (!currentPorts.some(p => p === port)) currentPorts.push(port);
+
+      const [result] = await scanPortSerials([port]);
+      if (result) {
+        newPairings.set(result.serialNumber, result.port);
+        totalIdentified++;
+        const matched = devices.find(d => d.serialNumber === result.serialNumber);
+        // Show brief "identified!" message before looping for next device
+        setScanStatus(`✓ ${matched?.displayId ?? result.serialNumber}`);
+        await new Promise(r => setTimeout(r, 800));
+      } else {
+        // Port didn't respond — break to avoid infinite loop
+        setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', '1'));
+        await new Promise(r => setTimeout(r, 800));
+        break;
+      }
+      unidentified = getUnidentified();
+    }
+
+    setAllPorts(currentPorts);
+    setPortPairings(newPairings);
+
+    if (totalIdentified > 0) {
+      setScanStatus(T(lang, 'connectModalScanOk')
+        .replace('{n}', String(totalIdentified))
+        .replace('{total}', String(currentPorts.length)));
+      // Auto-select only identified device
+      const firstId = [...newPairings.keys()][0];
+      if (totalIdentified === 1 && firstId) setSelectedSerial(firstId);
+    } else if (currentPorts.length > 0) {
+      setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', String(currentPorts.length)));
+    }
+
+    setScanningPorts(false);
+  }, [allPorts, devices, lang, portPairings]);
 
   /** Manually pair a COM port to a device via browser picker */
   const handlePairPort = useCallback(async (dev: UnifiedDevice) => {
