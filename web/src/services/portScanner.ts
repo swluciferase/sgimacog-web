@@ -14,8 +14,8 @@ import { DEFAULT_CONFIG } from '../types/eeg';
 const SCAN_BAUD_RATE = DEFAULT_CONFIG.baudRate;   // 1_000_000
 const SCAN_CHANNELS  = DEFAULT_CONFIG.channels;
 const SCAN_SR        = DEFAULT_CONFIG.sampleRate;
-const SCAN_TIMEOUT_MS = 3_000;
-const PORT_SETTLE_MS  = 150;  // wait after open before writing
+const SCAN_TIMEOUT_MS = 4_000;
+const PORT_SETTLE_MS  = 500;  // wait after open — Windows VCP driver needs time to settle
 
 interface WasmCmds {
   cmd_machine_info(): Uint8Array;
@@ -93,6 +93,12 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
 
     // Allow the FTDI chip to settle after open
     await new Promise(r => setTimeout(r, PORT_SETTLE_MS));
+
+    // CRITICAL: Prime the FrameAccumulator with a 0x00 byte so its "discard first
+    // segment" guard is consumed by an empty segment — not by our actual response.
+    // Without this, the machineInfo reply (the very first frame on a fresh port) is
+    // silently thrown away every time, causing the scan to always return nothing.
+    parser.feed(new Uint8Array([0x00]));
 
     // Send machine_info command
     if (port.writable) {
