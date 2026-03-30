@@ -6,6 +6,7 @@
  */
 
 import type { RecordedSample } from './csvWriter';
+import { removeArtifacts } from './eegArtifactRemoval';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -455,10 +456,12 @@ function rsaNorm(age: number): Norm {
   return              { mean: 32.25, sd: 21.17 };
 }
 
+// COH is stored as sqrt(rawCoh) × 10  →  scale norms accordingly
+// Original norms (0–1 scale) → transformed via delta method: mean'=sqrt(m)×10, sd'=5/sqrt(m)×sd
 function cohNorm(age: number): Norm {
-  if (age < 6)  return { mean: 0.35, sd: 0.1 };
-  if (age < 13) return { mean: 0.55, sd: 0.1 };
-  return              { mean: 0.65, sd: 0.1 };
+  if (age < 6)  return { mean: 5.92, sd: 0.85 };  // sqrt(0.35)×10, 5/sqrt(0.35)×0.1
+  if (age < 13) return { mean: 7.42, sd: 0.67 };  // sqrt(0.55)×10, 5/sqrt(0.55)×0.1
+  return              { mean: 8.06, sd: 0.62 };   // sqrt(0.65)×10, 5/sqrt(0.65)×0.1
 }
 
 function entpNorm(age: number): Norm {
@@ -479,6 +482,7 @@ function toTScore(value: number, norm: Norm): number {
 export async function analyzeEeg(
   samples: RecordedSample[],
   dob: string,
+  useArtifactRemoval = false,
 ): Promise<ReportResult> {
   const fs = SAMPLE_RATE;
   const nSamples = samples.length;
@@ -500,11 +504,16 @@ export async function analyzeEeg(
   const nCh = 8;
 
   // Extract per-channel signals
-  const rawSignals: Float64Array[] = Array.from({ length: nCh }, (_, ch) => {
+  let rawSignals: Float64Array[] = Array.from({ length: nCh }, (_, ch) => {
     const sig = new Float64Array(nSamples);
     for (let i = 0; i < nSamples; i++) sig[i] = samples[i]!.channels[ch] ?? 0;
     return sig;
   });
+
+  // Optional: CCA-based artifact removal (does not modify CSV)
+  if (useArtifactRemoval) {
+    rawSignals = removeArtifacts(rawSignals, fs);
+  }
 
   // ----- Bandpass filter 1.5–45 Hz (main analysis) -----
   const filteredMain: Float64Array[] = rawSignals.map(s => bandpassFilter(s, 1.5, 45, fs));
@@ -708,7 +717,9 @@ export async function analyzeEeg(
       cohN++;
     }
   }
-  const COH = cohN > 0 ? cohSum / cohN : 0;
+  const cohRaw = cohN > 0 ? cohSum / cohN : 0;
+  // Transform: sqrt(COH) × 10  (scales 0–1 → 0–10; more linear in T-score space)
+  const COH = Math.sqrt(cohRaw) * 10;
 
   // ---------------------------------------------------------------------------
   // EnTP — permutation entropy (order=3), channels: O1,O2,Fz,Pz,T7,T8

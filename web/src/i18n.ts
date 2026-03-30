@@ -149,6 +149,7 @@ const translations: Record<string, Record<Lang, string>> = {
   recordAutoStopped: { zh: '已達目標時長，自動停止', en: 'Target duration reached — auto stopped' },
 
   // Report generation
+  recordArtifactRemoval:  { zh: '去雜訊 (CCA)', en: 'Artifact Removal (CCA)' },
   recordStopReport:       { zh: '停止並生成報告', en: 'Stop & Generate Report' },
   recordReportTooShort:   { zh: '錄製時間不足 90 秒，無法生成報告', en: 'Recording must be at least 90 seconds to generate a report' },
   recordGeneratingReport: { zh: '分析中，請稍候…', en: 'Analyzing EEG, please wait…' },

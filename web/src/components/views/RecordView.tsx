@@ -92,6 +92,7 @@ export const RecordView: FC<RecordViewProps> = ({
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
+  const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
 
@@ -155,7 +156,7 @@ export const RecordView: FC<RecordViewProps> = ({
     // Run EEG analysis asynchronously
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '');
+      const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '', useArtifactRemoval);
       if (result.error) {
         alert(`${T(lang, 'recordReportError')}: ${result.error}`);
         setReportStatus('error');
@@ -518,6 +519,23 @@ export const RecordView: FC<RecordViewProps> = ({
                   : T(lang, 'recordStart')}
             </div>
           )}
+
+          {/* Artifact removal checkbox */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            cursor: 'pointer',
+            userSelect: 'none',
+            fontSize: 13,
+            color: useArtifactRemoval ? '#58a6ff' : 'rgba(140,160,185,0.65)',
+          }}>
+            <input
+              type="checkbox"
+              checked={useArtifactRemoval}
+              onChange={e => setUseArtifactRemoval(e.target.checked)}
+              style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#58a6ff' }}
+            />
+            {T(lang, 'recordArtifactRemoval')}
+          </label>
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
