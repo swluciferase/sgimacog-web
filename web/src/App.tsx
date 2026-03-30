@@ -480,7 +480,6 @@ function App() {
                 packets={latestPackets}
                 filterParams={filterParams}
                 filterBiquadRef={filterBiquadRef}
-                onFilterChange={handleFilterChange}
                 lang={lang}
               />
             </div>

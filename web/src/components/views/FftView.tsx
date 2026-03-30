@@ -8,7 +8,6 @@ export interface FftViewProps {
   packets?: EegPacket[];
   filterParams: FilterParams;
   filterBiquadRef: MutableRefObject<FilterBiquadState>;
-  onFilterChange: (updated: Partial<FilterParams>, resetStates?: string[]) => void;
   lang: Lang;
 }
 
@@ -263,7 +262,6 @@ export const FftView = ({
   packets,
   filterParams,
   filterBiquadRef,
-  onFilterChange,
   lang,
 }: FftViewProps) => {
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>(Array(CHANNEL_COUNT).fill(null));
@@ -431,56 +429,6 @@ export const FftView = ({
               {f} Hz
             </button>
           ))}
-
-          {/* Bandpass toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 4 }}>
-            <span style={{
-              fontSize: 11,
-              color: filterParams.bandpassEnabled ? 'rgba(120,195,255,0.9)' : 'rgba(180,200,230,0.5)',
-            }}>
-              BP
-            </span>
-            <div
-              onClick={() => onFilterChange({ bandpassEnabled: !filterParams.bandpassEnabled }, ['hp', 'lp'])}
-              style={{
-                width: 34, height: 18, borderRadius: 9,
-                background: filterParams.bandpassEnabled ? 'rgba(50,120,220,0.75)' : 'rgba(30,42,60,0.75)',
-                border: `1px solid ${filterParams.bandpassEnabled ? 'rgba(80,150,255,0.6)' : 'rgba(93,109,134,0.4)'}`,
-                position: 'relative', cursor: 'pointer', flexShrink: 0,
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 2,
-                left: filterParams.bandpassEnabled ? 17 : 2,
-                width: 12, height: 12, borderRadius: 6,
-                background: filterParams.bandpassEnabled ? '#8ecfff' : '#6a7a90',
-                transition: 'left 0.15s',
-              }} />
-            </div>
-          </div>
-
-          {/* Notch */}
-          <button
-            onClick={() => onFilterChange(
-              { notchFreq: filterParams.notchFreq === 0 ? 50 : filterParams.notchFreq === 50 ? 60 : 0 },
-              ['notch'],
-            )}
-            style={{
-              background: filterParams.notchFreq !== 0 ? 'rgba(180,80,20,0.4)' : 'transparent',
-              border: `1px solid ${filterParams.notchFreq !== 0 ? 'rgba(255,140,60,0.7)' : 'rgba(93,109,134,0.4)'}`,
-              borderRadius: 6,
-              color: filterParams.notchFreq !== 0 ? 'rgba(255,180,80,0.95)' : 'rgba(180,190,210,0.5)',
-              fontSize: 12,
-              padding: '4px 10px',
-              cursor: 'pointer',
-            }}
-          >
-            {filterParams.notchFreq === 0
-              ? T(lang, 'signalNotchOff')
-              : filterParams.notchFreq === 50
-                ? T(lang, 'signalNotch50')
-                : T(lang, 'signalNotch60')}
-          </button>
         </div>
       </div>
 
