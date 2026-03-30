@@ -19,6 +19,8 @@ const PORT_SETTLE_MS  = 500;  // wait after open — Windows VCP driver needs ti
 
 interface WasmCmds {
   cmd_machine_info(): Uint8Array;
+  cmd_adc_on(): Uint8Array;
+  cmd_adc_off(): Uint8Array;
 }
 
 interface RawPacket {
@@ -48,26 +50,35 @@ export async function scanPortSerials(ports: SerialPort[]): Promise<PortScanResu
   if (ports.length === 0) return [];
 
   const cmds = wasmService.api as unknown as WasmCmds;
-  let cmdBytes: Uint8Array;
+  let cmdMachineInfo: Uint8Array;
+  let cmdAdcOn: Uint8Array;
+  let cmdAdcOff: Uint8Array;
   try {
-    cmdBytes = cmds.cmd_machine_info();
+    cmdMachineInfo = cmds.cmd_machine_info();
+    cmdAdcOn = cmds.cmd_adc_on();
+    cmdAdcOff = cmds.cmd_adc_off();
   } catch (e) {
-    console.error('[portScanner] cmd_machine_info failed:', e);
+    console.error('[portScanner] WASM command init failed:', e);
     return [];
   }
 
   const results: PortScanResult[] = [];
   for (const port of ports) {
-    const sn = await probeSinglePort(port, cmdBytes);
+    const sn = await probeSinglePort(port, cmdMachineInfo, cmdAdcOn, cmdAdcOff);
     if (sn) results.push({ port, serialNumber: sn });
   }
   return results;
 }
 
-async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<string | null> {
-  // Open port — skip if already in use
+async function probeSinglePort(
+  port: SerialPort,
+  cmdMachineInfo: Uint8Array,
+  cmdAdcOn: Uint8Array,
+  cmdAdcOff: Uint8Array,
+): Promise<string | null> {
+  // Open port — bufferSize MUST be large (default 255 drops data at 1Mbaud)
   try {
-    await port.open({ baudRate: SCAN_BAUD_RATE });
+    await port.open({ baudRate: SCAN_BAUD_RATE, bufferSize: 65536 });
   } catch (e) {
     console.warn('[portScanner] port.open failed (already open?):', e);
     return null;
@@ -76,7 +87,6 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
   let serialNumber: string | null = null;
 
   try {
-    // SteegParser requires (channels, sampleRate) — must match App.tsx instantiation
     const api = wasmService.api as Record<string, unknown>;
     const ParserCtor = api['SteegParser'] as new (ch: number, sr: number) => {
       feed(data: Uint8Array): unknown;
@@ -94,17 +104,18 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
     // Allow the FTDI chip to settle after open
     await new Promise(r => setTimeout(r, PORT_SETTLE_MS));
 
-    // CRITICAL: Prime the FrameAccumulator with a 0x00 byte so its "discard first
-    // segment" guard is consumed by an empty segment — not by our actual response.
-    // Without this, the machineInfo reply (the very first frame on a fresh port) is
-    // silently thrown away every time, causing the scan to always return nothing.
+    // CRITICAL: Prime the FrameAccumulator so its "discard first segment" guard
+    // is consumed by an empty segment, not by our actual machineInfo response.
     parser.feed(new Uint8Array([0x00]));
 
-    // Send machine_info command
+    // Mirror App.tsx exactly: cmd_machine_info → cmd_adc_on
+    // The firmware embeds machineInfo in the data stream, so ADC must be running
+    // for the response to appear. Without cmd_adc_on the device stays silent.
     if (port.writable) {
       const writer = port.writable.getWriter();
       try {
-        await writer.write(cmdBytes);
+        await writer.write(cmdMachineInfo);
+        await writer.write(cmdAdcOn);
       } finally {
         writer.releaseLock();
       }
@@ -137,6 +148,16 @@ async function probeSinglePort(port: SerialPort, cmdBytes: Uint8Array): Promise<
 
     await reader.cancel().catch(() => {});
     reader.releaseLock();
+
+    // Stop ADC before closing so device isn't left streaming
+    if (port.writable) {
+      const writer = port.writable.getWriter();
+      try { await writer.write(cmdAdcOff); } catch { /* ignore */ }
+      finally { writer.releaseLock(); }
+    }
+    // Brief pause so device processes the stop command before port.close()
+    await new Promise(r => setTimeout(r, 100));
+
     parser.free?.();
   } catch (e) {
     console.error('[portScanner] probe error:', e);
