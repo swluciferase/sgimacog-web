@@ -136,6 +136,10 @@ const translations: Record<string, Record<Lang, string>> = {
     zh: '⚠ 掃描 {total} 個連接埠，未能識別任何裝置（請確認裝置已上電）',
     en: '⚠ Scanned {total} port(s) — no devices identified (check device power)',
   },
+  connectModalAuthFail: {
+    zh: '授權失敗：此 COM port 屬於 {found}，非 {expected}。請重新點「授權新裝置」並選擇另一個 COM port。',
+    en: 'Authorization failed: this COM port belongs to {found}, not {expected}. Click "Authorize new device" again and pick a different COM port.',
+  },
   connectModalMismatchWarning: {
     zh: '⚠️ COM port 不符！\n選取的裝置是 {device}，但此 COM port 屬於序號 {port}。\n請選擇正確的 COM port。',
     en: '⚠️ COM port mismatch!\nSelected device is {device}, but this COM port belongs to serial {port}.\nPlease select the correct COM port.',

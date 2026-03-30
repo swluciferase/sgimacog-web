@@ -241,29 +241,68 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   }, [devices, onConnect, selectedSerial, portPairings]);
 
   /**
-   * Authorize new device: WebUSB picker → Web Serial picker (in sequence)
-   * so we know which COM port belongs to which device.
+   * Authorize new device:
+   *   Step 1 — WebUSB picker (shows productNames like "STEEG_DG085134") → user picks a device
+   *   Step 2 — Web Serial picker (shows COM numbers only) → user picks any COM
+   *   Step 3 — Scan the chosen COM via firmware cmd_machine_info to validate it matches
+   *   Result — match: pair & done; mismatch: show 授權失敗, user can retry with other COM
    */
   const handleAuthorizeNew = useCallback(async () => {
     if (!webUsbAvailable) return;
+    setScanStatus(null);
     setScanning(true);
+
+    // Step 1: WebUSB — user sees productNames here
     const device = await requestNewFtdiDevice();
-    if (device?.serialNumber) {
-      setSelectedSerial(device.serialNumber);
-      const port = await requestFtdiPort();
-      if (port) {
-        const info = port.getInfo() as SerialPortInfo & { usbSerialNumber?: string };
-        if (info.usbSerialNumber && info.usbSerialNumber !== device.serialNumber) {
-          alert(T(lang, 'connectModalMismatchWarning')
-            .replace('{device}', device.productName || device.serialNumber)
-            .replace('{port}', info.usbSerialNumber));
-        } else {
-          setPortPairings(prev => new Map(prev).set(device.serialNumber, port));
-        }
-      }
+    setScanning(false);
+    if (!device?.serialNumber) return;
+
+    const deviceDisplayId = toDisplayId(device.productName ?? '', device.serialNumber);
+    setSelectedSerial(device.serialNumber);
+
+    // Step 2: Web Serial — COM port names give no hint; user just picks one
+    const port = await requestFtdiPort();
+    if (!port) {
+      await refresh();
+      return;
     }
+
+    // Step 3: Scan the COM to identify which device it belongs to
+    setScanningPorts(true);
+    setScanStatus(T(lang, 'connectModalScanning'));
+
+    const results = await scanPortSerials([port]);
+    setScanningPorts(false);
+
+    if (results.length === 0) {
+      // Device didn't respond — powered off or firmware issue
+      setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', '1'));
+      await refresh();
+      return;
+    }
+
+    const foundSerial = results[0].serialNumber;
+    const newPairings = new Map(portPairings);
+    // Always store what we learned (this COM ↔ foundSerial), regardless of match
+    newPairings.set(foundSerial, results[0].port);
+
+    if (foundSerial !== device.serialNumber) {
+      // Wrong COM — find which device it actually belongs to
+      const foundDev = devices.find(d => d.serialNumber === foundSerial);
+      const foundDisplayId = foundDev?.displayId ?? foundSerial;
+      setScanStatus(T(lang, 'connectModalAuthFail')
+        .replace('{expected}', deviceDisplayId)
+        .replace('{found}', foundDisplayId));
+      setPortPairings(newPairings); // still save what we learned
+      await refresh();
+      return;
+    }
+
+    // Correct COM — pair confirmed
+    setPortPairings(newPairings);
+    setScanStatus(`✓ ${deviceDisplayId}`);
     await refresh();
-  }, [webUsbAvailable, refresh, lang]);
+  }, [webUsbAvailable, refresh, lang, portPairings, devices]);
 
   const handleClearAll = useCallback(async () => {
     setScanning(true);
@@ -487,7 +526,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
             padding: '6px 12px',
             background: scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.07)' : 'rgba(248,81,73,0.07)',
             border: `1px solid ${scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.25)' : 'rgba(248,81,73,0.25)'}`,
-            borderRadius: 6,
+            borderRadius: 6, lineHeight: 1.5,
           }}>
             {scanStatus}
           </div>
