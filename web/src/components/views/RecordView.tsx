@@ -128,6 +128,11 @@ export const RecordView: FC<RecordViewProps> = ({
     }
   };
 
+  // Plain stop — no download
+  const handleStopOnly = () => {
+    onStopRecording();
+  };
+
   const handleStopAndReport = async () => {
     const durationSec = recordedSamples.length / SAMPLE_RATE;
     if (durationSec < 90) {
@@ -165,10 +170,11 @@ export const RecordView: FC<RecordViewProps> = ({
     }
   };
 
-  // Auto-stop when quality target is reached
-  // handleStop is a plain function (not useCallback) so we use onStopRecording ref approach
+  // Auto-stop when quality target is reached — also downloads CSV
   const onStopRecordingRef = useRef(onStopRecording);
   onStopRecordingRef.current = onStopRecording;
+  const handleStopRef = useRef(handleStop);
+  handleStopRef.current = handleStop;
   useEffect(() => {
     if (!isRecording) {
       autoStoppedRef.current = false;
@@ -176,9 +182,7 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     if (shouldAutoStop && !autoStoppedRef.current) {
       autoStoppedRef.current = true;
-      // Trigger App-level stop; the CSV download also happens via handleStop on button click,
-      // but auto-stop just needs to end the recording; App.tsx handles the stop too.
-      onStopRecordingRef.current();
+      handleStopRef.current();
     }
   }, [shouldAutoStop, isRecording]);
 
@@ -371,8 +375,7 @@ export const RecordView: FC<RecordViewProps> = ({
               {([1, 2, 3, 4, 5] as const).map(level => (
                 <button
                   key={level}
-                  onClick={() => !isRecording && onQualityConfigChange({ ...qualityConfig, sensitivity: level })}
-                  disabled={isRecording}
+                  onClick={() => onQualityConfigChange({ ...qualityConfig, sensitivity: level })}
                   style={{
                     width: 28, height: 28,
                     borderRadius: 5,
@@ -380,7 +383,7 @@ export const RecordView: FC<RecordViewProps> = ({
                     background: qualityConfig.sensitivity === level ? 'rgba(88,166,255,0.2)' : 'transparent',
                     color: qualityConfig.sensitivity === level ? '#8ecfff' : 'rgba(160,180,210,0.6)',
                     fontSize: 12, fontWeight: 600,
-                    cursor: isRecording ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                   }}
                 >
                   {level}
@@ -539,6 +542,22 @@ export const RecordView: FC<RecordViewProps> = ({
 
             {/* Start / Stop */}
             {isRecording ? (<>
+              <button
+                onClick={handleStopOnly}
+                style={{
+                  background: 'rgba(100,110,130,0.15)',
+                  border: '1px solid rgba(100,120,150,0.45)',
+                  borderRadius: 8,
+                  color: 'rgba(160,180,210,0.8)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+              >
+                {T(lang, 'recordStopOnly')}
+              </button>
               <button
                 onClick={handleStop}
                 style={{

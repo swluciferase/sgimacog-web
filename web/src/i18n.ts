@@ -81,6 +81,7 @@ const translations: Record<string, Record<Lang, string>> = {
   recordSexOther: { zh: '其他', en: 'Other' },
   recordNotes: { zh: '備注', en: 'Notes' },
   recordStart: { zh: '開始錄製', en: 'Start Recording' },
+  recordStopOnly: { zh: '停止', en: 'Stop' },
   recordStop: { zh: '停止並下載', en: 'Stop & Download' },
   recordDuration: { zh: '錄製時間', en: 'Duration' },
   recordSamples: { zh: '已錄製樣本', en: 'Samples recorded' },

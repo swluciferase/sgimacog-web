@@ -619,10 +619,11 @@ export async function analyzeEeg(
     const pow = bandPowAllCh[chIdx]![epIdx]!;
     return (pow[bIdx('alpha1')]! + pow[bIdx('alpha2')]!) * 0.5;
   }
-  const faaVals: number[] = cleanIdxLocal.map(ep => {
-    const fp1A = epochAlpha(CH.Fp1, ep);
-    const fp2A = epochAlpha(CH.Fp2, ep);
-    const fzA  = epochAlpha(CH.Fz,  ep);
+  // Use position index (0..nClean-1) not the stored local epoch index value
+  const faaVals: number[] = cleanIdxLocal.map((_, pos) => {
+    const fp1A = epochAlpha(CH.Fp1, pos);
+    const fp2A = epochAlpha(CH.Fp2, pos);
+    const fzA  = epochAlpha(CH.Fz,  pos);
     const f3 = (fp1A + fzA) / 2;
     const f4 = (fp2A + fzA) / 2;
     return Math.log10((f4 + 1e-12) / (f3 + 1e-12));
