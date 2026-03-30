@@ -99,6 +99,33 @@ export async function forgetAllFtdiDevices(): Promise<void> {
   } catch { /* ignore */ }
 }
 
+export interface FtdiPortWithSerial {
+  port: SerialPort;
+  /** USB serial number from getInfo().usbSerialNumber (Chrome 121+), may be '' */
+  serialNumber: string;
+}
+
+/**
+ * Returns all authorized FTDI Web Serial ports, each paired with the USB serial
+ * number read from getInfo().usbSerialNumber (available in Chrome 121+).
+ */
+export async function getAuthorizedFtdiPortsWithSerial(): Promise<FtdiPortWithSerial[]> {
+  try {
+    const ports = await navigator.serial.getPorts();
+    return ports
+      .filter(p => {
+        const info = p.getInfo();
+        return info.usbVendorId === 0x0403 && info.usbProductId === 0x6001;
+      })
+      .map(p => {
+        const info = p.getInfo() as SerialPortInfo & { usbSerialNumber?: string };
+        return { port: p, serialNumber: info.usbSerialNumber ?? '' };
+      });
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Revoke browser permission for all authorized FTDI Web Serial ports.
  */
