@@ -44,8 +44,8 @@ async function requestFtdiPort(): Promise<SerialPort | null> {
 
 interface ConnectModalProps {
   lang: Lang;
-  /** Called with a pre-selected port (auto-found) or null (use picker). */
-  onConnect: (port: SerialPort | null) => void;
+  /** Called with a pre-selected port (auto-found) or null (use picker), plus the known USB serial if available. */
+  onConnect: (port: SerialPort | null, usbSerial?: string) => void;
   onClose: () => void;
 }
 
@@ -55,6 +55,8 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   const [otherTabDevices, setOtherTabDevices] = useState<RegistryEntry[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  // Track the most recently authorized USB serial (from requestDevice picker — most reliable)
+  const [lastAuthorizedSerial, setLastAuthorizedSerial] = useState<string>('');
 
   const webUsbAvailable = isWebUsbAvailable();
 
@@ -88,25 +90,33 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
 
   const handleConnect = useCallback(async () => {
     setConnecting(true);
+    // Determine which USB serial to pass — prefer the one from the most recent requestDevice picker
+    const resolvedSerial = lastAuthorizedSerial ||
+      (usbDevices.length === 1 ? usbDevices[0]!.serialNumber : '');
+
     if (authorizedPorts.length === 1) {
       // Exactly one FTDI port already authorized → use it directly (no picker)
-      onConnect(authorizedPorts[0]!);
+      onConnect(authorizedPorts[0]!, resolvedSerial || undefined);
     } else if (authorizedPorts.length > 1) {
       // Multiple ports → show picker so user can choose
       const port = await requestFtdiPort();
-      onConnect(port); // null if cancelled
+      onConnect(port, resolvedSerial || undefined);
     } else {
       // No pre-authorized ports → show picker (will also authorize)
       const port = await requestFtdiPort();
-      onConnect(port); // null if cancelled
+      onConnect(port, resolvedSerial || undefined);
     }
     setConnecting(false);
-  }, [authorizedPorts, onConnect]);
+  }, [authorizedPorts, onConnect, lastAuthorizedSerial, usbDevices]);
 
   const handleAuthorizeNew = useCallback(async () => {
     if (!webUsbAvailable) return;
     setScanning(true);
-    await requestNewFtdiDevice();
+    const device = await requestNewFtdiDevice();
+    // Remember the serial from the picker — this is the most reliable source
+    if (device?.serialNumber) {
+      setLastAuthorizedSerial(device.serialNumber);
+    }
     await refresh();
   }, [webUsbAvailable, refresh]);
 

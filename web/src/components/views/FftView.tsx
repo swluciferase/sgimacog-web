@@ -12,11 +12,16 @@ export interface FftViewProps {
   lang: Lang;
 }
 
+const FFT_SIZE = 1024;
+
 const MAX_FREQ_OPTIONS = [30, 60, 100] as const;
 type MaxFreq = 30 | 60 | 100;
 
-const FFT_SIZE_OPTIONS = [256, 512, 1024, 2048] as const;
-type FftSizeOption = typeof FFT_SIZE_OPTIONS[number];
+const DB_RANGE_OPTIONS = [
+  { minDb: -30, maxDb: 10,  label: 'Narrow' },
+  { minDb: -40, maxDb: 20,  label: 'Normal' },
+  { minDb: -60, maxDb: 40,  label: 'Wide'   },
+] as const;
 
 const CHANNEL_COLORS = [
   'rgba(255, 51, 51, 0.85)',
@@ -173,7 +178,8 @@ function drawPanelHistogram(
   height: number,
   spectrum: Float64Array,
   maxFreq: number,
-  fftSize: number,
+  minDb: number,
+  maxDb: number,
   chColor: string,
   chLabel: string,
 ) {
@@ -184,12 +190,12 @@ function drawPanelHistogram(
   const cw = width - PAD_LEFT - PAD_RIGHT;
   const ch = height - PAD_TOP - PAD_BOTTOM;
 
-  const MIN_DB = -40, MAX_DB = 30, DB_RANGE = MAX_DB - MIN_DB;
+  const MIN_DB = minDb, MAX_DB = maxDb, DB_RANGE = MAX_DB - MIN_DB;
 
   const freqToX = (hz: number) => PAD_LEFT + (Math.min(hz, maxFreq) / maxFreq) * cw;
   const dbToY = (db: number) => PAD_TOP + ch - ((Math.max(MIN_DB, Math.min(MAX_DB, db)) - MIN_DB) / DB_RANGE) * ch;
   const frequencyToBin = (hz: number) =>
-    Math.max(0, Math.min(fftSize / 2, Math.round((hz / SAMPLE_RATE_HZ) * fftSize)));
+    Math.max(0, Math.min(FFT_SIZE / 2, Math.round((hz / SAMPLE_RATE_HZ) * FFT_SIZE)));
 
   const EEG_BANDS = [
     { name: 'δ', startHz: 0.5, endHz: 4,  tint: 'rgba(102,153,255,0.10)' },
@@ -223,8 +229,8 @@ function drawPanelHistogram(
         if (spectrum[bin] !== undefined) maxPower = Math.max(maxPower, spectrum[bin]!);
       }
       const db = 10 * Math.log10(Math.max(maxPower, 1e-10));
-      const startHz = (groupStart * SAMPLE_RATE_HZ) / fftSize;
-      const endHz = (groupEnd * SAMPLE_RATE_HZ) / fftSize;
+      const startHz = (groupStart * SAMPLE_RATE_HZ) / FFT_SIZE;
+      const endHz = (groupEnd * SAMPLE_RATE_HZ) / FFT_SIZE;
       const x0 = freqToX(startHz);
       const x1 = freqToX(endHz);
       const barW = Math.max(1, x1 - x0 - 1);
@@ -267,21 +273,13 @@ export const FftView = ({
   const [maxFreq, setMaxFreq] = useState<MaxFreq>(60);
   const maxFreqRef = useRef<MaxFreq>(60);
 
-  const [fftSize, setFftSize] = useState<FftSizeOption>(1024);
-  const fftSizeRef = useRef<FftSizeOption>(1024);
+  const [dbRangeIdx, setDbRangeIdx] = useState(1); // 0=Narrow, 1=Normal, 2=Wide
+  const dbRangeIdxRef = useRef(1);
 
   const filterParamsRef = useRef(filterParams);
   useEffect(() => { filterParamsRef.current = filterParams; }, [filterParams]);
 
   const windowFnRef = useRef<Float64Array>(new Float64Array(0));
-
-  useEffect(() => {
-    const size = fftSize;
-    fftSizeRef.current = size;
-    windowFnRef.current = Float64Array.from({ length: size }, (_, i) =>
-      0.5 * (1 - Math.cos((2 * Math.PI * i) / (size - 1))),
-    );
-  }, [fftSize]);
 
   const filterCoeffs = useMemo(() => ({
     hp: BW_Q.map(q => computeButterHP(filterParams.hpFreq, SAMPLE_RATE_HZ, q)),
@@ -301,11 +299,10 @@ export const FftView = ({
       packetQueueRef.current.splice(0, packetQueueRef.current.length - 8192);
   }, [packets]);
 
-  // Initialize windowFn on mount
+  // Initialize windowFn on mount (fixed FFT_SIZE = 1024)
   useEffect(() => {
-    const size = fftSizeRef.current;
-    windowFnRef.current = Float64Array.from({ length: size }, (_, i) =>
-      0.5 * (1 - Math.cos((2 * Math.PI * i) / (size - 1))),
+    windowFnRef.current = Float64Array.from({ length: FFT_SIZE }, (_, i) =>
+      0.5 * (1 - Math.cos((2 * Math.PI * i) / (FFT_SIZE - 1))),
     );
   }, []);
 
@@ -318,8 +315,8 @@ export const FftView = ({
       const fp = filterParamsRef.current;
       const biquad = filterBiquadRef.current;
       const { hp, lp, notch } = filterCoeffsRef.current;
-      const fftSz = fftSizeRef.current;
       const windowFn = windowFnRef.current;
+      const dbRange = DB_RANGE_OPTIONS[dbRangeIdxRef.current] ?? DB_RANGE_OPTIONS[1]!;
 
       for (const packet of queue) {
         const channels = packet.eegChannels;
@@ -329,7 +326,7 @@ export const FftView = ({
           sample = applyFilterChain(sample, ch, biquad, fp, hp, lp, notch);
           const buf = channelBuffersRef.current[ch]!;
           buf.push(sample);
-          if (buf.length > fftSz * 2) buf.splice(0, buf.length - fftSz * 2);
+          if (buf.length > FFT_SIZE * 2) buf.splice(0, buf.length - FFT_SIZE * 2);
         }
       }
 
@@ -340,7 +337,7 @@ export const FftView = ({
         if (!ctx) continue;
 
         const buf = channelBuffersRef.current[ch]!;
-        const psd = computePsdWithSize(buf, fftSz, windowFn);
+        const psd = computePsdWithSize(buf, FFT_SIZE, windowFn);
 
         drawPanelHistogram(
           ctx,
@@ -348,7 +345,8 @@ export const FftView = ({
           canvas.clientHeight,
           psd,
           maxFreqRef.current,
-          fftSz,
+          dbRange.minDb,
+          dbRange.maxDb,
           CHANNEL_COLORS[ch] ?? 'rgba(255,255,255,0.8)',
           CHANNEL_LABELS[ch]!,
         );
@@ -412,11 +410,15 @@ export const FftView = ({
         gap: 8,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* FFT size */}
-          <span style={{ fontSize: 12, color: 'rgba(160,180,210,0.7)' }}>FFT:</span>
-          {FFT_SIZE_OPTIONS.map(sz => (
-            <button key={sz} onClick={() => { fftSizeRef.current = sz; setFftSize(sz); }} style={btnStyle(fftSize === sz)}>
-              {sz}
+          {/* Y-axis dB range */}
+          <span style={{ fontSize: 12, color: 'rgba(160,180,210,0.7)' }}>Y:</span>
+          {DB_RANGE_OPTIONS.map((opt, idx) => (
+            <button
+              key={idx}
+              onClick={() => { dbRangeIdxRef.current = idx; setDbRangeIdx(idx); }}
+              style={btnStyle(dbRangeIdx === idx)}
+            >
+              {opt.label}
             </button>
           ))}
         </div>

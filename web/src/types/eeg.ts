@@ -67,7 +67,7 @@ export const DEFAULT_FILTER_PARAMS: FilterParams = {
   bandpassEnabled: true,
   hpFreq: 1,
   lpFreq: 45,
-  notchFreq: 0,
+  notchFreq: 60,
 };
 
 export const makeFilterBiquadState = (): FilterBiquadState => ({

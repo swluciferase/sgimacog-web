@@ -208,6 +208,7 @@ export const WaveformView = ({
   const totalSweepRef = useRef<number>(0);
   const lappedMarkersRef = useRef<Set<string>>(new Set());
   const timeLabelDivsRef = useRef<HTMLDivElement[]>([]);
+  const timeGridDivsRef = useRef<HTMLDivElement[]>([]);
 
   // Precompute filter coefficients from filterParams
   const filterCoeffs = useMemo(() => {
@@ -418,21 +419,27 @@ export const WaveformView = ({
         }
       });
 
-      // Update time tick labels (every second, system clock)
-      const numTicks = Math.floor(windowSeconds);
-      for (let k = 0; k < timeLabelDivsRef.current.length; k++) {
-        const div = timeLabelDivsRef.current[k];
-        if (!div) continue;
-        if (k >= numTicks) {
-          div.style.display = 'none';
-          continue;
-        }
-        const tickPos = (sweepPos - k * SAMPLE_RATE_HZ + windowPoints * 100) % windowPoints;
-        div.style.left = `${(tickPos / windowPoints) * 100}%`;
-        div.style.display = 'block';
-        const d = new Date(Date.now() - k * 1000);
-        const p2 = (n: number) => n.toString().padStart(2, '0');
-        div.textContent = `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+      // Update time axis: fixed grid positions, update time labels each frame
+      const numTicks = windowSeconds; // one tick per second
+      const p2 = (n: number) => n.toString().padStart(2, '0');
+      for (let k = 0; k < MAX_TIME_TICKS; k++) {
+        const labelDiv = timeLabelDivsRef.current[k];
+        const gridDiv = timeGridDivsRef.current[k];
+        const visible = k < numTicks;
+        if (labelDiv) labelDiv.style.display = visible ? 'block' : 'none';
+        if (gridDiv) gridDiv.style.display = visible ? 'block' : 'none';
+        if (!visible) continue;
+
+        // Fixed canvas position for tick k (divides canvas into equal second intervals)
+        const canvasPos = Math.round((k / numTicks) * windowPoints);
+        const leftPct = `${(k / numTicks) * 100}%`;
+        if (labelDiv) labelDiv.style.left = leftPct;
+        if (gridDiv) gridDiv.style.left = leftPct;
+
+        // Time at this canvas position = now minus how many samples ago it was written
+        const samplesAgo = (sweepPos - canvasPos + windowPoints) % windowPoints;
+        const t = new Date(Date.now() - (samplesAgo / SAMPLE_RATE_HZ) * 1000);
+        if (labelDiv) labelDiv.textContent = `${p2(t.getHours())}:${p2(t.getMinutes())}:${p2(t.getSeconds())}`;
       }
 
       plot.clear();
@@ -831,10 +838,33 @@ export const WaveformView = ({
           ))}
         </div>
 
-        {/* Time tick labels */}
+        {/* Time grid lines (fixed positions, full-height) */}
         <div style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, left: 64,
+          position: 'absolute', top: 0, right: 0, bottom: 20, left: 64,
+          pointerEvents: 'none', overflow: 'hidden', zIndex: 3,
+        }}>
+          {Array.from({ length: MAX_TIME_TICKS }, (_, k) => (
+            <div
+              key={k}
+              ref={el => { timeGridDivsRef.current[k] = el!; }}
+              style={{
+                position: 'absolute',
+                top: 0, bottom: 0,
+                width: 1,
+                borderLeft: '1px solid rgba(180,200,235,0.10)',
+                display: 'none',
+                pointerEvents: 'none',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Time axis labels (fixed positions, at bottom) */}
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0, height: 20, left: 64,
           pointerEvents: 'none', overflow: 'hidden', zIndex: 6,
+          borderTop: '1px solid rgba(93,109,134,0.2)',
+          background: 'rgba(5,12,22,0.5)',
         }}>
           {Array.from({ length: MAX_TIME_TICKS }, (_, k) => (
             <div
@@ -842,15 +872,12 @@ export const WaveformView = ({
               ref={el => { timeLabelDivsRef.current[k] = el!; }}
               style={{
                 position: 'absolute',
-                bottom: 4,
+                top: 3,
                 transform: 'translateX(-50%)',
-                color: 'rgba(180,200,235,0.55)',
+                color: 'rgba(160,185,220,0.65)',
                 fontSize: 10,
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 whiteSpace: 'nowrap',
-                background: 'rgba(0,0,0,0.3)',
-                padding: '1px 3px',
-                borderRadius: 2,
                 display: 'none',
                 userSelect: 'none',
                 pointerEvents: 'none',

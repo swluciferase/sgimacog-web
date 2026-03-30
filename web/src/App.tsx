@@ -274,11 +274,15 @@ function App() {
     setShowConnectModal(true);
   }, []);
 
-  const handleModalConnect = useCallback(async (port: SerialPort | null) => {
+  const handleModalConnect = useCallback(async (port: SerialPort | null, usbSerial?: string) => {
     setShowConnectModal(false);
-    if (!port) {
-      // No port returned (user cancelled picker)
-      return;
+    if (!port) return;
+    // If the modal provided the USB serial from the device picker, use it directly
+    if (usbSerial) {
+      const id = `STEEG_${usbSerial}`;
+      setDeviceId(id);
+      deviceIdSeenRef.current = true;
+      updateRegistrySteegId(id);
     }
     try {
       await serialService.connectToPort(port, { baudRate: config.baudRate });
@@ -469,10 +473,15 @@ function App() {
     }
   };
 
-  // Tab switching: redirect to home if switching to restricted tab while disconnected
+  // Tab switching guards
   const handleTabChange = (tab: TabType) => {
+    // All non-home tabs require connection
     const restricted = ['impedance', 'signal', 'fft', 'record'] as TabType[];
     if (restricted.includes(tab) && !isConnected) return;
+    // Impedance blocked during recording
+    if (tab === 'impedance' && isRecording) return;
+    // Signal/FFT blocked while impedance measurement is active
+    if ((tab === 'signal' || tab === 'fft') && isImpedanceActive) return;
     setActiveTab(tab);
   };
 
@@ -492,6 +501,7 @@ function App() {
           lang={lang}
           isConnected={isConnected}
           isImpedanceActive={isImpedanceActive}
+          isRecording={isRecording}
         />
         <main className="content-area">
           {renderContent()}
@@ -529,7 +539,7 @@ function App() {
       {showConnectModal && (
         <ConnectModal
           lang={lang}
-          onConnect={handleModalConnect}
+          onConnect={(port, serial) => handleModalConnect(port, serial)}
           onClose={() => setShowConnectModal(false)}
         />
       )}

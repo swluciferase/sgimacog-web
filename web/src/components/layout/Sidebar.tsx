@@ -10,6 +10,7 @@ export interface SidebarProps {
   lang: Lang;
   isConnected: boolean;
   isImpedanceActive: boolean;
+  isRecording: boolean;
 }
 
 // SVG icons as inline elements
@@ -50,7 +51,7 @@ const RecordIcon = () => (
 );
 
 export const Sidebar: FC<SidebarProps> = ({
-  activeTab, onTabChange, lang, isConnected, isImpedanceActive,
+  activeTab, onTabChange, lang, isConnected, isImpedanceActive, isRecording,
 }) => {
   const tabs: { id: TabType; labelKey: string; icon: ReactNode; requiresConnect: boolean }[] = [
     { id: 'home',      labelKey: 'tabHome',       icon: <HomeIcon />,      requiresConnect: false },
@@ -59,8 +60,6 @@ export const Sidebar: FC<SidebarProps> = ({
     { id: 'fft',       labelKey: 'tabFft',        icon: <FftIcon />,       requiresConnect: true },
     { id: 'record',    labelKey: 'tabRecord',     icon: <RecordIcon />,    requiresConnect: true },
   ];
-
-  const isSignalOrFftActive = activeTab === 'signal' || activeTab === 'fft';
 
   return (
     <aside style={{
@@ -77,17 +76,17 @@ export const Sidebar: FC<SidebarProps> = ({
           const isActive = activeTab === tab.id;
           const notConnected = tab.requiresConnect && !isConnected;
 
-          // Mutual exclusion: impedance ↔ signal/FFT
+          // Impedance blocked during recording; signal/fft blocked during impedance measurement
           const impedanceLocked =
             (tab.id === 'signal' || tab.id === 'fft') && isImpedanceActive;
-          const signalFftLocked =
-            tab.id === 'impedance' && isSignalOrFftActive && isConnected;
+          const recordingBlocksImpedance =
+            tab.id === 'impedance' && isRecording;
 
-          const isDisabled = notConnected || impedanceLocked || signalFftLocked;
+          const isDisabled = notConnected || impedanceLocked || recordingBlocksImpedance;
 
           let title: string | undefined;
           if (impedanceLocked) title = T(lang, 'sidebarImpedanceActiveHint');
-          else if (signalFftLocked) title = T(lang, 'sidebarSignalActiveHint');
+          else if (recordingBlocksImpedance) title = T(lang, 'impedanceBlockedByRecording');
 
           return (
             <button

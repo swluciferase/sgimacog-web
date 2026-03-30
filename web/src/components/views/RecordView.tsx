@@ -215,6 +215,7 @@ export const RecordView: FC<RecordViewProps> = ({
             <label style={labelStyle}>{T(lang, 'recordDob')}</label>
             <input
               type="date"
+              lang="en"
               value={subjectInfo.dob}
               onChange={e => onSubjectInfoChange({ ...subjectInfo, dob: e.target.value })}
               disabled={isRecording}
