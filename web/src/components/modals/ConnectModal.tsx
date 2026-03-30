@@ -9,7 +9,6 @@ import {
   forgetAllFtdiDevices,
   forgetAllFtdiPorts,
 } from '../../services/ftdiScanner';
-import { scanPortSerials } from '../../services/portScanner';
 import {
   getOtherTabDevices,
   onRegistryChange,
@@ -55,20 +54,14 @@ interface ConnectModalProps {
 
 export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }) => {
   const [devices, setDevices] = useState<UnifiedDevice[]>([]);
-  /** All authorized FTDI ports (regardless of whether they're matched to a device) */
-  const [allPorts, setAllPorts] = useState<SerialPort[]>([]);
   const [otherTabDevices, setOtherTabDevices] = useState<RegistryEntry[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [scanningPorts, setScanningPorts] = useState(false);
-  const [scanStatus, setScanStatus] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [selectedSerial, setSelectedSerial] = useState<string>('');
   /**
-   * Port pairings established by:
-   *   a) Port scan (D2XX-style firmware query: COM → machineInfo serial)
-   *   b) Manual "Pair COM Port" button
-   *   c) Two-step "Authorize New Device" flow
-   * Key = USB serialNumber (e.g. "AV0KHCQP"), Value = SerialPort
+   * Port pairings: Key = USB serialNumber, Value = SerialPort
+   * Built by "Authorize New Device" (WebUSB → COM picker) or "Select COM" per device.
    */
   const [portPairings, setPortPairings] = useState<Map<string, SerialPort>>(new Map());
 
@@ -87,7 +80,6 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
     for (const dev of usbDevices) {
       const serial = dev.serialNumber;
       if (serial) seen.add(serial);
-      // Try auto-match via usbSerialNumber (Chrome 121+; often unavailable on Windows VCP)
       const matchedPort = portsWithSerial.find(p => p.serialNumber === serial)?.port ?? null;
       unified.push({
         serialNumber: serial,
@@ -104,7 +96,6 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
     }
 
     setDevices(unified);
-    setAllPorts(portsWithSerial.map(p => p.port));
     setOtherTabDevices(getOtherTabDevices());
     setScanning(false);
 
@@ -130,99 +121,47 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   }
 
   /**
-   * D2XX-inspired port scan:
-   * Opens each authorized FTDI COM port briefly, sends cmd_machine_info,
-   * reads the firmware's USB serial number, then maps it to a WebUSB device
-   * (and its productName). Equivalent to D2XX FT_GetDeviceInfoList +
-   * FT_GetComPortNumber — but done via Web Serial + WASM parser.
+   * Authorize New Device:
+   *   Step 1 — WebUSB picker shows productNames (e.g. "STEEG_DG085134") → user picks device
+   *   Step 2 — Brief pause so the selected name is visible in this modal
+   *   Step 3 — COM picker opens (shows "USB Serial Port (COM10)" etc.) → user picks manually
+   *   Result — device ↔ COM pairing stored; Connect button is now ready
    */
-  /**
-   * Sequential scan: user doesn't need to know which COM = which device.
-   * Step 1 — scan already-authorized ports (fast, no picker).
-   * Step 2 — for each remaining unidentified device, show picker ("pick any COM"),
-   *           scan immediately after pick, show which device it is, repeat.
-   */
-  const handleScanPorts = useCallback(async () => {
-    setScanningPorts(true);
-    setScanStatus(null);
+  const handleAuthorizeNew = useCallback(async () => {
+    if (!webUsbAvailable) return;
+    setStatusMsg(null);
+    setScanning(true);
 
-    const newPairings = new Map(portPairings);
-    let currentPorts = [...allPorts];
-    let totalIdentified = 0;
+    const device = await requestNewFtdiDevice();
+    setScanning(false);
+    if (!device?.serialNumber) return;
 
-    // Step 1: scan already-authorized ports first (no picker needed)
-    if (currentPorts.length > 0) {
-      const results = await scanPortSerials(currentPorts);
-      for (const r of results) {
-        newPairings.set(r.serialNumber, r.port);
-        totalIdentified++;
-      }
-    }
+    const deviceDisplayId = toDisplayId(device.productName ?? '', device.serialNumber);
+    setSelectedSerial(device.serialNumber);
 
-    // Step 2: for each device still unidentified, prompt picker + scan
-    const getUnidentified = () =>
-      devices.filter(d => !d.port && !newPairings.has(d.serialNumber));
+    // Show selected device name briefly before COM picker opens
+    setStatusMsg(T(lang, 'connectModalSelectedHint').replace('{id}', deviceDisplayId));
+    await new Promise(r => setTimeout(r, 500));
 
-    let unidentified = getUnidentified();
-    while (unidentified.length > 0) {
-      setScanStatus(T(lang, 'connectModalScanPrompt').replace('{n}', String(unidentified.length)));
-
-      const port = await requestFtdiPort();
-      if (!port) break; // user cancelled
-
-      if (!currentPorts.some(p => p === port)) currentPorts.push(port);
-
-      const [result] = await scanPortSerials([port]);
-      if (result) {
-        newPairings.set(result.serialNumber, result.port);
-        totalIdentified++;
-        const matched = devices.find(d => d.serialNumber === result.serialNumber);
-        // Show brief "identified!" message before looping for next device
-        setScanStatus(`✓ ${matched?.displayId ?? result.serialNumber}`);
-        await new Promise(r => setTimeout(r, 800));
-      } else {
-        // Port didn't respond — break to avoid infinite loop
-        setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', '1'));
-        await new Promise(r => setTimeout(r, 800));
-        break;
-      }
-      unidentified = getUnidentified();
-    }
-
-    setAllPorts(currentPorts);
-    setPortPairings(newPairings);
-
-    if (totalIdentified > 0) {
-      setScanStatus(T(lang, 'connectModalScanOk')
-        .replace('{n}', String(totalIdentified))
-        .replace('{total}', String(currentPorts.length)));
-      // Auto-select only identified device
-      const firstId = [...newPairings.keys()][0];
-      if (totalIdentified === 1 && firstId) setSelectedSerial(firstId);
-    } else if (currentPorts.length > 0) {
-      setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', String(currentPorts.length)));
-    }
-
-    setScanningPorts(false);
-  }, [allPorts, devices, lang, portPairings]);
-
-  /** Manually pair a COM port to a device via browser picker */
-  const handlePairPort = useCallback(async (dev: UnifiedDevice) => {
     const port = await requestFtdiPort();
-    if (!port) return;
-
-    // Validate via usbSerialNumber when available (Chrome 121+)
-    const info = port.getInfo() as SerialPortInfo & { usbSerialNumber?: string };
-    if (info.usbSerialNumber && dev.serialNumber && info.usbSerialNumber !== dev.serialNumber) {
-      alert(T(lang, 'connectModalMismatchWarning')
-        .replace('{device}', dev.displayId)
-        .replace('{port}', info.usbSerialNumber));
+    if (!port) {
+      setStatusMsg(null);
+      await refresh();
       return;
     }
 
+    setPortPairings(prev => new Map(prev).set(device.serialNumber, port));
+    setStatusMsg(null);
+    await refresh();
+  }, [webUsbAvailable, refresh, lang]);
+
+  /** Manually assign a COM port to a specific device */
+  const handleSelectCom = useCallback(async (dev: UnifiedDevice) => {
+    const port = await requestFtdiPort();
+    if (!port) return;
     setPortPairings(prev => new Map(prev).set(dev.serialNumber, port));
     setSelectedSerial(dev.serialNumber);
-  }, [lang]);
+  }, []);
 
   const handleConnect = useCallback(async () => {
     setConnecting(true);
@@ -240,74 +179,11 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devices, onConnect, selectedSerial, portPairings]);
 
-  /**
-   * Authorize new device:
-   *   Step 1 — WebUSB picker (shows productNames like "STEEG_DG085134") → user picks a device
-   *   Step 2 — Web Serial picker (shows COM numbers only) → user picks any COM
-   *   Step 3 — Scan the chosen COM via firmware cmd_machine_info to validate it matches
-   *   Result — match: pair & done; mismatch: show 授權失敗, user can retry with other COM
-   */
-  const handleAuthorizeNew = useCallback(async () => {
-    if (!webUsbAvailable) return;
-    setScanStatus(null);
-    setScanning(true);
-
-    // Step 1: WebUSB — user sees productNames here
-    const device = await requestNewFtdiDevice();
-    setScanning(false);
-    if (!device?.serialNumber) return;
-
-    const deviceDisplayId = toDisplayId(device.productName ?? '', device.serialNumber);
-    setSelectedSerial(device.serialNumber);
-
-    // Step 2: Web Serial — COM port names give no hint; user just picks one
-    const port = await requestFtdiPort();
-    if (!port) {
-      await refresh();
-      return;
-    }
-
-    // Step 3: Scan the COM to identify which device it belongs to
-    setScanningPorts(true);
-    setScanStatus(T(lang, 'connectModalScanning'));
-
-    const results = await scanPortSerials([port]);
-    setScanningPorts(false);
-
-    if (results.length === 0) {
-      // Device didn't respond — powered off or firmware issue
-      setScanStatus(T(lang, 'connectModalScanFail').replace('{total}', '1'));
-      await refresh();
-      return;
-    }
-
-    const foundSerial = results[0].serialNumber;
-    const newPairings = new Map(portPairings);
-    // Always store what we learned (this COM ↔ foundSerial), regardless of match
-    newPairings.set(foundSerial, results[0].port);
-
-    if (foundSerial !== device.serialNumber) {
-      // Wrong COM — find which device it actually belongs to
-      const foundDev = devices.find(d => d.serialNumber === foundSerial);
-      const foundDisplayId = foundDev?.displayId ?? foundSerial;
-      setScanStatus(T(lang, 'connectModalAuthFail')
-        .replace('{expected}', deviceDisplayId)
-        .replace('{found}', foundDisplayId));
-      setPortPairings(newPairings); // still save what we learned
-      await refresh();
-      return;
-    }
-
-    // Correct COM — pair confirmed
-    setPortPairings(newPairings);
-    setScanStatus(`✓ ${deviceDisplayId}`);
-    await refresh();
-  }, [webUsbAvailable, refresh, lang, portPairings, devices]);
-
   const handleClearAll = useCallback(async () => {
     setScanning(true);
     setSelectedSerial('');
     setPortPairings(new Map());
+    setStatusMsg(null);
     await Promise.all([forgetAllFtdiDevices(), forgetAllFtdiPorts()]);
     clearRegistry();
     await refresh();
@@ -325,8 +201,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   const selectedDevice = devices.find(d => d.serialNumber === selectedSerial);
   const selectedDisplayId = selectedDevice?.displayId ?? '';
   const needsPicker = !selectedDevice || !getEffectivePort(selectedDevice);
-
-  const isBusy = scanning || scanningPorts || connecting;
+  const isBusy = scanning || connecting;
 
   return (
     <div
@@ -367,37 +242,19 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
             <span style={{ fontSize: 12, color: 'rgba(140,165,200,0.7)', fontWeight: 500 }}>
               {T(lang, 'connectModalDetectedDevices')}
             </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {/* Scan Ports button — always clickable */}
-              <button
-                onClick={handleScanPorts}
-                disabled={isBusy}
-                title={T(lang, 'connectModalScanPortsHint')}
-                style={{
-                  background: scanningPorts ? 'rgba(240,168,48,0.15)' : 'rgba(240,168,48,0.08)',
-                  border: '1px solid rgba(240,168,48,0.4)',
-                  borderRadius: 5, color: '#f0a830',
-                  fontSize: 11, fontWeight: 600, padding: '3px 9px',
-                  cursor: isBusy ? 'not-allowed' : 'pointer',
-                  opacity: isBusy ? 0.5 : 1,
-                }}
-              >
-                {scanningPorts ? T(lang, 'connectModalScanning') : T(lang, 'connectModalScanPorts')}
-              </button>
-              <button
-                onClick={refresh}
-                disabled={isBusy}
-                style={{
-                  background: 'transparent', border: '1px solid rgba(88,166,255,0.3)',
-                  borderRadius: 5, color: '#58a6ff',
-                  fontSize: 11, fontWeight: 600, padding: '3px 9px',
-                  cursor: isBusy ? 'not-allowed' : 'pointer',
-                  opacity: isBusy ? 0.5 : 1,
-                }}
-              >
-                {scanning ? '...' : T(lang, 'connectModalRefresh')}
-              </button>
-            </div>
+            <button
+              onClick={refresh}
+              disabled={isBusy}
+              style={{
+                background: 'transparent', border: '1px solid rgba(88,166,255,0.3)',
+                borderRadius: 5, color: '#58a6ff',
+                fontSize: 11, fontWeight: 600, padding: '3px 9px',
+                cursor: isBusy ? 'not-allowed' : 'pointer',
+                opacity: isBusy ? 0.5 : 1,
+              }}
+            >
+              {scanning ? '...' : T(lang, 'connectModalRefresh')}
+            </button>
           </div>
 
           {!webUsbAvailable ? (
@@ -439,7 +296,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
                             : paired ? 'rgba(248,81,73,0.06)' : 'rgba(63,185,80,0.07)',
                           border: `2px solid ${isSelected ? 'rgba(88,166,255,0.7)'
                             : paired ? 'rgba(248,81,73,0.25)' : 'rgba(63,185,80,0.22)'}`,
-                          borderRadius: effectivePort || paired ? '8px 8px 0 0' : 8,
+                          borderRadius: '8px 8px 0 0',
                           cursor: paired ? 'default' : 'pointer',
                           userSelect: 'none',
                         }}
@@ -449,8 +306,6 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
                           background: paired ? '#f85149' : effectivePort ? '#3fb950' : '#f0a830',
                           boxShadow: `0 0 5px ${paired ? '#f85149' : effectivePort ? '#3fb950' : '#f0a830'}`,
                         }} />
-
-                        {/* productName as display label */}
                         <span style={{
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                           fontSize: 13, fontWeight: 700,
@@ -459,7 +314,6 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
                         }}>
                           {dev.displayId}
                         </span>
-
                         {paired && (
                           <span style={{
                             fontSize: 11, fontWeight: 600, color: '#f85149',
@@ -475,7 +329,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
                         )}
                       </div>
 
-                      {/* COM port status sub-row */}
+                      {/* COM port sub-row */}
                       {!paired && (
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 8,
@@ -495,7 +349,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
                           </span>
                           {!effectivePort && (
                             <button
-                              onClick={() => handlePairPort(dev)}
+                              onClick={() => handleSelectCom(dev)}
                               disabled={isBusy}
                               style={{
                                 background: 'rgba(240,168,48,0.1)',
@@ -518,31 +372,17 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
           )}
         </div>
 
-        {/* Scan result feedback */}
-        {scanStatus && (
-          <div style={{
-            marginBottom: 10, fontSize: 11,
-            color: scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.85)' : 'rgba(248,81,73,0.8)',
-            padding: '6px 12px',
-            background: scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.07)' : 'rgba(248,81,73,0.07)',
-            border: `1px solid ${scanStatus.startsWith('✓') ? 'rgba(63,185,80,0.25)' : 'rgba(248,81,73,0.25)'}`,
-            borderRadius: 6, lineHeight: 1.5,
-          }}>
-            {scanStatus}
-          </div>
-        )}
-
-        {/* Scan hint — shown when devices exist but ports not yet identified */}
-        {devices.some(d => !getEffectivePort(d) && !isPaired(d.serialNumber)) && (
+        {/* Status message (authorize flow feedback) */}
+        {statusMsg && (
           <div style={{
             marginBottom: 12, fontSize: 11,
-            color: 'rgba(240,168,48,0.75)',
+            color: 'rgba(135,175,220,0.8)',
             padding: '7px 12px',
-            background: 'rgba(240,168,48,0.05)',
-            border: '1px solid rgba(240,168,48,0.2)',
-            borderRadius: 7,
+            background: 'rgba(88,166,255,0.06)',
+            border: '1px solid rgba(88,166,255,0.2)',
+            borderRadius: 6, lineHeight: 1.5,
           }}>
-            {T(lang, 'connectModalScanPortsHint')}
+            {statusMsg}
           </div>
         )}
 
@@ -578,7 +418,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
 
         <div style={{ borderTop: '1px solid rgba(93,109,134,0.2)', marginBottom: 16 }} />
 
-        {/* Status hints */}
+        {/* Hint before Connect */}
         {selectedDisplayId && needsPicker && (
           <div style={{
             marginBottom: 14, fontSize: 12, color: 'rgba(135,175,220,0.75)',

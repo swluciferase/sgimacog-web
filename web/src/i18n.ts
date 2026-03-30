@@ -118,28 +118,6 @@ const translations: Record<string, Record<Lang, string>> = {
   connectModalPortReady:    { zh: '已配對 COM port，可直接連線', en: 'COM port paired — ready to connect' },
   connectModalNeedsPairing: { zh: '尚未配對 COM port', en: 'COM port not yet paired' },
   connectModalPairPort:     { zh: '配對 COM Port', en: 'Pair COM Port' },
-  connectModalScanPorts:  { zh: '掃描連接埠', en: 'Scan Ports' },
-  connectModalScanning:   { zh: '掃描中...', en: 'Scanning...' },
-  connectModalScanPortsHint: {
-    zh: '點「掃描連接埠」自動識別各 COM port 對應的裝置（需 2–3 秒）',
-    en: 'Click "Scan Ports" to auto-identify which COM port belongs to which device (takes 2–3 s)',
-  },
-  connectModalScanPrompt: {
-    zh: '請在彈出視窗選擇任意 COM port（剩 {n} 台未識別）',
-    en: 'Pick any COM port in the popup ({n} device(s) still unidentified)',
-  },
-  connectModalScanOk: {
-    zh: '✓ 掃描完成：{n}/{total} 個連接埠已識別',
-    en: '✓ Scan complete: {n}/{total} port(s) identified',
-  },
-  connectModalScanFail: {
-    zh: '⚠ 掃描 {total} 個連接埠，未能識別任何裝置（請確認裝置已上電）',
-    en: '⚠ Scanned {total} port(s) — no devices identified (check device power)',
-  },
-  connectModalAuthFail: {
-    zh: '授權失敗：此 COM port 屬於 {found}，非 {expected}。請重新點「授權新裝置」並選擇另一個 COM port。',
-    en: 'Authorization failed: this COM port belongs to {found}, not {expected}. Click "Authorize new device" again and pick a different COM port.',
-  },
   connectModalMismatchWarning: {
     zh: '⚠️ COM port 不符！\n選取的裝置是 {device}，但此 COM port 屬於序號 {port}。\n請選擇正確的 COM port。',
     en: '⚠️ COM port mismatch!\nSelected device is {device}, but this COM port belongs to serial {port}.\nPlease select the correct COM port.',
