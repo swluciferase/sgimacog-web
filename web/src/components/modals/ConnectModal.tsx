@@ -50,7 +50,8 @@ function toDisplayId(productName: string, serialNumber: string): string {
 
 interface ConnectModalProps {
   lang: Lang;
-  onConnect: (port: SerialPort | null, displayId?: string) => void;
+  /** displayId = productName as-is; usbSerial = raw USB serialNumber for validation */
+  onConnect: (port: SerialPort | null, displayId?: string, usbSerial?: string) => void;
   onClose: () => void;
 }
 
@@ -164,11 +165,11 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
 
     if (effectivePort) {
       // Direct connect — no browser picker needed
-      onConnect(effectivePort, displayId || undefined);
+      onConnect(effectivePort, displayId || undefined, selected?.serialNumber || undefined);
     } else {
       // Fallback: browser picker (port not yet matched/paired)
       const port = await requestFtdiPort();
-      onConnect(port, displayId || undefined);
+      onConnect(port, displayId || undefined, selected?.serialNumber || undefined);
     }
     setConnecting(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,7 +229,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   } as const;
 
   const selectedDevice = devices.find(d => d.serialNumber === selectedSerial);
-  const selectedDisplayId = selectedDevice ? `STEEG_${selectedDevice.displayId}` : '';
+  const selectedDisplayId = selectedDevice?.displayId ?? '';
   const needsPicker = !selectedDevice || !getEffectivePort(selectedDevice);
 
   return (
@@ -344,14 +345,14 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
                           boxShadow: `0 0 5px ${paired ? '#f85149' : effectivePort ? '#3fb950' : '#f0a830'}`,
                         }} />
 
-                        {/* Device label: productName (e.g. DG085134) */}
+                        {/* Device label: productName as-is, e.g. "STEEG_DG085134" */}
                         <span style={{
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                           fontSize: 13, fontWeight: 700,
                           color: isSelected ? '#8ecfff' : '#7ec8f5',
                           flex: 1,
                         }}>
-                          STEEG_{dev.displayId}
+                          {dev.displayId}
                         </span>
 
                         {/* Paired badge */}

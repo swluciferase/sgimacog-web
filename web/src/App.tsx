@@ -84,6 +84,9 @@ function App() {
   // Device ID extracted from first serial number packet
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const deviceIdSeenRef = useRef(false);
+  /** USB serialNumber of the device selected in ConnectModal (e.g. "AV0KHCQP").
+   *  Compared with machineInfo from firmware to verify the correct COM port was picked. */
+  const expectedSerialRef = useRef<string>('');
 
   // Impedance mode tracking
   const impedanceModeActiveRef = useRef(false);
@@ -160,6 +163,7 @@ function App() {
         setSerial(null);
         setDeviceId(null);
         deviceIdSeenRef.current = false;
+        expectedSerialRef.current = '';
         registerDisconnected();
       }
     };
@@ -208,17 +212,44 @@ function App() {
     }).catch(() => {});
   }, [status]);
 
-  // Extract device ID — only from machineInfo (TAG_COMMAND response)
+  // Process machineInfo: validate COM port selection and extract device ID
   useEffect(() => {
-    if (deviceIdSeenRef.current) return;
     for (const pkt of latestPackets) {
-      if (pkt.machineInfo) {
+      if (!pkt.machineInfo) continue;
+
+      // Normalize: strip STEEG_ prefix to get the raw USB serial (e.g. "AV0KHCQP")
+      const rawSerial = pkt.machineInfo.startsWith('STEEG_')
+        ? pkt.machineInfo.slice(6)
+        : pkt.machineInfo;
+
+      // Validate: if we have an expected serial, confirm the COM port is correct
+      if (expectedSerialRef.current) {
+        if (rawSerial !== expectedSerialRef.current) {
+          // Wrong COM port selected — disconnect immediately
+          const badSerial = rawSerial;
+          const expectedSerial = expectedSerialRef.current;
+          expectedSerialRef.current = '';
+          deviceIdSeenRef.current = false;
+          setDeviceId(null);
+          void serialService.disconnect();
+          setTimeout(() => {
+            window.alert(
+              `⚠️ Wrong COM port!\n\nExpected device serial: ${expectedSerial}\nConnected port serial:  ${badSerial}\n\nPlease disconnect and select the correct COM port.`
+            );
+          }, 200);
+          return;
+        }
+        expectedSerialRef.current = ''; // validation passed
+      }
+
+      // Set device ID from productName (already set by modal), or fallback to machineInfo
+      if (!deviceIdSeenRef.current) {
         const id = pkt.machineInfo.startsWith('STEEG_') ? pkt.machineInfo : `STEEG_${pkt.machineInfo}`;
         setDeviceId(id);
         deviceIdSeenRef.current = true;
         updateRegistrySteegId(id);
-        return;
       }
+      return;
     }
   }, [latestPackets]);
 
@@ -279,15 +310,22 @@ function App() {
     setShowConnectModal(true);
   }, []);
 
-  const handleModalConnect = useCallback(async (port: SerialPort | null, usbSerial?: string) => {
+  const handleModalConnect = useCallback(async (
+    port: SerialPort | null,
+    displayId?: string,   // productName as-is, e.g. "STEEG_DG085134"
+    usbSerial?: string,   // raw USB serialNumber, e.g. "AV0KHCQP" — for post-connect validation
+  ) => {
     setShowConnectModal(false);
     if (!port) return;
-    // If the modal provided the USB serial from the device picker, use it directly
-    if (usbSerial) {
-      const id = `STEEG_${usbSerial}`;
-      setDeviceId(id);
+    if (displayId) {
+      // Use productName directly — it already contains the full identifier
+      setDeviceId(displayId);
       deviceIdSeenRef.current = true;
-      updateRegistrySteegId(id);
+      updateRegistrySteegId(displayId);
+    }
+    if (usbSerial) {
+      // Store for validation against machineInfo received after connection
+      expectedSerialRef.current = usbSerial;
     }
     try {
       await serialService.connectToPort(port, { baudRate: config.baudRate });
@@ -544,7 +582,7 @@ function App() {
       {showConnectModal && (
         <ConnectModal
           lang={lang}
-          onConnect={(port, serial) => handleModalConnect(port, serial)}
+          onConnect={(port, displayId, usbSerial) => handleModalConnect(port, displayId, usbSerial)}
           onClose={() => setShowConnectModal(false)}
         />
       )}
