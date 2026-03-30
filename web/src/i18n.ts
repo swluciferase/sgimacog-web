@@ -112,6 +112,9 @@ const translations: Record<string, Record<Lang, string>> = {
   connectModalOnePortReady: { zh: '已找到 1 個已授權的序列埠，點連線即可直接開啟', en: '1 authorized port found — click Connect to open directly' },
   connectModalMultiPortReady: { zh: '已找到 {n} 個已授權的序列埠，請在彈出視窗中選擇', en: '{n} authorized ports found — select one in the picker' },
   connectModalClearAll: { zh: '清除所有裝置授權', en: 'Clear all device authorizations' },
+  connectModalSelectDevice: { zh: '請點選要連線的裝置', en: 'Click a device to select it' },
+  connectModalSelectedHint: { zh: '已選取 {id}，請在彈出視窗選擇對應的 COM port', en: 'Selected {id} — pick its COM port from the browser picker' },
+  connectModalNoSelection: { zh: '請先點選一台裝置', en: 'Please select a device first' },
 
   // Header device ID
   headerDeviceId: { zh: '裝置', en: 'Device' },
