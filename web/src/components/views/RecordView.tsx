@@ -6,6 +6,8 @@ import { generateCsv, downloadCsv, buildCsvFilename } from '../../services/csvWr
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
 import type { QualityConfig } from '../../hooks/useQualityMonitor';
+import { analyzeEeg, SAMPLE_RATE } from '../../services/eegReport';
+import { generateReportPdf } from '../../services/reportPdf';
 
 export interface RecordViewProps {
   lang: Lang;
@@ -89,6 +91,7 @@ export const RecordView: FC<RecordViewProps> = ({
   shouldAutoStop,
 }) => {
   const [elapsed, setElapsed] = useState(0);
+  const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
 
@@ -122,6 +125,43 @@ export const RecordView: FC<RecordViewProps> = ({
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
+    }
+  };
+
+  const handleStopAndReport = async () => {
+    const durationSec = recordedSamples.length / SAMPLE_RATE;
+    if (durationSec < 90) {
+      alert(T(lang, 'recordReportTooShort'));
+      return;
+    }
+    // Stop recording and download CSV first
+    onStopRecording();
+    if (recordedSamples.length > 0 && startTime) {
+      const content = generateCsv(
+        recordedSamples,
+        startTime,
+        deviceId ?? 'STEEG_UNKNOWN',
+        filterDesc,
+        notchDesc,
+      );
+      const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
+      downloadCsv(content, filename);
+    }
+    // Run EEG analysis asynchronously
+    setReportStatus('analyzing');
+    try {
+      const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '');
+      if (result.error) {
+        alert(`${T(lang, 'recordReportError')}: ${result.error}`);
+        setReportStatus('error');
+        return;
+      }
+      generateReportPdf(result, subjectInfo, startTime, deviceId);
+      setReportStatus('done');
+    } catch (err) {
+      console.error('Report generation error:', err);
+      alert(T(lang, 'recordReportError'));
+      setReportStatus('error');
     }
   };
 
@@ -498,7 +538,7 @@ export const RecordView: FC<RecordViewProps> = ({
             )}
 
             {/* Start / Stop */}
-            {isRecording ? (
+            {isRecording ? (<>
               <button
                 onClick={handleStop}
                 style={{
@@ -515,7 +555,27 @@ export const RecordView: FC<RecordViewProps> = ({
               >
                 {T(lang, 'recordStop')}
               </button>
-            ) : (
+              <button
+                onClick={handleStopAndReport}
+                disabled={reportStatus === 'analyzing'}
+                style={{
+                  background: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.08)' : 'rgba(88,166,255,0.15)',
+                  border: '1px solid rgba(88,166,255,0.5)',
+                  borderRadius: 8,
+                  color: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.5)' : '#58a6ff',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  padding: '10px 20px',
+                  cursor: reportStatus === 'analyzing' ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {reportStatus === 'analyzing'
+                  ? T(lang, 'recordGeneratingReport')
+                  : T(lang, 'recordStopReport')}
+              </button>
+            </>) : (
               <button
                 onClick={onStartRecording}
                 disabled={!isConnected}

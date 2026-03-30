@@ -146,6 +146,12 @@ const translations: Record<string, Record<Lang, string>> = {
   recordGoodTime: { zh: '有效時間', en: 'Good Time' },
   recordQualityPct: { zh: '品質百分比', en: 'Quality %' },
   recordAutoStopped: { zh: '已達目標時長，自動停止', en: 'Target duration reached — auto stopped' },
+
+  // Report generation
+  recordStopReport:       { zh: '停止並生成報告', en: 'Stop & Generate Report' },
+  recordReportTooShort:   { zh: '錄製時間不足 90 秒，無法生成報告', en: 'Recording must be at least 90 seconds to generate a report' },
+  recordGeneratingReport: { zh: '分析中，請稍候…', en: 'Analyzing EEG, please wait…' },
+  recordReportError:      { zh: '報告生成失敗', en: 'Report generation failed' },
 };
 
 export const T = (lang: Lang, key: string): string =>
