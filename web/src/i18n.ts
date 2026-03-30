@@ -118,6 +118,12 @@ const translations: Record<string, Record<Lang, string>> = {
   connectModalPortReady:    { zh: '已配對 COM port，可直接連線', en: 'COM port paired — ready to connect' },
   connectModalNeedsPairing: { zh: '尚未配對 COM port', en: 'COM port not yet paired' },
   connectModalPairPort:     { zh: '配對 COM Port', en: 'Pair COM Port' },
+  connectModalScanPorts:  { zh: '掃描連接埠', en: 'Scan Ports' },
+  connectModalScanning:   { zh: '掃描中...', en: 'Scanning...' },
+  connectModalScanPortsHint: {
+    zh: '點「掃描連接埠」自動識別各 COM port 對應的裝置（需 2–3 秒）',
+    en: 'Click "Scan Ports" to auto-identify which COM port belongs to which device (takes 2–3 s)',
+  },
   connectModalMismatchWarning: {
     zh: '⚠️ COM port 不符！\n選取的裝置是 {device}，但此 COM port 屬於序號 {port}。\n請選擇正確的 COM port。',
     en: '⚠️ COM port mismatch!\nSelected device is {device}, but this COM port belongs to serial {port}.\nPlease select the correct COM port.',
