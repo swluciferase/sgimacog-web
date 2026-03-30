@@ -133,16 +133,28 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
 
   /**
    * Manually pair a COM port to a specific device.
-   * Opens the browser's serial port picker and stores the result.
+   * Opens the browser's serial port picker, then validates that the chosen
+   * port's usbSerialNumber matches the device's USB serialNumber (Chrome 121+).
+   * Rejects the pairing if there is a mismatch.
    */
   const handlePairPort = useCallback(async (dev: UnifiedDevice) => {
     const port = await requestFtdiPort();
-    if (port) {
-      setPortPairings(prev => new Map(prev).set(dev.serialNumber, port));
-      // Auto-select the device being paired
-      setSelectedSerial(dev.serialNumber);
+    if (!port) return;
+
+    // Validate via usbSerialNumber when available (Chrome 121+)
+    const info = port.getInfo() as SerialPortInfo & { usbSerialNumber?: string };
+    if (info.usbSerialNumber && dev.serialNumber) {
+      if (info.usbSerialNumber !== dev.serialNumber) {
+        alert(T(lang, 'connectModalMismatchWarning')
+          .replace('{device}', `STEEG_${dev.displayId}`)
+          .replace('{port}', info.usbSerialNumber));
+        return; // reject
+      }
     }
-  }, []);
+
+    setPortPairings(prev => new Map(prev).set(dev.serialNumber, port));
+    setSelectedSerial(dev.serialNumber);
+  }, [lang]);
 
   const handleConnect = useCallback(async () => {
     setConnecting(true);
@@ -178,12 +190,20 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
       // Step 2: Web Serial — pair the COM port
       const port = await requestFtdiPort();
       if (port) {
-        setPortPairings(prev => new Map(prev).set(device.serialNumber, port));
+        const info = port.getInfo() as SerialPortInfo & { usbSerialNumber?: string };
+        if (info.usbSerialNumber && info.usbSerialNumber !== device.serialNumber) {
+          alert(T(lang, 'connectModalMismatchWarning')
+            .replace('{device}', device.productName || device.serialNumber)
+            .replace('{port}', info.usbSerialNumber));
+          // Don't store the mismatched pairing
+        } else {
+          setPortPairings(prev => new Map(prev).set(device.serialNumber, port));
+        }
       }
     }
 
     await refresh();
-  }, [webUsbAvailable, refresh]);
+  }, [webUsbAvailable, refresh, lang]);
 
   const handleClearAll = useCallback(async () => {
     setScanning(true);

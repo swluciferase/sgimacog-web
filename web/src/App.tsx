@@ -190,16 +190,21 @@ function App() {
     shouldAutoStop,
   } = useQualityMonitor(latestPackets, isRecording, qualityConfig);
 
-  // After connection: set device ID from WebUSB serial (always takes priority)
+  // After connection: set device ID from WebUSB productName (only if not already set by modal)
   useEffect(() => {
     if (status !== 'connected') return;
+    if (deviceIdSeenRef.current) return;   // handleModalConnect already set it
     getAuthorizedFtdiDevices().then(devices => {
-      if (devices.length >= 1 && devices[0]?.serialNumber) {
-        const id = `STEEG_${devices[0].serialNumber}`;
-        setDeviceId(id);
-        updateRegistrySteegId(id);
-        deviceIdSeenRef.current = true;
-      }
+      if (deviceIdSeenRef.current) return; // double-check after async gap
+      const dev = devices.find(d => d.serialNumber) ?? devices[0];
+      if (!dev) return;
+      const GENERIC = ['USB Serial', 'USB Serial Port', 'FT232R USB UART', ''];
+      const label = GENERIC.includes(dev.productName.trim()) ? dev.serialNumber : dev.productName.trim();
+      if (!label) return;
+      const id = `STEEG_${label}`;
+      setDeviceId(id);
+      updateRegistrySteegId(id);
+      deviceIdSeenRef.current = true;
     }).catch(() => {});
   }, [status]);
 
