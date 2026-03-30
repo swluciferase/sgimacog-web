@@ -456,12 +456,11 @@ function rsaNorm(age: number): Norm {
   return              { mean: 32.25, sd: 21.17 };
 }
 
-// COH is stored as sqrt(rawCoh) × 10  →  scale norms accordingly
-// Original norms (0–1 scale) → transformed via delta method: mean'=sqrt(m)×10, sd'=5/sqrt(m)×sd
+// COH norms on raw 0–1 scale; T-score is then transformed: sqrt(T) × 10
 function cohNorm(age: number): Norm {
-  if (age < 6)  return { mean: 5.92, sd: 0.85 };  // sqrt(0.35)×10, 5/sqrt(0.35)×0.1
-  if (age < 13) return { mean: 7.42, sd: 0.67 };  // sqrt(0.55)×10, 5/sqrt(0.55)×0.1
-  return              { mean: 8.06, sd: 0.62 };   // sqrt(0.65)×10, 5/sqrt(0.65)×0.1
+  if (age < 6)  return { mean: 0.35, sd: 0.1 };
+  if (age < 13) return { mean: 0.55, sd: 0.1 };
+  return              { mean: 0.65, sd: 0.1 };
 }
 
 function entpNorm(age: number): Norm {
@@ -718,8 +717,7 @@ export async function analyzeEeg(
     }
   }
   const cohRaw = cohN > 0 ? cohSum / cohN : 0;
-  // Transform: sqrt(COH) × 10  (scales 0–1 → 0–10; more linear in T-score space)
-  const COH = Math.sqrt(cohRaw) * 10;
+  const COH = cohRaw; // raw 0–1; T-score is transformed later: sqrt(T) × 10
 
   // ---------------------------------------------------------------------------
   // EnTP — permutation entropy (order=3), channels: O1,O2,Fz,Pz,T7,T8
@@ -746,7 +744,7 @@ export async function analyzeEeg(
     FAA:  toTScore(FAA,  faaNorm(age)),
     PAF:  toTScore(PAF,  pafNorm(age)),
     RSA:  toTScore(RSA,  rsaNorm(age)),
-    COH:  toTScore(COH,  cohNorm(age)),
+    COH:  Math.sqrt(Math.max(0, toTScore(COH, cohNorm(age)))) * 10,
     EnTP: toTScore(EnTP, entpNorm(age)),
   };
 

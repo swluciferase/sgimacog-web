@@ -461,27 +461,30 @@ function App() {
         );
 
       case 'signal':
-        return (
-          <WaveformView
-            packets={latestPackets}
-            filterParams={filterParams}
-            filterBiquadRef={filterBiquadRef}
-            onFilterChange={handleFilterChange}
-            lang={lang}
-            isRecording={isRecording}
-            onEventMarker={handleEventMarker}
-          />
-        );
-
       case 'fft':
         return (
-          <FftView
-            packets={latestPackets}
-            filterParams={filterParams}
-            filterBiquadRef={filterBiquadRef}
-            onFilterChange={handleFilterChange}
-            lang={lang}
-          />
+          <div style={{ display: 'flex', height: '100%', gap: 8, overflow: 'hidden' }}>
+            <div style={{ flex: 2, minWidth: 0, overflow: 'hidden' }}>
+              <WaveformView
+                packets={latestPackets}
+                filterParams={filterParams}
+                filterBiquadRef={filterBiquadRef}
+                onFilterChange={handleFilterChange}
+                lang={lang}
+                isRecording={isRecording}
+                onEventMarker={handleEventMarker}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              <FftView
+                packets={latestPackets}
+                filterParams={filterParams}
+                filterBiquadRef={filterBiquadRef}
+                onFilterChange={handleFilterChange}
+                lang={lang}
+              />
+            </div>
+          </div>
         );
 
       case 'record':
@@ -523,8 +526,8 @@ function App() {
     if (restricted.includes(tab) && !isConnected) return;
     // Impedance blocked during recording
     if (tab === 'impedance' && isRecording) return;
-    // Signal/FFT blocked while impedance measurement is active
-    if ((tab === 'signal' || tab === 'fft') && isImpedanceActive) return;
+    // Signal blocked while impedance measurement is active
+    if (tab === 'signal' && isImpedanceActive) return;
     setActiveTab(tab);
   };
 

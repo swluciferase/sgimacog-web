@@ -20,8 +20,8 @@
 const WIN_SEC          = 2.0;
 const STEP_SEC         = 0.5;
 const MUSCLE_THRESHOLD = 0.9;     // lag-1 autocorr below this → remove
-const BLINK_DELTA_THR  = 0.50;    // delta / total power fraction
-const BLINK_PEAK_FACTOR = 4.0;    // peak > factor × RMS → confirm blink
+const BLINK_DELTA_THR  = 0.65;    // delta / total power fraction
+const BLINK_PEAK_FACTOR = 6.0;    // peak > factor × RMS → confirm blink
 
 // ---------------------------------------------------------------------------
 // Minimal matrix library (row-major, dense, for ≤ 8×8)
@@ -37,6 +37,14 @@ function mt(A: M): M {
   for (let i = 0; i < A.length; i++)
     for (let j = 0; j < A[0].length; j++) T[j][i] = A[i][j]!;
   return T;
+}
+function mm(A: M, B: M): M {
+  const R = mz(A.length, B[0].length);
+  for (let i = 0; i < A.length; i++)
+    for (let k = 0; k < B.length; k++)
+      for (let j = 0; j < B[0].length; j++)
+        R[i][j] += A[i][k]! * B[k][j]!;
+  return R;
 }
 // ---------------------------------------------------------------------------
 // Cholesky L L^T (A must be symmetric positive semi-definite)
@@ -122,31 +130,6 @@ function jacobiSym(Ain: M): { vals: number[]; vecs: M } {
   return { vals: D.map((r, i) => r[i]!), vecs: V };
 }
 
-// ---------------------------------------------------------------------------
-// Matrix inverse via Gauss–Jordan with partial pivoting
-// ---------------------------------------------------------------------------
-function mInv(A: M): M {
-  const n = A.length;
-  const aug: M = A.map((r, i) => {
-    const row = [...r];
-    for (let j = 0; j < n; j++) row.push(j === i ? 1 : 0);
-    return row;
-  });
-  for (let col = 0; col < n; col++) {
-    let maxR = col;
-    for (let r = col + 1; r < n; r++)
-      if (Math.abs(aug[r][col]!) > Math.abs(aug[maxR][col]!)) maxR = r;
-    [aug[col], aug[maxR]] = [aug[maxR]!, aug[col]!];
-    const piv = aug[col][col]! || 1e-16;
-    for (let j = 0; j < 2 * n; j++) aug[col][j] = aug[col][j]! / piv;
-    for (let r = 0; r < n; r++) {
-      if (r === col) continue;
-      const f = aug[r][col]!;
-      for (let j = 0; j < 2 * n; j++) aug[r][j] = aug[r][j]! - f * aug[col][j]!;
-    }
-  }
-  return aug.map(r => r.slice(n));
-}
 
 // ---------------------------------------------------------------------------
 // Simple FFT (Cooley-Tukey) + Hann-windowed PSD for band-power ratio
@@ -334,7 +317,8 @@ function ccaWindow(
     for (let i = 0; i < nCh; i++) W[i][j] = wj[i]!;
   }
 
-  const Winv = mInv(W);
+  // Analytical inverse: W = L^{-T} Vs  →  W^{-1} = Vs^T L^T  (stable, avoids Gauss–Jordan)
+  const Winv = mm(mt(Vs), mt(L));
   return { W, Winv, autocorrs };
 }
 
@@ -410,8 +394,9 @@ export function removeArtifacts(signals: Float64Array[], fs: number): Float64Arr
         remove[j] = true;
         continue;
       }
-      // Eye blink: high delta fraction + large peak (only first 3 components)
-      if (j < 3) {
+      // Eye blink: high delta fraction + large peak (only first 2 components)
+      if (j < 2) {
+        if (rms(comp) < 0.1) continue;  // skip near-zero components
         const df = deltaFraction(comp, fs);
         if (df > BLINK_DELTA_THR && peakRmsRatio(comp) > BLINK_PEAK_FACTOR) {
           remove[j] = true;
