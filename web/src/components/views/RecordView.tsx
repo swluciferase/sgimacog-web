@@ -96,6 +96,7 @@ export const RecordView: FC<RecordViewProps> = ({
   const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
   const [fileStatus, setFileStatus] = useState<'idle' | 'parsing' | 'analyzing' | 'done' | 'error'>('idle');
   const [fileStatusMsg, setFileStatusMsg] = useState('');
+  const [fileDob, setFileDob] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
@@ -193,7 +194,7 @@ export const RecordView: FC<RecordViewProps> = ({
         return;
       }
       setFileStatus('analyzing');
-      const result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', useArtifactRemoval);
+      const result = await analyzeEeg(parsed.samples, fileDob, useArtifactRemoval);
       if (result.error) {
         setFileStatus('error');
         setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis') + `: ${result.error}`);
@@ -723,6 +724,25 @@ export const RecordView: FC<RecordViewProps> = ({
           {T(lang, 'recordFromFile')}
         </h3>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* DOB input */}
+          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>
+            {T(lang, 'recordDob')}:
+          </label>
+          <input
+            type="date"
+            value={fileDob}
+            onChange={e => setFileDob(e.target.value)}
+            style={{
+              background: 'rgba(10,20,35,0.9)',
+              border: '1px solid rgba(93,109,134,0.5)',
+              borderRadius: 6,
+              color: '#cdd6e8',
+              fontSize: 12,
+              padding: '5px 8px',
+              outline: 'none',
+              colorScheme: 'dark',
+            }}
+          />
           <input
             ref={fileInputRef}
             type="file"

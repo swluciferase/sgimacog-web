@@ -340,7 +340,13 @@ export const WaveformView = ({
     linesRef.current = lines;
     sweepPosRef.current = 0;
 
-    const ro = new ResizeObserver(() => resizeCanvas());
+    const ro = new ResizeObserver(() => {
+      resizeCanvas();
+      // After canvas physical dimensions change, the GL viewport must be updated
+      // explicitly — WebglPlot.clear() does not do this automatically.
+      const gl = wglp.gl as WebGL2RenderingContext;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    });
     ro.observe(canvas);
 
     const CURSOR_GAP = 20; // number of points blanked ahead of sweep pen
