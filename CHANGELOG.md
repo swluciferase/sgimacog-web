@@ -4,12 +4,153 @@
 
 | 版本 | Commit | 主要內容 |
 |------|--------|---------|
+| v0.5.5 | 647b775 | 讀取 CSV 報告加入 DOB 欄位、修正 resize 後波形游標偏移 |
+| v0.5.4 | 0793a3e | CCA whitening 矩陣 bug 修正、COH T 分數取整數 |
+| v0.5.3 | 9f08c09 | 移除 FFT 面板重複的 BP/Notch 控制項 |
+| v0.5.2 | 171f610 | Signal+FFT 合併版面、COH T 分數轉換公式修正、CCA 穩定性改善 |
+| v0.5.1 | 51b7153 | 版號更新 |
+| v0.5.0 | fed696a | 讀取 CSV 生成報告功能 |
+| v0.4.x | 7fbbb53 | CCA 偽影移除選項、COH sqrt 轉換 |
 | v0.3.3 | 0a61572 | 裝置序號修正、FFT 直方圖、標記自動清除、時間軸、幅度標記 |
 | v0.3.2 | 74b0b60 | 10 項 bug 修正（阻抗、掃描游標、事件標記、品質切換、出生日期、版號） |
 | v0.3.1 | e152ce7 | 統一連線對話框、跨分頁配對、COM port 釋放 |
 | v0.3.0 | 672717b | FTDI 掃描、掃描式波形、品質指標、阻抗 N/A、頁籤互斥 |
 | v0.2.0 | 6846196 | Header 顯示版本號 |
 | v0.1.x | 初始版本 | 初始提交、GitHub Pages 部署 |
+
+---
+
+## v0.5.5 — 2026-03-31
+
+### 1. 讀取 CSV 生成報告加入生日輸入 (RecordView.tsx)
+
+**問題：** 「讀取 CSV 生成報告」卡片中呼叫 `analyzeEeg` 時傳入空字串 DOB，導致年齡預設為 25 歲，無法正確計算 T 分數。
+
+**修正：**
+- 新增 `fileDob` state（`useState('')`）
+- 在 file report 卡片內加入 `<input type="date">` 欄位（標籤：出生年月日 / Date of Birth）
+- `handleFileReport` 改為傳入 `fileDob` 給 `analyzeEeg(parsed.samples, fileDob, useArtifactRemoval)`
+
+---
+
+### 2. 修正調整視窗大小後波形游標偏移 (WaveformView.tsx)
+
+**問題：** 調整視窗大小後，掃描游標（白色垂直線）的視覺位置與 WebGL 實際繪製位置不一致，兩者「速度」看起來不同。
+
+**根本原因：** `WebglPlot.clear()` 的實作只執行 `gl.clear(COLOR_BUFFER_BIT)`，並不更新 WebGL viewport。`ResizeObserver` 呼叫 `resizeCanvas()` 更新 `canvas.width/height` 後，WebGL viewport 仍停留在舊尺寸，導致 GL 渲染被壓縮至舊寬度區域，而 CSS 百分比定位的游標 div 則正確跟隨容器新寬度。
+
+**修正：** 在 ResizeObserver 回呼中，於 `resizeCanvas()` 後補充呼叫：
+```ts
+const gl = wglp.gl as WebGL2RenderingContext;
+gl.viewport(0, 0, canvas.width, canvas.height);
+```
+
+---
+
+## v0.5.4 — 2026-03-31
+
+### 1. 修正 CCA whitening 矩陣演算法錯誤 (eegArtifactRemoval.ts)
+
+**問題：** CCA 偽影移除效果極差，幾乎所有訊號成分均被移除。
+
+**根本原因：** 白化矩陣計算使用了 `cholSolveM`（forward + backward substitution = $\mathbf{C}_{xx}^{-1}$），導致：
+$$\mathbf{A} = \mathbf{C}_{xx}^{-1} \mathbf{C}_{sym} \mathbf{C}_{xx}^{-1}$$
+
+而正確應為：
+$$\mathbf{A} = \mathbf{L}^{-1} \mathbf{C}_{sym} \mathbf{L}^{-T}$$
+
+錯誤的 $\mathbf{A}$ 使所有特徵值趨近於零，lag-1 自相關全部低於 0.9 閾值，全數被判定為肌肉雜訊。
+
+**修正：** 移除 `cholSolveM`，新增 `fwdSolveM`（僅 forward substitution），重寫白化計算：
+```ts
+// 修正前（錯誤）
+const B  = cholSolveM(L, Csym);   // L^{-T} L^{-1} Csym = Cxx^{-1} Csym
+const AT = cholSolveM(L, mt(B));
+const A  = mt(AT);                 // → Cxx^{-1} Csym Cxx^{-1}
+
+// 修正後（正確）
+const C1 = fwdSolveM(L, Csym);    // L^{-1} Csym
+const A  = fwdSolveM(L, mt(C1));  // L^{-1} Csym L^{-T}
+```
+
+逆混矩陣改為解析式 $\mathbf{W}^{-1} = \mathbf{V}_s^T \mathbf{L}^T$，數值穩定。
+
+### 2. COH T 分數取整數
+
+**修正：** COH T 分數計算加入 `Math.round()`，確保為整數：
+```ts
+COH: Math.round(Math.sqrt(Math.max(0, toTScore(COH, cohNorm(age)))) * 10),
+```
+
+---
+
+## v0.5.3 — 2026-03-31
+
+### 移除 FFT 面板重複的 BP/Notch 控制項 (FftView.tsx)
+
+**背景：** Signal 與 FFT 合併為同一頁面後，濾波參數由 WaveformView 統一控制，FftView 的 BP/Notch UI 變為重複。
+
+**修正：**
+- `FftViewProps` 移除 `onFilterChange` prop
+- FFT 工具列移除帶通切換、HP/LP 輸入、Notch 按鈕
+- 工具列僅保留 Y 軸範圍選擇器與最大頻率選擇器
+
+---
+
+## v0.5.2 — 2026-03-31
+
+### 1. Signal + FFT 合併為同一頁面 (App.tsx, Sidebar.tsx)
+
+**修改：** `signal` 與 `fft` 頁籤合併顯示，左側 2/3 為 WaveformView，右側 1/3 為 FftView。側邊欄移除獨立的 FFT 頁籤項目。
+
+```tsx
+case 'signal':
+case 'fft':
+  return (
+    <div style={{ display: 'flex', height: '100%', gap: 8, overflow: 'hidden' }}>
+      <div style={{ flex: 2, minWidth: 0 }}>
+        <WaveformView ... />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <FftView ... />
+      </div>
+    </div>
+  );
+```
+
+### 2. COH T 分數轉換公式
+
+**修正：** COH raw 值（0–1 尺度）先計算線性 T 分數，再套用 $\sqrt{T} \times 10$：
+
+```ts
+COH: Math.sqrt(Math.max(0, toTScore(COH, cohNorm(age)))) * 10
+```
+
+常模回歸原始 0–1 尺度：`{mean: 0.35/0.55/0.65, sd: 0.1}`（依年齡）
+
+### 3. CCA 穩定性改善
+
+- `BLINK_DELTA_THR`：0.50 → 0.65
+- `BLINK_PEAK_FACTOR`：4.0 → 6.0
+- 眨眼偵測縮限至前 2 個成分（原為 3 個）
+- 新增 RMS 守門：`if (rms(comp) < 0.1) continue`
+
+---
+
+## v0.5.0–0.5.1 — 2026-03-31
+
+### CCA 偽影移除 + 報告功能初版
+
+**新增 `eegArtifactRemoval.ts`：** 滑動視窗 CCA 偽影移除（De Clercq 2006）。
+
+**新增 `eegReport.ts`：** 7 項腦健康指標（TBR/APR/FAA/PAF/RSA/COH/EnTP）+ T 分數計算。
+
+**新增 `reportPdf.ts`：** 使用 jsPDF 生成 PDF 報告。
+
+**RecordView.tsx 新增：**
+- 「停止並生成報告」按鈕
+- 讀取 CSV 文件生成報告
+- CCA 開關（`useArtifactRemoval` toggle）
 
 ---
 
@@ -281,4 +422,10 @@ FFT 2048 → 0.49 Hz/bin  （高解析度，需更多資料緩衝）
 
 ---
 
-*最後更新：2026-03-30*
+## 技術文件
+
+- `docs/algorithm_report.md` — EEG 演算法技術報告（CCA + 7 項指標計算方式）
+
+---
+
+*最後更新：2026-03-31*
