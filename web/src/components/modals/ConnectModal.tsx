@@ -10,6 +10,11 @@ import {
   forgetAllFtdiPorts,
 } from '../../services/ftdiScanner';
 import {
+  FTDI_VID, FTDI_PID_FT232,
+  isWebSerialAvailable, isWebUsbAvailableForFtdi,
+  type UsbDeviceLike,
+} from '../../services/ftdiUsb';
+import {
   getOtherTabDevices,
   onRegistryChange,
   clearRegistry,
@@ -47,12 +52,14 @@ function toDisplayId(productName: string, serialNumber: string): string {
 interface ConnectModalProps {
   lang: Lang;
   onConnect: (port: SerialPort | null, displayId?: string, usbSerial?: string) => void;
+  /** Called on Android / no-Web-Serial path: raw WebUSB device selected */
+  onConnectUsb?: (device: UsbDeviceLike, displayId: string) => void;
   onClose: () => void;
 }
 
 // ── Component ──
 
-export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }) => {
+export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onConnectUsb, onClose }) => {
   const [devices, setDevices] = useState<UnifiedDevice[]>([]);
   const [otherTabDevices, setOtherTabDevices] = useState<RegistryEntry[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -66,6 +73,37 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
   const [portPairings, setPortPairings] = useState<Map<string, SerialPort>>(new Map());
 
   const webUsbAvailable = isWebUsbAvailable();
+
+  // Platform capability flags
+  const hasWebSerial = isWebSerialAvailable();
+  const hasWebUsb    = isWebUsbAvailableForFtdi();
+  // Android mode: show USB-direct section when Web Serial is absent
+  const [androidConnecting, setAndroidConnecting] = useState(false);
+  const [androidError, setAndroidError] = useState<string | null>(null);
+
+  const handleAndroidConnect = useCallback(async () => {
+    if (!hasWebUsb || !onConnectUsb) return;
+    setAndroidConnecting(true);
+    setAndroidError(null);
+    try {
+      // Use the same typed USB accessor as ftdiScanner.ts
+      const nav = navigator as unknown as { usb?: { requestDevice(o: unknown): Promise<UsbDeviceLike> } };
+      if (!nav.usb) throw new Error('WebUSB not available');
+      const device = await nav.usb.requestDevice({
+        filters: [{ vendorId: FTDI_VID, productId: FTDI_PID_FT232 }],
+      });
+      const GENERIC = ['USB Serial', 'USB Serial Port', 'FT232R USB UART', ''];
+      const prod = device.productName ?? '';
+      const ser  = device.serialNumber ?? '';
+      const displayId = GENERIC.includes(prod.trim()) ? (ser || prod || 'FTDI') : prod.trim();
+      onConnectUsb(device, displayId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('No device selected')) setAndroidError(msg);
+    } finally {
+      setAndroidConnecting(false);
+    }
+  }, [hasWebUsb, onConnectUsb]);
 
   const refresh = useCallback(async () => {
     setScanning(true);
@@ -236,8 +274,8 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
           }}>×</button>
         </div>
 
-        {/* Device list */}
-        <div style={{ marginBottom: 16 }}>
+        {/* Device list — Web Serial path only (desktop Chrome) */}
+        {hasWebSerial && <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 12, color: 'rgba(140,165,200,0.7)', fontWeight: 500 }}>
               {T(lang, 'connectModalDetectedDevices')}
@@ -370,10 +408,10 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
               </div>
             </>
           )}
-        </div>
+        </div>}  {/* end hasWebSerial device list */}
 
-        {/* Status message (authorize flow feedback) */}
-        {statusMsg && (
+        {/* Status message (authorize flow feedback) — Web Serial only */}
+        {hasWebSerial && statusMsg && (
           <div style={{
             marginBottom: 12, fontSize: 11,
             color: 'rgba(135,175,220,0.8)',
@@ -386,8 +424,8 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
           </div>
         )}
 
-        {/* Authorize / Clear buttons */}
-        {webUsbAvailable && (
+        {/* Authorize / Clear buttons — Web Serial only */}
+        {hasWebSerial && webUsbAvailable && (
           <div style={{ marginBottom: 16 }}>
             <button
               onClick={handleAuthorizeNew}
@@ -416,10 +454,10 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
           </div>
         )}
 
-        <div style={{ borderTop: '1px solid rgba(93,109,134,0.2)', marginBottom: 16 }} />
+        {hasWebSerial && <div style={{ borderTop: '1px solid rgba(93,109,134,0.2)', marginBottom: 16 }} />}
 
-        {/* Hint before Connect */}
-        {selectedDisplayId && needsPicker && (
+        {/* Hint before Connect — Web Serial only */}
+        {hasWebSerial && selectedDisplayId && needsPicker && (
           <div style={{
             marginBottom: 14, fontSize: 12, color: 'rgba(135,175,220,0.75)',
             padding: '8px 12px', background: 'rgba(88,166,255,0.06)',
@@ -428,7 +466,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
             {T(lang, 'connectModalSelectedHint').replace('{id}', selectedDisplayId)}
           </div>
         )}
-        {selectedDisplayId && !needsPicker && (
+        {hasWebSerial && selectedDisplayId && !needsPicker && (
           <div style={{
             marginBottom: 14, fontSize: 12, color: 'rgba(63,185,80,0.8)',
             padding: '8px 12px', background: 'rgba(63,185,80,0.05)',
@@ -438,22 +476,71 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onClose }
           </div>
         )}
 
-        {/* Connect button */}
-        <button
-          onClick={handleConnect}
-          disabled={connecting || (devices.length > 0 && !selectedSerial)}
-          style={{
-            ...btnBase,
-            background: connecting ? 'rgba(88,166,255,0.12)' : 'rgba(63,185,80,0.18)',
-            border: `1px solid ${connecting ? 'rgba(88,166,255,0.4)' : 'rgba(63,185,80,0.5)'}`,
-            color: connecting ? '#58a6ff' : '#3fb950',
-            width: '100%', fontSize: 14, fontWeight: 700, padding: '11px 0',
-            cursor: (connecting || (devices.length > 0 && !selectedSerial)) ? 'not-allowed' : 'pointer',
-            opacity: (devices.length > 0 && !selectedSerial) ? 0.45 : 1,
-          }}
-        >
-          {connecting ? T(lang, 'connecting') : T(lang, 'connectModalConnect')}
-        </button>
+        {/* Connect button — Web Serial path (desktop) */}
+        {hasWebSerial && (
+          <button
+            onClick={handleConnect}
+            disabled={connecting || (devices.length > 0 && !selectedSerial)}
+            style={{
+              ...btnBase,
+              background: connecting ? 'rgba(88,166,255,0.12)' : 'rgba(63,185,80,0.18)',
+              border: `1px solid ${connecting ? 'rgba(88,166,255,0.4)' : 'rgba(63,185,80,0.5)'}`,
+              color: connecting ? '#58a6ff' : '#3fb950',
+              width: '100%', fontSize: 14, fontWeight: 700, padding: '11px 0',
+              cursor: (connecting || (devices.length > 0 && !selectedSerial)) ? 'not-allowed' : 'pointer',
+              opacity: (devices.length > 0 && !selectedSerial) ? 0.45 : 1,
+            }}
+          >
+            {connecting ? T(lang, 'connecting') : T(lang, 'connectModalConnect')}
+          </button>
+        )}
+
+        {/* ── Android / WebUSB direct path ──────────────────────────── */}
+        {!hasWebSerial && (
+          <div style={{
+            marginTop: 4,
+            padding: '16px 18px',
+            background: 'rgba(88,166,255,0.05)',
+            border: '1px solid rgba(88,166,255,0.25)',
+            borderRadius: 10,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#8ecfff', marginBottom: 8 }}>
+              {T(lang, 'connectAndroidTitle')}
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(135,175,220,0.7)', marginBottom: 14, lineHeight: 1.55 }}>
+              {T(lang, 'connectAndroidHint')}
+            </div>
+            {!hasWebUsb ? (
+              <div style={{ fontSize: 12, color: 'rgba(248,81,73,0.7)' }}>
+                {T(lang, 'connectAndroidNoUsb')}
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleAndroidConnect}
+                  disabled={androidConnecting}
+                  style={{
+                    ...btnBase,
+                    background: androidConnecting ? 'rgba(88,166,255,0.08)' : 'rgba(88,166,255,0.18)',
+                    border: '1px solid rgba(88,166,255,0.5)',
+                    color: androidConnecting ? 'rgba(88,166,255,0.5)' : '#58a6ff',
+                    width: '100%', fontSize: 14, fontWeight: 700, padding: '11px 0',
+                    cursor: androidConnecting ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {androidConnecting
+                    ? T(lang, 'connectAndroidConnecting')
+                    : T(lang, 'connectAndroidButton')}
+                </button>
+                {androidError && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(248,81,73,0.8)' }}>
+                    {androidError}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

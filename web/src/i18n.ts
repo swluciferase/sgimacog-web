@@ -119,6 +119,11 @@ const translations: Record<string, Record<Lang, string>> = {
   connectModalPortReady:    { zh: '已配對 COM port，可直接連線', en: 'COM port paired — ready to connect' },
   connectModalNeedsPairing: { zh: '尚未配對 COM port', en: 'COM port not yet paired' },
   connectModalPairPort:     { zh: '配對 COM Port', en: 'Pair COM Port' },
+  connectAndroidTitle:       { zh: 'Android USB 直連', en: 'Android USB Direct' },
+  connectAndroidHint:        { zh: '此瀏覽器不支援 Web Serial API。請透過 USB OTG 連接裝置，再點下方按鈕授權。', en: 'Web Serial API not available. Connect the device via USB OTG cable, then tap below to authorize.' },
+  connectAndroidButton:      { zh: '選擇 USB 裝置', en: 'Select USB Device' },
+  connectAndroidConnecting:  { zh: '連線中…', en: 'Connecting…' },
+  connectAndroidNoUsb:       { zh: '此瀏覽器不支援 WebUSB，無法直連裝置。', en: 'WebUSB not supported — cannot connect on this browser.' },
   connectModalMismatchWarning: {
     zh: '⚠️ COM port 不符！\n選取的裝置是 {device}，但此 COM port 屬於序號 {port}。\n請選擇正確的 COM port。',
     en: '⚠️ COM port mismatch!\nSelected device is {device}, but this COM port belongs to serial {port}.\nPlease select the correct COM port.',

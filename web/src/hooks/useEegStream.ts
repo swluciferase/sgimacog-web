@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { SerialService } from '../services/serial';
 import type { DeviceStats, EegPacket, ImpedanceResult } from '../types/eeg';
+
+/** Minimal interface required by useEegStream — satisfied by both SerialService and FtdiUsbService. */
+export interface IDataSource {
+  drainBuffer(): Uint8Array[];
+}
 
 interface SteegParser {
   feed(data: Uint8Array): unknown;
@@ -34,7 +38,7 @@ type RawPacket = {
 };
 
 export function useEegStream(
-  serial: SerialService | null,
+  serial: IDataSource | null,
   parser: SteegParser | null,
   onParserError?: () => void,
 ): EegStreamState {

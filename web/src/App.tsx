@@ -14,6 +14,7 @@ import { useQualityMonitor } from './hooks/useQualityMonitor';
 import type { QualityConfig } from './hooks/useQualityMonitor';
 import { serialService } from './services/serial';
 import type { ConnectionStatus } from './services/serial';
+import { ftdiUsbService, type UsbDeviceLike } from './services/ftdiUsb';
 import { getAuthorizedFtdiDevices } from './services/ftdiScanner';
 import {
   registerConnected,
@@ -75,8 +76,10 @@ function App() {
   const [lang, setLang] = useState<Lang>('zh');
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  // Serial + parser (reactive refs drive useEegStream)
-  const [serial, setSerial] = useState<typeof serialService | null>(null);
+  // Active data source (SerialService or FtdiUsbService) — drives useEegStream
+  type AnyService = typeof serialService | typeof ftdiUsbService;
+  const [serial, setSerial] = useState<AnyService | null>(null);
+  const activeServiceRef = useRef<AnyService>(serialService);
   const [parser, setParser] = useState<SteegParser | null>(null);
 
   const [config] = useState<DeviceConfig>(DEFAULT_CONFIG);
@@ -154,22 +157,27 @@ function App() {
       setParser(new P(config.channels, config.sampleRate));
     }).catch(console.error);
 
-    serialService.onStatusChange = (s: ConnectionStatus) => {
-      setStatus(s);
-      if (s === 'connected') {
-        setSerial(serialService);
-        registerConnected(null);
-      } else if (s === 'disconnected' || s === 'error') {
-        setSerial(null);
-        setDeviceId(null);
-        deviceIdSeenRef.current = false;
-        expectedSerialRef.current = '';
-        registerDisconnected();
-      }
-    };
+    const onStatusChange = (svc: typeof serialService | typeof ftdiUsbService) =>
+      (s: ConnectionStatus) => {
+        setStatus(s);
+        if (s === 'connected') {
+          setSerial(svc);
+          registerConnected(null);
+        } else if (s === 'disconnected' || s === 'error') {
+          setSerial(null);
+          setDeviceId(null);
+          deviceIdSeenRef.current = false;
+          expectedSerialRef.current = '';
+          registerDisconnected();
+        }
+      };
+
+    serialService.onStatusChange = onStatusChange(serialService);
+    ftdiUsbService.onStatusChange = onStatusChange(ftdiUsbService);
 
     return () => {
       serialService.onStatusChange = () => {};
+      ftdiUsbService.onStatusChange = () => {};
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -293,13 +301,12 @@ function App() {
     if (status !== 'connected') return;
     const cmds = getCommands();
     if (!cmds) return;
+    const svc = activeServiceRef.current;
     const t = setTimeout(async () => {
       try {
-        // Request device ID — response arrives as machineInfo in next packet
-        await serialService.write(cmds.cmd_machine_info());
-        // Small gap before ADC on so device processes info request first
+        await svc.write(cmds.cmd_machine_info());
         await new Promise(r => setTimeout(r, 100));
-        await serialService.write(cmds.cmd_adc_on());
+        await svc.write(cmds.cmd_adc_on());
       } catch { /* ignore */ }
     }, 300);
     return () => clearTimeout(t);
@@ -312,19 +319,18 @@ function App() {
 
   const handleModalConnect = useCallback(async (
     port: SerialPort | null,
-    displayId?: string,   // productName as-is, e.g. "STEEG_DG085134"
-    usbSerial?: string,   // raw USB serialNumber, e.g. "AV0KHCQP" — for post-connect validation
+    displayId?: string,
+    usbSerial?: string,
   ) => {
     setShowConnectModal(false);
     if (!port) return;
+    activeServiceRef.current = serialService;
     if (displayId) {
-      // Use productName directly — it already contains the full identifier
       setDeviceId(displayId);
       deviceIdSeenRef.current = true;
       updateRegistrySteegId(displayId);
     }
     if (usbSerial) {
-      // Store for validation against machineInfo received after connection
       expectedSerialRef.current = usbSerial;
     }
     try {
@@ -334,14 +340,34 @@ function App() {
     }
   }, [config.baudRate]);
 
+  /** Android / WebUSB path: connect directly via raw FTDI USB driver */
+  const handleModalConnectUsb = useCallback(async (
+    device: UsbDeviceLike,
+    displayId: string,
+  ) => {
+    setShowConnectModal(false);
+    activeServiceRef.current = ftdiUsbService;
+    if (displayId) {
+      setDeviceId(displayId);
+      deviceIdSeenRef.current = true;
+      updateRegistrySteegId(displayId);
+    }
+    try {
+      await ftdiUsbService.connectToDevice(device, config.baudRate);
+    } catch (e) {
+      console.error('FTDI USB connect failed:', e);
+    }
+  }, [config.baudRate]);
+
   const handleDisconnect = useCallback(async () => {
+    const svc = activeServiceRef.current;
     try {
       if (impedanceModeActiveRef.current) {
         const cmds = getCommands();
-        if (cmds) await serialService.write(cmds.cmd_impedance_ac_off());
+        if (cmds) await svc.write(cmds.cmd_impedance_ac_off());
         impedanceModeActiveRef.current = false;
       }
-      await serialService.disconnect();
+      await svc.disconnect();
     } catch { /* ignore */ }
   }, [getCommands]);
 
@@ -585,6 +611,7 @@ function App() {
         <ConnectModal
           lang={lang}
           onConnect={(port, displayId, usbSerial) => handleModalConnect(port, displayId, usbSerial)}
+          onConnectUsb={(device, displayId) => handleModalConnectUsb(device, displayId)}
           onClose={() => setShowConnectModal(false)}
         />
       )}
