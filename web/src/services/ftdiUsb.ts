@@ -343,11 +343,18 @@ export function isWebUsbAvailableForFtdi(): boolean {
   return getUsbApi() !== null;
 }
 
+/** True when running on an Android device (user agent check). */
+export function isAndroidDevice(): boolean {
+  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+}
+
 /**
- * Returns true if the app is running without Web Serial API support.
- * On Android Chrome, only WebUSB is available — this is the preferred signal
- * to switch to the FTDI-USB direct mode.
+ * Returns true when WebUSB direct mode should be used instead of Web Serial.
+ * This covers:
+ *  - Browsers without Web Serial API at all, AND
+ *  - Android Chrome, which has navigator.serial but cannot access FTDI devices
+ *    through it (no kernel USB-serial driver on Android).
  */
 export function needsAndroidUsbMode(): boolean {
-  return !isWebSerialAvailable() && isWebUsbAvailableForFtdi();
+  return (isAndroidDevice() || !isWebSerialAvailable()) && isWebUsbAvailableForFtdi();
 }

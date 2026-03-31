@@ -75,9 +75,12 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onConnect
   const webUsbAvailable = isWebUsbAvailable();
 
   // Platform capability flags
-  const hasWebSerial = isWebSerialAvailable();
+  const isAndroid    = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+  // On Android, Web Serial API exists in newer Chrome but cannot access FTDI devices —
+  // always use the WebUSB direct path instead.
+  const hasWebSerial = isWebSerialAvailable() && !isAndroid;
   const hasWebUsb    = isWebUsbAvailableForFtdi();
-  // Android mode: show USB-direct section when Web Serial is absent
+  // Android mode: show USB-direct section when Web Serial is absent or on Android
   const [androidConnecting, setAndroidConnecting] = useState(false);
   const [androidError, setAndroidError] = useState<string | null>(null);
 
@@ -496,7 +499,7 @@ export const ConnectModal: FC<ConnectModalProps> = ({ lang, onConnect, onConnect
         )}
 
         {/* ── Android / WebUSB direct path ──────────────────────────── */}
-        {!hasWebSerial && (
+        {(!hasWebSerial || isAndroid) && (
           <div style={{
             marginTop: 4,
             padding: '16px 18px',
