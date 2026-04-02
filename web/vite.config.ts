@@ -7,7 +7,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: st
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/sgimacog-web/',
+  base: '/',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
