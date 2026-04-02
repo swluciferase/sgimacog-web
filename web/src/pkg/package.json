@@ -1,0 +1,15 @@
+{
+  "name": "steeg-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "steeg_wasm_bg.wasm",
+    "steeg_wasm.js",
+    "steeg_wasm.d.ts"
+  ],
+  "main": "steeg_wasm.js",
+  "types": "steeg_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
