@@ -96,6 +96,42 @@ export class SteegParser {
 if (Symbol.dispose) SteegParser.prototype[Symbol.dispose] = SteegParser.prototype.free;
 
 /**
+ * Analyse EEG samples and return a JSON result string.
+ *
+ * `samples_flat`: f32 slice, row-major layout `[sample_idx * 8 + channel_idx]`,
+ *   8 channels, values in µV.
+ * `age`: subject age in years.
+ *
+ * Returns a JSON string:
+ * ```json
+ * {
+ *   "indices":{"TBR":…,"APR":…,"FAA":…,"PAF":…,"RSA":…,"COH":…,"EnTP":…},
+ *   "tscores":{"TBR":…,…},
+ *   "capability":{"維度名":score,…},
+ *   "age":…, "cleanEpochs":…, "totalEpochs":…, "durationSec":…
+ * }
+ * ```
+ * On error: `{"error":"reason","age":…,"cleanEpochs":…,"totalEpochs":…,"durationSec":…}`
+ * @param {Float32Array} samples_flat
+ * @param {number} age
+ * @returns {string}
+ */
+export function analyze_eeg(samples_flat, age) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passArrayF32ToWasm0(samples_flat, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.analyze_eeg(ptr0, len0, age);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * Disable ADC (stop streaming raw EEG data).
  * @returns {Uint8Array}
  */
@@ -170,7 +206,9 @@ export function cmd_impedance_dc_on(code_set) {
 }
 
 /**
- * Request machine info (device serial number / product name). Code=0x2E.
+ * Request machine / device info from the device.
+ * Send this command after connecting; the response arrives as a TAG_COMMAND
+ * packet with `machineInfo` set to the device ID string (e.g. "STEEG_DG819452").
  * @returns {Uint8Array}
  */
 export function cmd_machine_info() {
@@ -322,6 +360,13 @@ function handleError(f, args) {
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+function passArrayF32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getFloat32ArrayMemory0().set(arg, ptr / 4);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }

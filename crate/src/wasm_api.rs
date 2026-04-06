@@ -313,3 +313,29 @@ pub fn cmd_start_acquisition() -> Box<[u8]> {
 pub fn cmd_stop_acquisition() -> Box<[u8]> {
     commands::cmd_adc_off().into_boxed_slice()
 }
+
+// ---------------------------------------------------------------------------
+// EEG Analysis
+// ---------------------------------------------------------------------------
+
+/// Analyse EEG samples and return a JSON result string.
+///
+/// `samples_flat`: f32 slice, row-major layout `[sample_idx * 8 + channel_idx]`,
+///   8 channels, values in µV.
+/// `age`: subject age in years.
+///
+/// Returns a JSON string:
+/// ```json
+/// {
+///   "indices":{"TBR":…,"APR":…,"FAA":…,"PAF":…,"RSA":…,"COH":…,"EnTP":…},
+///   "tscores":{"TBR":…,…},
+///   "capability":{"維度名":score,…},
+///   "age":…, "cleanEpochs":…, "totalEpochs":…, "durationSec":…
+/// }
+/// ```
+/// On error: `{"error":"reason","age":…,"cleanEpochs":…,"totalEpochs":…,"durationSec":…}`
+#[wasm_bindgen]
+pub fn analyze_eeg(samples_flat: &[f32], age: u32) -> String {
+    let result = crate::eeg_analysis::analyze_eeg_internal(samples_flat, age);
+    crate::eeg_analysis::result_to_json(&result)
+}

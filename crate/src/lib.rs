@@ -5,3 +5,5 @@ pub mod commands;
 pub mod impedance;
 pub mod impedance_monitor;
 pub mod wasm_api;
+pub mod eeg_analysis;
+pub mod capability;
