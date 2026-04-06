@@ -4,6 +4,8 @@
 
 | 版本 | Commit | 主要內容 |
 |------|--------|---------|
+| v0.5.8 | d09be38 | 能力指標演算法升級至 v2 Utility Score 轉換 |
+| v0.5.7 | 65de1d9 | EEG 分析管線與常模資料編譯入 WASM；PDF 報告新增五分層說明與能力條形圖 |
 | v0.5.5 | 647b775 | 讀取 CSV 報告加入 DOB 欄位、修正 resize 後波形游標偏移 |
 | v0.5.4 | 0793a3e | CCA whitening 矩陣 bug 修正、COH T 分數取整數 |
 | v0.5.3 | 9f08c09 | 移除 FFT 面板重複的 BP/Notch 控制項 |
@@ -17,6 +19,112 @@
 | v0.3.0 | 672717b | FTDI 掃描、掃描式波形、品質指標、阻抗 N/A、頁籤互斥 |
 | v0.2.0 | 6846196 | Header 顯示版本號 |
 | v0.1.x | 初始版本 | 初始提交、GitHub Pages 部署 |
+
+---
+
+## v0.5.8 — 2026-04-06
+
+### 能力指標演算法升級至 v2：Utility Score 轉換
+
+**背景：** v0.5.7 的能力指標使用線性 `adj(t) = 100 - t` 反轉，忽略了各指標的「最佳區間」特性——例如 TBR 不是越低越好（過低代表過度緊繃），PAF 適中才理想，並非越高越好。
+
+**核心改動（`capability.rs`、`reportPdf.ts`）：**
+
+每個 T 分數先透過 `utility_score()` 函式轉換為品質分數（0–100），再做加權合成：
+
+| 指標 | 模式 | 理想值 | 說明 |
+|------|------|--------|------|
+| TBR, RSA | `low_is_better` | ~30 | T<30 有輕微懲罰（過低亦非好），T>30 線性遞減 |
+| FAA, APR | `high_is_better` | ~70 | 線性上升至 70，超過 70 有懲罰（過高表示過激) |
+| PAF, COH, EnTP | `centered` | 50 | 高斯鐘形，σ=22，對稱衰減 |
+| COH_inv | `centered(100−COH)` | — | 創意/應變維度專用：COH 越低越有利 |
+
+**Utility score 公式：**
+```
+centered:       100 × exp(−(t−50)² / (2×22²))
+high_is_better: t≤70 → 100×(t/70)；t>70 → 100−(t−70)×1.5
+low_is_better:  t≥30 → 100×(1−(t−30)/70)；t<30 → 100−(30−t)×1.5
+```
+
+**capBar 修正：** 條形圖寬度除數從 99 改為 100（符合 utility score 0–100 範圍）。
+
+**版本：** crate `0.1.0 → 0.2.0`，web `0.5.7 → 0.5.8`
+
+---
+
+## v0.5.7 — 2026-04-06
+
+### EEG 分析管線與常模資料編譯入 WASM（IP 保護）
+
+**動機：** 原本分析演算法與常模資料全在 TypeScript 明文，任何人開啟 DevTools 均可複製。改為 Rust 編譯進 WASM binary，JS 層只剩薄薄的包裝器。
+
+**新增 Rust 模組：**
+
+#### `crate/src/eeg_analysis.rs`（全新，~650 行）
+
+完整 EEG 分析管線：
+
+| 步驟 | 實作 |
+|------|------|
+| 資料驗證 | 至少需 8 通道 × 3 秒（3003 樣本） |
+| Epoch 切割 | 2 秒非重疊窗（2002 樣本）× 8 通道 |
+| 偽影移除 | IQR 法：超出 1.5×IQR 的 epoch 捨棄（最多保留 80%） |
+| FFT | Cooley-Tukey 原地 FFT + Hann 窗 |
+| Band power | δ 1–4 Hz、θ 4–8 Hz、α1 8–10 Hz、α2 10–13 Hz、β1 13–20 Hz、β2 20–30 Hz |
+| IIR 濾波 | 2 階 Butterworth（50 Hz Notch 用 band-stop，帶通用串聯） |
+| 7 項指標 | TBR、APR、FAA、PAF、RSA、COH（頻譜相干）、EnTP（排列熵） |
+| T 分數 | 年齡分組常模，COH 特殊轉換 `√T × 10` |
+| 序列化 | 手動 `format!()` JSON，不使用 serde（減小 binary） |
+
+私有常模表（不對外公開）：
+```rust
+fn tbr_norm(age: u32) -> (f64, f64) { /* 依年齡分層 */ }
+fn coh_norm(age: u32) -> (f64, f64) { /* ... */ }
+// 全部 7 項指標各一組常模函式
+```
+
+#### `crate/src/capability.rs`（全新）
+
+8 大能力指標加權公式，依年齡分三組（學生 7–24、職場 25–64、樂齡 65+），4–6 歲回傳 `None`。
+
+**WASM API 新增（`wasm_api.rs`）：**
+```rust
+#[wasm_bindgen]
+pub fn analyze_eeg(samples_flat: &[f32], age: u32) -> String
+```
+輸入：`Float32Array`（row-major，`[sample × 8 + ch]`，µV）
+輸出 JSON：
+```json
+{
+  "indices": {"TBR":…, "APR":…, "FAA":…, "PAF":…, "RSA":…, "COH":…, "EnTP":…},
+  "tscores": {"TBR":…, …},
+  "capability": {"專注持久力":…, …},
+  "age":…, "cleanEpochs":…, "totalEpochs":…, "durationSec":…
+}
+```
+
+**TypeScript 端改寫（`eegReport.ts`）：**
+
+原本 500+ 行演算法全部移除，改為薄包裝器：
+```ts
+const jsonStr = wasmService.api.analyze_eeg(flat, age);
+return JSON.parse(jsonStr) as ReportResult;
+```
+`ReportResult` 新增 `capability: Record<string, number>` 欄位。
+
+**PDF 報告強化（`reportPdf.ts`）：**
+
+- 每項指標新增五分層詳細解說（`tiers: Record<Tier, string>`）
+- 8 大能力指標水平條形圖（綠/橘/紅依分數著色）
+- 原始值改為小數點後 2 位
+- 移除 T 分數五分層參照表
+- 能力指標備援：若 WASM 未提供，TS 端以同公式計算
+
+**架構異動（`lib.rs`）：**
+```rust
+pub mod eeg_analysis;
+pub mod capability;
+```
 
 ---
 
@@ -344,9 +452,12 @@ clearRegistry()               // 清除所有記錄
 
 ```
 sgimacog-web/
-├── crate/                    # Rust/WASM 解碼器
+├── crate/                    # Rust/WASM
 │   └── src/
-│       ├── lib.rs            # SteegParser (WASM 入口)
+│       ├── lib.rs            # 模組宣告
+│       ├── wasm_api.rs       # WASM 匯出（SteegParser、analyze_eeg 等）
+│       ├── eeg_analysis.rs   # EEG 分析管線 + 常模資料（編譯進 binary）
+│       ├── capability.rs     # 8 大能力指標公式
 │       └── impedance.rs      # 阻抗計算、品質分類
 └── web/                      # React + TypeScript 前端
     └── src/
@@ -428,4 +539,4 @@ FFT 2048 → 0.49 Hz/bin  （高解析度，需更多資料緩衝）
 
 ---
 
-*最後更新：2026-03-31*
+*最後更新：2026-04-06*
