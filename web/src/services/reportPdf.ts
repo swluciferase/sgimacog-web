@@ -163,10 +163,24 @@ const INDEX_META: IndexMeta[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Capability profile — exact formulas from RTF document
-// adj(t) = 100 - t  (reverse transform)
+// Capability profile — utility score transform (v2 algorithm)
 // ---------------------------------------------------------------------------
 interface CapDim { name: string; score: number }
+
+/** Map a T-score to a quality score 0–100 based on the indicator's mode. */
+function utilityScore(tRaw: number, mode: 'centered' | 'high' | 'low'): number {
+  const t = Math.max(0, Math.min(100, tRaw));
+  let q: number;
+  if (mode === 'centered') {
+    const sigma = 22;
+    q = 100 * Math.exp(-((t - 50) ** 2) / (2 * sigma * sigma));
+  } else if (mode === 'high') {
+    q = t > 70 ? 100 - (t - 70) * 1.5 : t > 0 ? 100 * (t / 70) : 0;
+  } else {
+    q = t < 30 ? 100 - (30 - t) * 1.5 : 100 * (1 - (t - 30) / 70);
+  }
+  return Math.max(0, q);
+}
 
 function capabilityProfile(
   ts: Record<string, number>,
@@ -174,43 +188,53 @@ function capabilityProfile(
 ): CapDim[] | null {
   if (age >= 4 && age <= 6) return null;
 
-  const adj = (t: number) => 100 - t;
-  const t = (k: string) => ts[k] ?? 50;
+  const raw = (k: string) => ts[k] ?? 50;
+  const q = {
+    TBR:     utilityScore(raw('TBR'),  'low'),
+    APR:     utilityScore(raw('APR'),  'high'),
+    FAA:     utilityScore(raw('FAA'),  'high'),
+    PAF:     utilityScore(raw('PAF'),  'centered'),
+    RSA:     utilityScore(raw('RSA'),  'low'),
+    COH:     utilityScore(raw('COH'),  'centered'),
+    EnTP:    utilityScore(raw('EnTP'), 'centered'),
+    COH_inv: utilityScore(100 - raw('COH'), 'centered'),
+  };
+  const r2 = (v: number) => Math.round(v * 100) / 100;
 
   if (age >= 7 && age <= 24) {
     return [
-      { name: '專注持久力', score: adj(t('TBR'))*0.7 + t('COH')*0.3 },
-      { name: '學習敏捷度', score: t('PAF')*0.6  + t('EnTP')*0.4 },
-      { name: '邏輯整合力', score: t('COH')*0.6  + t('PAF')*0.4 },
-      { name: '創意發散力', score: t('EnTP')*0.7 + adj(t('COH'))*0.3 },
-      { name: '情緒穩定性', score: t('FAA')*0.5  + t('APR')*0.5 },
-      { name: '社交適應力', score: t('FAA')*0.6  + t('EnTP')*0.4 },
-      { name: '考試抗壓力', score: t('APR')*0.7  + adj(t('TBR'))*0.3 },
-      { name: '心智續航力', score: adj(t('RSA'))*0.6 + t('PAF')*0.4 },
+      { name: '專注持久力', score: r2(q.TBR*0.7  + q.COH*0.3) },
+      { name: '學習敏捷度', score: r2(q.PAF*0.6  + q.EnTP*0.4) },
+      { name: '邏輯整合力', score: r2(q.COH*0.6  + q.PAF*0.4) },
+      { name: '創意發散力', score: r2(q.EnTP*0.7 + q.COH_inv*0.3) },
+      { name: '情緒穩定性', score: r2(q.FAA*0.5  + q.APR*0.5) },
+      { name: '社交適應力', score: r2(q.FAA*0.6  + q.EnTP*0.4) },
+      { name: '考試抗壓力', score: r2(q.APR*0.7  + q.TBR*0.3) },
+      { name: '心智續航力', score: r2(q.RSA*0.6  + q.PAF*0.4) },
     ];
   }
   if (age >= 25 && age <= 64) {
     return [
-      { name: '職場執行力', score: adj(t('TBR'))*0.6 + t('PAF')*0.4 },
-      { name: '決策判斷力', score: t('FAA')*0.4  + t('COH')*0.6 },
-      { name: '情緒情商',   score: t('FAA')*0.7  + t('EnTP')*0.3 },
-      { name: '應變靈活性', score: t('EnTP')*0.6 + adj(t('COH'))*0.4 },
-      { name: '壓力復原力', score: t('APR')*0.6  + adj(t('RSA'))*0.4 },
-      { name: '系統思考力', score: t('COH')*0.7  + t('PAF')*0.3 },
-      { name: '溝通影響力', score: t('FAA')*0.6  + adj(t('TBR'))*0.4 },
-      { name: '職業續航力', score: adj(t('RSA'))*0.5 + t('APR')*0.5 },
+      { name: '職場執行力', score: r2(q.TBR*0.6  + q.PAF*0.4) },
+      { name: '決策判斷力', score: r2(q.FAA*0.4  + q.COH*0.6) },
+      { name: '情緒情商',   score: r2(q.FAA*0.7  + q.EnTP*0.3) },
+      { name: '應變靈活性', score: r2(q.EnTP*0.6 + q.COH_inv*0.4) },
+      { name: '壓力復原力', score: r2(q.APR*0.6  + q.RSA*0.4) },
+      { name: '系統思考力', score: r2(q.COH*0.7  + q.PAF*0.3) },
+      { name: '溝通影響力', score: r2(q.FAA*0.6  + q.TBR*0.4) },
+      { name: '職業續航力', score: r2(q.RSA*0.5  + q.APR*0.5) },
     ];
   }
   // age >= 65
   return [
-    { name: '認知敏銳度', score: t('PAF')*0.5  + adj(t('RSA'))*0.5 },
-    { name: '記憶連結力', score: adj(t('RSA'))*0.6 + t('COH')*0.4 },
-    { name: '情緒平和度', score: t('FAA')*0.4  + t('APR')*0.6 },
-    { name: '生活應變力', score: t('EnTP')*0.7 + adj(t('COH'))*0.3 },
-    { name: '睡眠修復力', score: t('APR')*0.6  + adj(t('TBR'))*0.4 },
-    { name: '社交參與度', score: t('FAA')*0.6  + t('EnTP')*0.4 },
-    { name: '感覺整合力', score: t('COH')*0.5  + t('PAF')*0.5 },
-    { name: '心智活力度', score: t('EnTP')*0.6 + adj(t('RSA'))*0.4 },
+    { name: '認知敏銳度', score: r2(q.PAF*0.5  + q.RSA*0.5) },
+    { name: '記憶連結力', score: r2(q.RSA*0.6  + q.COH*0.4) },
+    { name: '情緒平和度', score: r2(q.FAA*0.4  + q.APR*0.6) },
+    { name: '生活應變力', score: r2(q.EnTP*0.7 + q.COH_inv*0.3) },
+    { name: '睡眠修復力', score: r2(q.APR*0.6  + q.TBR*0.4) },
+    { name: '社交參與度', score: r2(q.FAA*0.6  + q.EnTP*0.4) },
+    { name: '感覺整合力', score: r2(q.COH*0.5  + q.PAF*0.5) },
+    { name: '心智活力度', score: r2(q.EnTP*0.6 + q.RSA*0.4) },
   ];
 }
 
@@ -250,7 +274,7 @@ function tBar(doc: jsPDF, x: number, y: number, totalW: number, h: number, tScor
 // Capability horizontal bar
 function capBar(doc: jsPDF, x: number, y: number, w: number, h: number, score: number) {
   rect(doc, x, y, w, h, [12, 24, 42]);
-  const pct = Math.min(1, score / 99);
+  const pct = Math.min(1, score / 100);
   const fillW = Math.max(0.5, w * pct);
   let color: [number,number,number];
   if (score >= 65) color = [5, 150, 105];
