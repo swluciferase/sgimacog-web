@@ -167,7 +167,7 @@ export const RecordView: FC<RecordViewProps> = ({
         setReportStatus('error');
         return;
       }
-      generateReportPdf(result, subjectInfo, startTime, deviceId);
+      await generateReportPdf(result, subjectInfo, startTime, deviceId);
       setReportStatus('done');
     } catch (err) {
       console.error('Report generation error:', err);
@@ -202,7 +202,7 @@ export const RecordView: FC<RecordViewProps> = ({
       }
       // Build a synthetic SubjectInfo with whatever the CSV has (deviceId from file)
       const fileSubject = { ...subjectInfo };
-      generateReportPdf(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+      await generateReportPdf(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
       setFileStatus('done');
       setFileStatusMsg(
         `${T(lang, 'recordFromFileSamples')}: ${parsed.samples.length.toLocaleString()}  |  ${T(lang, 'recordFromFileDuration')}: ${Math.floor(dur / 60)}m ${Math.floor(dur % 60)}s`,

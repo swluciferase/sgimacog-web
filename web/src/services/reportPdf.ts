@@ -4,8 +4,11 @@
  */
 
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 import type { BrainIndices, ReportResult } from './eegReport';
 import type { SubjectInfo } from '../types/eeg';
+
+const REPORT_API = 'https://www.sigmacog.xyz/api/report';
 
 // ---------------------------------------------------------------------------
 // Colour palette
@@ -299,12 +302,12 @@ function ensureSpace(doc: jsPDF, y: number, needed: number, PH: number, ML: numb
 // Main PDF builder
 // ---------------------------------------------------------------------------
 
-export function generateReportPdf(
+export async function generateReportPdf(
   result: ReportResult,
   subject: SubjectInfo,
   startTime: Date | null,
   deviceId: string | null,
-): void {
+): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = 210;
   const PH = 297;
@@ -569,6 +572,66 @@ export function generateReportPdf(
       '僅供研究用途，非醫療診斷設備。結果需結合專業臨床判斷。For research use only. Not a medical device.',
       PW / 2, PH - 4, { align: 'center' },
     );
+  }
+
+  // ── Upload PDF → get share URL → add QR last page ────────────
+  try {
+    const pdfBytes = doc.output('arraybuffer');
+    const resp = await fetch(REPORT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: pdfBytes,
+    });
+    if (resp.ok) {
+      const { url } = await resp.json() as { url: string };
+      const qrDataUrl = await QRCode.toDataURL(url, {
+        width: 300,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+
+      // Add a dedicated QR page at the end
+      doc.addPage();
+      rect(doc, 0, 0, PW, PH, C.bg);
+      // Header strip
+      rect(doc, 0, 0, PW, 18, C.headerBg);
+      rect(doc, 0, 16, PW, 2, C.accent);
+      setFont(doc, 11, 'bold', C.white);
+      doc.text('掃描 QR Code 下載此報告', PW / 2, 10, { align: 'center' });
+      setFont(doc, 7, 'normal', C.subtext);
+      doc.text('Scan QR Code to download this report on your phone', PW / 2, 15, { align: 'center' });
+
+      // QR image — centered, 80 × 80 mm
+      const qrSize = 80;
+      const qrX = (PW - qrSize) / 2;
+      const qrY = 35;
+      rect(doc, qrX - 4, qrY - 4, qrSize + 8, qrSize + 8, C.white);
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+      // Instructions
+      setFont(doc, 9, 'bold', C.accent);
+      doc.text('使用手機相機或 QR 掃描 App 掃描上方 QR Code', PW / 2, qrY + qrSize + 14, { align: 'center' });
+      setFont(doc, 8, 'normal', C.subtext);
+      doc.text('Use your phone camera or QR scanner app to scan the code above', PW / 2, qrY + qrSize + 21, { align: 'center' });
+
+      // URL text
+      setFont(doc, 6.5, 'normal', C.subtext);
+      doc.text(url, PW / 2, qrY + qrSize + 30, { align: 'center' });
+
+      // Expiry notice
+      setFont(doc, 7.5, 'bold', C.warn);
+      doc.text('此連結 48 小時後失效 · Link expires in 48 hours', PW / 2, qrY + qrSize + 38, { align: 'center' });
+
+      // Footer on QR page
+      rect(doc, 0, PH - 10, PW, 10, C.headerBg);
+      setFont(doc, 7, 'normal', C.subtext);
+      doc.text(
+        '僅供研究用途，非醫療診斷設備。For research use only. Not a medical device.',
+        PW / 2, PH - 4, { align: 'center' },
+      );
+    }
+  } catch (_e) {
+    // Upload failed — skip QR page, save PDF as-is
   }
 
   // ── Save ──────────────────────────────────────────────────────
