@@ -299,7 +299,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               </p>
               <div className="border-t border-slate-200 pt-6">
                 <p className="text-sm text-slate-500 leading-[2]">
-                  <span className="font-bold text-slate-600">🤖 AI 生成聲明：</span>本報告由人工智能（AI）系統根據腦電波量測數據自動分析生成。報告中的指標解讀、能力剖析及調整建議均由演算法計算產出，並非由人工專業人員撰寫。AI 系統之判讀結果存在一定局限性，不能替代具備資質的腦健康顧問或神經科學專業人員的個別評估。
+                  <span className="font-bold text-slate-600">🤖 AI 生成聲明：</span>本報告由經專業訓練的人工智能（AI）系統根據腦電波量測結果搭配大數據資料庫自動分析生成。報告中的指標解讀、能力剖析及調整建議由演算法計算產出。
                 </p>
               </div>
             </div>
