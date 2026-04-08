@@ -162,8 +162,8 @@ const CAP_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> 
 // ---------------------------------------------------------------------------
 interface ReportProps {
   subjectInfo: {
-    id: string; name: string; age: string;
-    recordingDate: string; quality: string; device: string; generatedDate: string;
+    reportId: string; id: string; name: string; age: string; sex: string;
+    recordingDate: string; quality: string; generatedDate: string;
   };
   brainIndices: Array<{
     id: string; name: string; value: string; tScore: number;
@@ -189,12 +189,11 @@ const EegReportTemplate: React.FC<ReportProps> = ({
     ? `儘管部分指標需要關注，你的 ${summary.goodNames.map(n => `${n}`).join(' 與 ')} 仍維持在正常水平，顯示認知潛力與情緒穩定性具備良好基礎。`
     : '整體指標表現均衡，展現出穩定的認知與情緒調節能力。';
 
-  const rppgStressLevel = rppg?.si != null
-    ? (rppg.si > 150 ? '高' : rppg.si > 50 ? '中等' : '低')
-    : '--';
-  const rppgHR   = rppg?.hr   != null ? `${rppg.hr} BPM` : '--';
-  const rppgFatigue = rppg?.rmssd != null
-    ? (rppg.rmssd < 20 ? '高' : rppg.rmssd < 40 ? '中等' : '低')
+  const rppgHR = rppg?.hr   != null ? `${rppg.hr} BPM` : '--';
+  const rppgBP = (rppg?.sbp != null && rppg?.dbp != null) ? `${rppg.sbp}/${rppg.dbp}` : '--';
+  const rppgSI = rppg?.si   != null ? rppg.si.toFixed(1) : '--';
+  const rppgFI = rppg?.rmssd != null
+    ? (rppg.rmssd < 20 ? '高疲勞' : rppg.rmssd < 40 ? '中等' : '良好')
     : '--';
 
   return (
@@ -213,111 +212,166 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         {/* === PAGE 1: COVER & OVERVIEW === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break">
           {/* Header */}
-          <div className="flex justify-between items-start border-b-2 border-indigo-900 pb-6 mb-8">
-            <div className="flex flex-col gap-1">
+          <div className="flex justify-between items-center border-b-2 border-indigo-900 pb-5 mb-8">
+            <div className="flex items-center gap-4" style={{ height: '40px' }}>
               <img src={LOGO_SRC} alt="SigmaCog" style={{ height: '40px', width: 'auto' }} />
-              <span className="text-[10px] tracking-[0.1em] text-indigo-500 font-bold">全年齡的腦力指南</span>
+              <span className="text-sm font-bold text-indigo-600" style={{ lineHeight: '40px' }}>全年齡的腦力指南</span>
             </div>
             <div className="text-right text-xs text-slate-500">
-              <p>報告編號: {subjectInfo.id}</p>
+              <p>報告編號: {subjectInfo.reportId}</p>
               <p>產出日期: {subjectInfo.generatedDate}</p>
             </div>
           </div>
 
-          <h1 className="text-4xl font-black text-slate-800 mb-4">腦健康評估報告</h1>
-          <p className="text-slate-500 text-sm mb-12">Brain Health Assessment &amp; Intervention Guidance</p>
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-black text-slate-800 mb-2">腦健康評估報告</h1>
+            <p className="text-slate-500 text-sm">Brain Health Assessment &amp; Intervention Guidance</p>
+          </div>
 
-          {/* Subject Info Table */}
-          <div className="grid grid-cols-2 gap-4 mb-12">
-            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-              <h3 className="text-indigo-900 font-bold text-sm mb-4 flex items-center gap-2">
-                <User className="w-4 h-4" /> 基本資料 Subject Info
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-slate-200 pb-1">
-                  <span className="text-slate-500">受測 ID</span>
-                  <span className="font-bold text-slate-800">{subjectInfo.id}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 pb-1">
-                  <span className="text-slate-500">生理年齡</span>
-                  <span className="font-bold text-slate-800">{subjectInfo.age}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 pb-1">
-                  <span className="text-slate-500">量測裝置</span>
-                  <span className="font-bold text-slate-800">{subjectInfo.device}</span>
-                </div>
+          {/* Subject Info */}
+          <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 mb-8">
+            <h3 className="text-indigo-900 font-bold text-sm mb-4 flex items-center gap-2">
+              <User className="w-4 h-4" /> 基本資料 Subject Info
+            </h3>
+            <div className="grid grid-cols-4 gap-6 text-sm">
+              <div>
+                <p className="text-slate-400 text-xs mb-1">受測者 ID</p>
+                <p className="font-bold text-slate-800">{subjectInfo.id || '—'}</p>
               </div>
-            </div>
-            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-              <h3 className="text-indigo-900 font-bold text-sm mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4" /> 量測品質 Recording
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-slate-200 pb-1">
-                  <span className="text-slate-500">量測時間</span>
-                  <span className="font-bold text-slate-800">{subjectInfo.recordingDate}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 pb-1">
-                  <span className="text-slate-500">數據品質</span>
-                  <span className="font-bold text-emerald-600">{subjectInfo.quality}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-200 pb-1">
-                  <span className="text-slate-500">評估類型</span>
-                  <span className="font-bold text-slate-800">靜態閉眼 (EC)</span>
-                </div>
+              <div>
+                <p className="text-slate-400 text-xs mb-1">姓名</p>
+                <p className="font-bold text-slate-800">{subjectInfo.name}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-xs mb-1">生理年齡</p>
+                <p className="font-bold text-slate-800">{subjectInfo.age}</p>
+              </div>
+              <div>
+                <p className="text-slate-400 text-xs mb-1">性別</p>
+                <p className="font-bold text-slate-800">{subjectInfo.sex}</p>
               </div>
             </div>
           </div>
 
           {/* Summary Section */}
-          <div className="mb-12">
-            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-slate-800 mb-5 flex items-center gap-2">
               <ClipboardCheck className="text-indigo-600" /> 核心評估摘要 Executive Summary
             </h3>
             <div className="grid grid-cols-1 gap-4">
-              <div className="p-6 rounded-3xl bg-red-50 border border-red-100">
-                <div className="flex items-center gap-3 mb-3 text-red-700 font-bold">
-                  <Zap className="w-5 h-5" /> 大腦激活程度與壓力反應
+              <div className="p-5 rounded-3xl bg-red-50 border border-red-100">
+                <div className="flex items-center gap-3 mb-2 text-red-700 font-bold text-sm">
+                  <Zap className="w-4 h-4" /> 大腦激活程度與壓力反應
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed">{abnormalText}</p>
               </div>
-              <div className="p-6 rounded-3xl bg-indigo-50 border border-indigo-100">
-                <div className="flex items-center gap-3 mb-3 text-indigo-700 font-bold">
-                  <ShieldCheck className="w-5 h-5" /> 良好的認知潛力與情緒穩定性
+              <div className="p-5 rounded-3xl bg-indigo-50 border border-indigo-100">
+                <div className="flex items-center gap-3 mb-2 text-indigo-700 font-bold text-sm">
+                  <ShieldCheck className="w-4 h-4" /> 良好的認知潛力與情緒穩定性
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed">{goodText}</p>
               </div>
             </div>
           </div>
 
-          {/* FaceAI Snapshot (rPPG) */}
+          {/* VisioMynd powered by FaceAI */}
           <div>
-            <h3 className="text-xl font-bold text-slate-800 mb-6">生理健康快照 FaceAI Health</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <h3 className="text-xl font-bold text-slate-800 mb-5 flex items-baseline gap-2">
+              生理健康快照 — VisioMynd
+              <span className="text-xs font-normal text-slate-400">powered by FaceAI</span>
+            </h3>
+            <div className="grid grid-cols-4 gap-3">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                <Heart className="w-5 h-5 text-red-500 mx-auto mb-2" />
-                <p className="text-[10px] text-slate-500 uppercase">壓力指數</p>
-                <p className="font-bold text-red-600 text-lg">{rppgStressLevel}</p>
+                <Activity className="w-5 h-5 text-red-500 mx-auto mb-1" />
+                <p className="text-[9px] text-slate-500 uppercase font-bold">HR 心率</p>
+                <p className="font-bold text-slate-800 text-base mt-1">{rppgHR}</p>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                <Activity className="w-5 h-5 text-indigo-500 mx-auto mb-2" />
-                <p className="text-[10px] text-slate-500 uppercase">心跳</p>
-                <p className="font-bold text-slate-800 text-lg">{rppgHR}</p>
+                <Heart className="w-5 h-5 text-indigo-500 mx-auto mb-1" />
+                <p className="text-[9px] text-slate-500 uppercase font-bold">BP 血壓</p>
+                <p className="font-bold text-slate-800 text-base mt-1">{rppgBP}</p>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                <Clock className="w-5 h-5 text-amber-500 mx-auto mb-2" />
-                <p className="text-[10px] text-slate-500 uppercase">疲勞指數</p>
-                <p className="font-bold text-slate-800 text-lg">{rppgFatigue}</p>
+                <Zap className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                <p className="text-[9px] text-slate-500 uppercase font-bold">SI 壓力指數</p>
+                <p className="font-bold text-slate-800 text-base mt-1">{rppgSI}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                <Clock className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
+                <p className="text-[9px] text-slate-500 uppercase font-bold">FI 疲勞指數</p>
+                <p className="font-bold text-slate-800 text-base mt-1">{rppgFI}</p>
               </div>
             </div>
           </div>
 
           <div className="mt-auto text-center text-[10px] text-slate-400">
-            1/3 - SIGMACOG Brain Health Assessment Report
+            1/4 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
-        {/* === PAGE 2: BRAIN INDICES DETAILS === */}
+        {/* === PAGE 2: EEG BACKGROUND KNOWLEDGE === */}
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break">
+          <h2 className="text-2xl font-black text-slate-800 mb-6 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
+
+          <div className="space-y-4 text-sm text-slate-600 leading-relaxed mb-6">
+            <p>腦科學是一門研究大腦及其功能的科學，涵蓋從分子層面到行為層面的各種研究。大腦是人體最複雜的器官之一，負責控制思維、情感、行為和生理功能。隨著年齡的增長，大腦的功能可能逐漸衰退，通過科學的方法和技術，我們可以監測和評估大腦的健康狀況，並採取相應措施保持最佳狀態。</p>
+            <p>腦波是大腦活動的電信號，可通過腦電圖（EEG）測量。腦波的頻率和振幅反映大腦的不同狀態，例如清醒、睡眠、專注等。每次量測後，系統會生成詳細的腦部健康報告，包括腦波數據的分析結果、健康評估及建議改善措施。</p>
+          </div>
+
+          {/* Brainwave Types Table */}
+          <h3 className="text-base font-bold text-indigo-900 mb-3">腦波類型及其在不同狀態下的表現</h3>
+          <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200">
+            <table className="w-full text-xs">
+              <thead className="bg-indigo-900 text-white">
+                <tr>
+                  <th className="p-3 text-left">波型</th>
+                  <th className="p-3 text-left">頻率</th>
+                  <th className="p-3 text-left">主要狀態</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Delta (δ)', '0.5–4 Hz', '深度睡眠、完全放鬆與恢復'],
+                  ['Theta (θ)', '4–8 Hz', '淺睡眠、冥想、潛意識活動與創造力'],
+                  ['Alpha (α)', '8–13 Hz', '清醒放鬆（閉眼休息或冥想）、減壓促進放鬆'],
+                  ['Beta (β)', '13–30 Hz', '清醒、專注、邏輯思維與問題解決'],
+                  ['Gamma (γ)', '30–100 Hz', '高級認知功能、學習、記憶與意識'],
+                ].map(([name, freq, desc], i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
+                    <td className="p-3 font-bold text-indigo-800">{name}</td>
+                    <td className="p-3 text-slate-500">{freq}</td>
+                    <td className="p-3 text-slate-600">{desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Indicator Descriptions */}
+          <h3 className="text-base font-bold text-indigo-900 mb-3">七大腦健康評估指標介紹</h3>
+          <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
+            {[
+              ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
+              ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波功率不對稱性，與情緒狀態及心理健康相關，可識別早期情緒困難或抑鬱風險。'],
+              ['APR（Relative Alpha Ratio）', 'Alpha 波相對功率變化，反映孩童不同發展階段的腦部功能狀態，高值與放鬆相關，低值與專注有關。'],
+              ['PAF（Peak Alpha Frequency）', 'Alpha 波頻譜中最高功率密度的特定頻率，與大腦認知發展、功能成熟及神經元活動有關。'],
+              ['RSA（Resting State Alpha）', '靜態腦波中 α 波功率變化，閉眼時 α 波功率通常增加，廣泛應用於睡眠、注意力及認知功能研究。'],
+              ['COH（Cognitive Coherence）', '腦區之間腦電波活動的同步性，反映不同腦區的功能連接性。兒童年齡增長時，同調性通常會增加。'],
+              ['EnTP（EEG Entropy）', '評估大腦活動的複雜性。熵值越高代表信息處理能力越強；隨兒童年齡增長通常會增加。'],
+            ].map(([title, desc], i) => (
+              <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-indigo-800 mb-1">{title}</p>
+                <p>{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-auto text-center text-[10px] text-slate-400">
+            2/4 - SIGMACOG Brain Health Assessment Report
+          </div>
+        </div>
+
+        {/* === PAGE 3: BRAIN INDICES DETAILS === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break">
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">七大腦波指標深度解析</h2>
 
@@ -364,11 +418,11 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           <div className="mt-auto text-center text-[10px] text-slate-400">
-            2/3 - SIGMACOG Brain Health Assessment Report
+            3/4 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
-        {/* === PAGE 3: CAPABILITY & ADVICE === */}
+        {/* === PAGE 4: CAPABILITY & ADVICE & REFERENCES === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col">
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">能力剖析與調整方案</h2>
 
@@ -453,22 +507,45 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-slate-200 pt-8 mt-auto">
+          {/* References */}
+          <div className="mt-8 border-t border-slate-200 pt-6">
+            <h4 className="text-xs font-bold text-slate-600 mb-3">參考文獻 References</h4>
+            <ol className="text-[9px] text-slate-500 leading-relaxed space-y-1 list-decimal list-inside">
+              {[
+                'Clarke AR et al. Electroencephalogram differences in two subtypes of ADHD. Psychophysiology. 2001;38(2):212-21.',
+                'Clarke AR et al. EEG-defined subtypes of children with ADHD. Clin Neurophysiol. 2001;112(11):2098-105.',
+                'Barry RJ et al. A review of electrophysiology in ADHD: I. Qualitative and quantitative EEG. Clin Neurophysiol. 2003;114(2):171-83.',
+                'Monastra VJ et al. Assessing ADHD via quantitative EEG: an initial validation study. Neuropsychology. 1999;13(3):424-433.',
+                'Monastra VJ et al. Effects of stimulant therapy, EEG biofeedback, and parenting style on primary symptoms of ADHD. Appl Psychophysiol Biofeedback. 2002;27(4):231-49.',
+                'Loo SK, Barkley RA. Clinical utility of EEG in ADHD. Appl Neuropsychol. 2005;12(2):64-76.',
+                'Marshall PJ et al. Development of the EEG from 5 months to 4 years of age. Clin Neurophysiol. 2002;113(8):1199-208.',
+                'Bazanova OM, Vernon D. Interpreting EEG alpha activity. Neurosci Biobehav Rev. 2014;44:94-110.',
+                'Benedek M et al. EEG alpha synchronization is related to top-down processing in convergent and divergent thinking. Neuropsychologia. 2011;49(12):3505-11.',
+                'Forbes EE et al. Children\'s affect expression and frontal EEG asymmetry. J Abnorm Child Psychol. 2008;36(2):207-21.',
+                'Stewart JL et al. Frontal EEG asymmetry during emotional challenge differentiates individuals with and without lifetime MDD. J Affect Disord. 2011;129(1-3):167-74.',
+                'Thatcher RW et al. Development of cortical connections as measured by EEG coherence and phase delays. Hum Brain Mapp. 2008;29(12):1400-15.',
+                'Barry RJ et al. EEG coherence in children with ADHD and comorbid oppositional defiant disorder. Clin Neurophysiol. 2007;118(2):356-62.',
+                'Niedermeyer E, da Silva FL. Electroencephalography: Basic Principles, Clinical Applications, and Related Fields. Lippincott Williams & Wilkins; 2004.',
+              ].map((ref, i) => <li key={i}>{ref}</li>)}
+            </ol>
+          </div>
+
+          <div className="border-t border-slate-200 pt-4 mt-6">
             <div className="flex items-start gap-6">
-              <p className="text-[10px] text-slate-400 leading-relaxed flex-1">
+              <p className="text-[9px] text-slate-400 leading-relaxed flex-1">
                 聲明：本報告僅供個人健康參考，不具醫療診斷效力。若你有身心不適，請諮詢合格醫療人員。所有營養補充劑與花精使用建議請先諮詢專業人員。
               </p>
               {qrCodeDataUrl && (
                 <div className="flex-shrink-0 text-center">
-                  <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '72px', height: '72px' }} />
+                  <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '64px', height: '64px' }} />
                   <p className="text-[8px] text-slate-400 mt-1">掃描下載此報告</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-4 text-center text-[10px] text-slate-400">
-            3/3 - SIGMACOG Brain Health Assessment Report
+          <div className="mt-3 text-center text-[10px] text-slate-400">
+            4/4 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
@@ -546,27 +623,32 @@ function buildReportProps(
       color: CAP_COLORS[i % CAP_COLORS.length]!,
     }));
 
-  // Top supplements & flowers from worst 2 abnormal indicators
-  const worstTwo = abnormal.slice(0, 2);
-  const topSupps: { name: string; desc: string }[] = [];
+  // Top supplements & flowers — collect from ALL abnormal indicators, deduplicate by name
+  const seenSupps   = new Set<string>();
+  const seenFlowers = new Set<string>();
+  const topSupps:   { name: string; desc: string }[] = [];
   const topFlowers: { name: string; desc: string }[] = [];
 
-  worstTwo.forEach(idx => {
+  abnormal.forEach(idx => {
     const dir = (idx.tScore < 30 || getTier(idx.tScore) === 'vlow') ? 'low' : 'high';
     const recs = RECS[idx.id]?.[dir];
     if (recs) {
-      recs.supps.slice(0, 2).forEach(s => {
-        if (topSupps.length < 4) {
-          const [name, ...rest] = s.split(' ');
-          topSupps.push({ name: name ?? s, desc: rest.join(' ') || '依建議劑量服用' });
+      recs.supps.forEach(s => {
+        const [name, ...rest] = s.split(' ');
+        const key = name ?? s;
+        if (!seenSupps.has(key) && topSupps.length < 6) {
+          seenSupps.add(key);
+          topSupps.push({ name: key, desc: rest.join(' ') || '依建議劑量服用' });
         }
       });
-      recs.flowers.slice(0, 2).forEach(f => {
-        if (topFlowers.length < 4) {
-          const paren = f.indexOf('（');
+      recs.flowers.forEach(f => {
+        const paren = f.indexOf('（');
+        const key   = paren > 0 ? f.slice(0, paren) : f;
+        if (!seenFlowers.has(key) && topFlowers.length < 6) {
+          seenFlowers.add(key);
           topFlowers.push({
-            name:  paren > 0 ? f.slice(0, paren) : f,
-            desc:  paren > 0 ? f.slice(paren + 1).replace('）', '') : '情緒調節',
+            name: key,
+            desc: paren > 0 ? f.slice(paren + 1).replace('）', '') : '情緒調節',
           });
         }
       });
@@ -577,16 +659,23 @@ function buildReportProps(
   if (topSupps.length === 0)   topSupps.push({ name: 'Omega-3 EPA/DHA', desc: '維持神經膜健康，每日 1–2 g' });
   if (topFlowers.length === 0) topFlowers.push({ name: 'Rescue Remedy', desc: '日常情緒平衡維護' });
 
+  // Auto-generate report ID: RPT-YYYYMMDD-XXXX
+  const rptDate = `${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}`;
+  const rptRnd  = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const reportId = `RPT-${rptDate}-${rptRnd}`;
+
+  const sexLabel = subject.sex === 'M' ? '男' : subject.sex === 'F' ? '女' : subject.sex === 'Other' ? '其他' : '—';
   const quality = `${Math.round((result.cleanEpochs / Math.max(1, result.totalEpochs)) * 100)}%`;
 
   return {
     subjectInfo: {
+      reportId,
       id:            subject.id  || '—',
-      name:          subject.name || '受測者',
-      age:           `${result.age} years`,
+      name:          subject.name || '—',
+      age:           `${result.age} 歲`,
+      sex:           sexLabel,
       recordingDate: `${rec.getFullYear()}/${pad2(rec.getMonth()+1)}/${pad2(rec.getDate())} ${pad2(rec.getHours())}:${pad2(rec.getMinutes())}:${pad2(rec.getSeconds())}`,
       quality,
-      device:        deviceId || 'STEEG',
       generatedDate: `${now.getFullYear()}/${pad2(now.getMonth()+1)}/${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`,
     },
     brainIndices,
