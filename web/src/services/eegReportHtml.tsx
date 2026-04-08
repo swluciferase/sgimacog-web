@@ -175,6 +175,7 @@ interface ReportProps {
   }>;
   capabilityProfile: Array<{ label: string; value: number; color: string }>;
   ageGroupLabel: string;
+  ageNotApplicable: boolean;
   summary: { abnormalNames: string[]; goodNames: string[] };
   topSupps: { name: string; desc: string }[];
   topFlowers: { name: string; desc: string }[];
@@ -183,7 +184,7 @@ interface ReportProps {
 }
 
 const EegReportTemplate: React.FC<ReportProps> = ({
-  subjectInfo, brainIndices, capabilityProfile, ageGroupLabel, summary, topSupps, topFlowers, rppg, qrCodeDataUrl,
+  subjectInfo, brainIndices, capabilityProfile, ageGroupLabel, ageNotApplicable, summary, topSupps, topFlowers, rppg, qrCodeDataUrl,
 }) => {
   const abnormalText = summary.abnormalNames.length > 0
     ? `你的 ${summary.abnormalNames.map(n => `${n}`).join(' 與 ')} 指標落入異常區間。這連帶反映大腦在激活與調節上存在不平衡，需要特別關注。`
@@ -422,23 +423,46 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
               <TrendingUp className="text-emerald-500" /> {ageGroupLabel || '能力面向剖析'}
             </h3>
-            <div className="grid grid-cols-1 gap-4">
-              {capabilityProfile.map((cap, i) => {
-                const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
-                return (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="w-24 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
-                      <IconComp className="w-3 h-3" />
-                      {cap.label}
+            {ageNotApplicable ? (
+              <>
+                <div className="mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                  ⚠️ 受測者年齡未滿 7 歲，能力指標計算不適用於此年齡層，以下僅列示評估向度供參考。
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {capabilityProfile.map((cap, i) => {
+                    const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
+                    return (
+                      <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="w-24 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
+                          <IconComp className="w-3 h-3" />
+                          {cap.label}
+                        </div>
+                        <div className="flex-grow h-4 bg-slate-100 rounded-full overflow-hidden" />
+                        <div className="w-12 text-xs text-slate-300 text-right">—</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {capabilityProfile.map((cap, i) => {
+                  const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
+                  return (
+                    <div key={i} className="flex items-center gap-4">
+                      <div className="w-24 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
+                        <IconComp className="w-3 h-3" />
+                        {cap.label}
+                      </div>
+                      <div className="flex-grow h-4 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full ${cap.color}`} style={{ width: `${cap.value}%` }} />
+                      </div>
+                      <div className="w-12 text-xs font-black text-indigo-600">{cap.value.toFixed(1)}%</div>
                     </div>
-                    <div className="flex-grow h-4 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${cap.color}`} style={{ width: `${cap.value}%` }} />
-                    </div>
-                    <div className="w-12 text-xs font-black text-indigo-600">{cap.value.toFixed(1)}%</div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Intervention Program */}
@@ -627,11 +651,17 @@ function buildReportProps(
       color: CAP_COLORS[i % CAP_COLORS.length]!,
     }));
 
+  const ageNotApplicable = result.age < 7;
   const ageGroupLabel =
     result.age >= 65 ? '樂齡長者 (65+) — 健康促進能力' :
     result.age >= 25 ? '職場成人 (25–64) — 職場與生活能力' :
-    result.age >= 7  ? '學生族群 (7–24) — 學習發展潛能' :
-    '能力面向剖析';
+    '學生族群 (7–24) — 學習發展潛能';
+
+  // For age < 7: show student-group labels without scores
+  const STUDENT_LABELS = ['專注持久力', '學習敏捷度', '邏輯整合力', '創意發散力', '情緒穩定性', '社交適應力', '考試抗壓力', '心智續航力'];
+  const effectiveCapability = ageNotApplicable
+    ? STUDENT_LABELS.map((label, i) => ({ label, value: 0, color: CAP_COLORS[i % CAP_COLORS.length]! }))
+    : capabilityProfile;
 
   // Top supplements & flowers — collect from ALL abnormal indicators, deduplicate by name
   const seenSupps   = new Set<string>();
@@ -690,8 +720,9 @@ function buildReportProps(
       generatedDate: `${now.getFullYear()}/${pad2(now.getMonth()+1)}/${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`,
     },
     brainIndices,
-    capabilityProfile,
+    capabilityProfile: effectiveCapability,
     ageGroupLabel,
+    ageNotApplicable,
     summary: {
       abnormalNames: abnormal.map(b => b.id),
       goodNames:     good.map(b => b.id),
