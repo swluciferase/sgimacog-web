@@ -344,16 +344,13 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
         {/* === PAGE 3: EEG BACKGROUND KNOWLEDGE === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
-          <h2 className="text-2xl font-black text-slate-800 mb-6 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
+          <h2 className="text-2xl font-black text-slate-800 mb-3 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
 
-          <div className="space-y-4 text-sm text-slate-600 leading-relaxed mb-6">
-            <p>腦科學是一門研究大腦及其功能的科學，涵蓋從分子層面到行為層面的各種研究。大腦是人體最複雜的器官之一，負責控制思維、情感、行為和生理功能。隨著年齡的增長，大腦的功能可能逐漸衰退，通過科學的方法和技術，我們可以監測和評估大腦的健康狀況，並採取相應措施保持最佳狀態。</p>
-            <p>腦波是大腦活動的電信號，可通過腦電圖（EEG）測量。腦波的頻率和振幅反映大腦的不同狀態，例如清醒、睡眠、專注等。每次量測後，系統會生成詳細的腦部健康報告，包括腦波數據的分析結果、健康評估及建議改善措施。</p>
-          </div>
+          <p className="text-sm text-slate-600 leading-relaxed mb-4">腦波（EEG）是大腦神經活動的電訊號，透過量測不同頻段的功率分布，可客觀反映大腦在認知、情緒、放鬆與睡眠各層面的運作狀態。本報告依據七大腦波指標提供個人化的腦健康評估與調整建議。</p>
 
           {/* Brainwave Types Table */}
-          <h3 className="text-base font-bold text-indigo-900 mb-3">腦波類型及其在不同狀態下的表現</h3>
-          <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200">
+          <h3 className="text-sm font-bold text-indigo-900 mb-2">腦波類型及其在不同狀態下的表現</h3>
+          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200">
             <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '42%' }} />
@@ -363,10 +360,10 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               </colgroup>
               <thead className="bg-indigo-900 text-white">
                 <tr>
-                  <th className="p-3 text-left">腦波示意</th>
-                  <th className="p-3 text-left">波型</th>
-                  <th className="p-3 text-left">頻率</th>
-                  <th className="p-3 text-left">主要狀態</th>
+                  <th className="p-2 text-left">腦波示意</th>
+                  <th className="p-2 text-left">波型</th>
+                  <th className="p-2 text-left">頻率</th>
+                  <th className="p-2 text-left">主要狀態</th>
                 </tr>
               </thead>
               <tbody>
@@ -381,16 +378,35 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                     <td className="p-0">
                       <img src={src} alt={name} style={{ width: '100%', display: 'block' }} />
                     </td>
-                    <td className="p-3 font-bold text-indigo-800 align-middle">{name}</td>
-                    <td className="p-3 text-slate-500 align-middle">{freq}</td>
-                    <td className="p-3 text-slate-600 align-middle">{desc}</td>
+                    <td className="p-2 font-bold text-indigo-800 align-middle">{name}</td>
+                    <td className="p-2 text-slate-500 align-middle">{freq}</td>
+                    <td className="p-2 text-slate-600 align-middle">{desc}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <div className="text-center text-[10px] text-slate-400 mt-4">
+          {/* Indicator Descriptions */}
+          <h3 className="text-sm font-bold text-indigo-900 mb-2">七大腦健康評估指標介紹</h3>
+          <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+            {[
+              ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
+              ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波不對稱性，與情緒狀態相關，可識別早期情緒失衡或低落傾向。'],
+              ['APR（Relative Alpha Ratio）', 'Alpha 波相對功率變化，反映大腦不同狀態下的功能表現，高值與放鬆相關，低值與專注有關。'],
+              ['PAF（Peak Alpha Frequency）', 'Alpha 波頻譜中最高功率的特定頻率，與大腦認知發展、功能成熟及神經元活動有關。'],
+              ['RSA（Resting State Alpha）', '靜態腦波中 α 波功率變化，閉眼時 α 波通常增加，廣泛應用於睡眠、注意力及認知研究。'],
+              ['COH（Cognitive Coherence）', '腦區之間腦電波活動的同步性，反映不同腦區的功能連接性與協調能力。'],
+              ['EnTP（EEG Entropy）', '評估大腦活動的複雜性。熵值越高代表信息處理能力越強，隨年齡增長通常增加。'],
+            ].map(([title, desc], i) => (
+              <div key={i} className="p-2 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-indigo-800 mb-0.5">{title}</p>
+                <p>{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center text-[10px] text-slate-400 mt-3">
             3/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
