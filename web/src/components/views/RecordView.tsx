@@ -7,7 +7,8 @@ import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
 import type { QualityConfig } from '../../hooks/useQualityMonitor';
 import { analyzeEeg, SAMPLE_RATE } from '../../services/eegReport';
-import { generateReportPdf, type RppgResults } from '../../services/reportPdf';
+import { type RppgResults } from '../../services/reportPdf';
+import { openHtmlReport } from '../../services/eegReportHtml';
 import { parseCsv } from '../../services/csvParser';
 
 const VISIOMYND_URL = 'https://rppg-web.pages.dev';
@@ -204,7 +205,7 @@ export const RecordView: FC<RecordViewProps> = ({
         setReportStatus('error');
         return;
       }
-      await generateReportPdf(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
+      openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
       setReportStatus('done');
     } catch (err) {
       console.error('Report generation error:', err);
@@ -239,7 +240,7 @@ export const RecordView: FC<RecordViewProps> = ({
       }
       // Build a synthetic SubjectInfo with whatever the CSV has (deviceId from file)
       const fileSubject = { ...subjectInfo };
-      await generateReportPdf(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+      openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
       setFileStatus('done');
       setFileStatusMsg(
         `${T(lang, 'recordFromFileSamples')}: ${parsed.samples.length.toLocaleString()}  |  ${T(lang, 'recordFromFileDuration')}: ${Math.floor(dur / 60)}m ${Math.floor(dur % 60)}s`,
