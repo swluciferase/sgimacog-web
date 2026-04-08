@@ -104,7 +104,7 @@ const INDEX_META: IndexMeta[] = [
     },
     supps: {
       high: ['Omega-3 EPA/DHA（降低神經炎症，改善注意力）', '鋅（調節多巴胺）', '磷脂醯絲氨酸 (PS)（改善工作記憶）', '鐵（缺鐵時補充，改善注意力）'],
-      low:  ['鎂 (Glycinate)，睡前服用（平衡 Beta 過高，促放鬆）', 'L-Theanine（提升 Alpha，降焦慮）', 'GABA（平衡神經過度激活）'],
+      low:  ['鎂 (Glycinate)，睡前補充（平衡 Beta 過高，促放鬆）', 'L-Theanine（提升 Alpha，降焦慮）', 'GABA（平衡神經過度激活）'],
     },
     flowers: {
       high: ['Clematis（注意力渙散）', 'Chestnut Bud（重複錯誤、學習困難）', 'Cherry Plum（衝動控制差）', 'Hornbeam（任務沉重、傾向拖延）'],
@@ -218,7 +218,7 @@ const INDEX_META: IndexMeta[] = [
     },
     supps: {
       high: ['維生素 B12 + 葉酸（改善海馬迴代謝）', '碘 + 硒（甲狀腺功能支持，平衡過高 Theta）', '咖啡因 + L-Theanine（提升 Alpha/Beta，平衡 Theta）'],
-      low:  ['Omega-3 DHA（支持海馬迴突觸可塑性）', '褪黑激素，睡前服用（促進深睡 Theta/Delta 交替）', '鎂 (甘胺酸鎂)，睡前服用（支持入睡時 Theta 爬升）', '5-HTP，睡前服用（促進深睡時 Theta 產生）'],
+      low:  ['Omega-3 DHA（支持海馬迴突觸可塑性）', '褪黑激素，睡前補充（促進深睡 Theta/Delta 交替）', '鎂 (甘胺酸鎂)，睡前補充（支持入睡時 Theta 爬升）', '5-HTP，睡前補充（促進深睡時 Theta 產生）'],
     },
     flowers: {
       high: ['Clematis（脫離現實、沉浸內在）', 'Star of Bethlehem（創傷相關解離）', 'Honeysuckle（思想回到過去）', 'Rescue Remedy（複方花精）'],

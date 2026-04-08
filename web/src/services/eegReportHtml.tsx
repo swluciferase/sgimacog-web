@@ -44,7 +44,7 @@ const RECS: Record<string, {
       flowers: ['Clematis（注意力渙散）', 'Chestnut Bud（重複錯誤）', 'Cherry Plum（衝動控制）'],
     },
     low: {
-      supps:   ['鎂 (Glycinate)，睡前服用', 'L-Theanine', 'GABA'],
+      supps:   ['鎂 (Glycinate)，睡前補充', 'L-Theanine', 'GABA'],
       flowers: ['White Chestnut（思緒不停打轉）', 'Honeysuckle（思想留在過去）', 'Rescue Remedy（急性壓力）'],
     },
   },
@@ -104,7 +104,7 @@ const RECS: Record<string, {
       flowers: ['Clematis（脫離現實）', 'Star of Bethlehem（創傷解離）', 'Honeysuckle（思想回到過去）'],
     },
     low: {
-      supps:   ['Omega-3 DHA', '褪黑激素（睡前服用）', '鎂 (甘胺酸鎂)，睡前服用'],
+      supps:   ['Omega-3 DHA', '褪黑激素（睡前補充）', '鎂 (甘胺酸鎂)，睡前補充'],
       flowers: ['Wild Rose（漠然無感）', 'Olive（深度疲勞）', 'Rescue Remedy（複方花精）'],
     },
   },
@@ -293,10 +293,15 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               <ShieldCheck className="w-8 h-8 text-slate-400" />
             </div>
             <h2 className="text-2xl font-bold text-slate-700 mb-8">免責聲明</h2>
-            <div className="bg-slate-50 rounded-3xl p-10 text-left max-w-[150mm]">
+            <div className="bg-slate-50 rounded-3xl p-10 text-left max-w-[150mm] space-y-6">
               <p className="text-base text-slate-700 leading-[2] font-medium">
-                本腦健康評估結果僅供個人參考與自我了解使用，不具醫療診斷或治療效力。若您對於自身健康或情緒狀態有任何疑慮，建議尋求合格之醫師或專業人員的協助。所有營養補充劑與花精建議僅供參考，使用前請諮詢醫療專業人員，以確保適合個人狀況。
+                本腦健康評估結果僅供個人參考與自我了解使用，不具醫療診斷或治療效力。若您對於自身健康或情緒狀態有任何疑慮，建議尋求合格之專業人員的協助。所有營養補充劑與花精建議僅供參考，使用前請諮詢專業人員，以確保適合個人狀況。
               </p>
+              <div className="border-t border-slate-200 pt-6">
+                <p className="text-sm text-slate-500 leading-[2]">
+                  <span className="font-bold text-slate-600">🤖 AI 生成聲明：</span>本報告由人工智能（AI）系統根據腦電波量測數據自動分析生成。報告中的指標解讀、能力剖析及調整建議均由演算法計算產出，並非由人工專業人員撰寫。AI 系統之判讀結果存在一定局限性，不能替代具備資質的腦健康顧問或神經科學專業人員的個別評估。
+                </p>
+              </div>
             </div>
           </div>
 
@@ -317,12 +322,18 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           {/* Brainwave Types Table */}
           <h3 className="text-base font-bold text-indigo-900 mb-3">腦波類型及其在不同狀態下的表現</h3>
           <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '42%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '28%' }} />
+              </colgroup>
               <thead className="bg-indigo-900 text-white">
                 <tr>
-                  <th className="p-3 text-left w-[120px]">腦波示意</th>
-                  <th className="p-3 text-left w-[90px]">波型</th>
-                  <th className="p-3 text-left w-[90px]">頻率</th>
+                  <th className="p-3 text-left">腦波示意</th>
+                  <th className="p-3 text-left">波型</th>
+                  <th className="p-3 text-left">頻率</th>
                   <th className="p-3 text-left">主要狀態</th>
                 </tr>
               </thead>
@@ -335,8 +346,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                   { src: WAVE_DELTA, name: 'Delta (δ)', freq: '0–4 Hz',    desc: '深度睡眠、完全放鬆與恢復' },
                 ] as const).map(({ src, name, freq, desc }, i) => (
                   <tr key={i} className={i % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
-                    <td className="p-1">
-                      <img src={src} alt={name} style={{ width: '120px', display: 'block', borderRadius: '4px' }} />
+                    <td className="p-0">
+                      <img src={src} alt={name} style={{ width: '100%', display: 'block' }} />
                     </td>
                     <td className="p-3 font-bold text-indigo-800 align-middle">{name}</td>
                     <td className="p-3 text-slate-500 align-middle">{freq}</td>
@@ -352,7 +363,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
             {[
               ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
-              ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波功率不對稱性，與情緒狀態及心理健康相關，可識別早期情緒困難或抑鬱風險。'],
+              ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波功率不對稱性，與情緒狀態及心理健康相關，可識別早期情緒失衡或低落傾向。'],
               ['APR（Relative Alpha Ratio）', 'Alpha 波相對功率變化，反映孩童不同發展階段的腦部功能狀態，高值與放鬆相關，低值與專注有關。'],
               ['PAF（Peak Alpha Frequency）', 'Alpha 波頻譜中最高功率密度的特定頻率，與大腦認知發展、功能成熟及神經元活動有關。'],
               ['RSA（Resting State Alpha）', '靜態腦波中 α 波功率變化，閉眼時 α 波功率通常增加，廣泛應用於睡眠、注意力及認知功能研究。'],
@@ -378,7 +389,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
           <div className="space-y-6 flex-grow">
             {brainIndices.map((idx) => (
-              <div key={idx.id} className={`p-6 rounded-3xl border ${idx.tScore < 30 || idx.tScore > 70 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+              <div key={idx.id} style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }} className={`p-6 rounded-3xl border ${idx.tScore < 30 || idx.tScore > 70 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2">
                     {idx.tScore < 30 || idx.tScore > 70
@@ -494,7 +505,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                 </div>
 
                 <div>
-                  <h4 className="text-pink-300 font-bold text-sm mb-4 border-b border-white/20 pb-2">🌸 巴哈花精處方 (情緒穩定)</h4>
+                  <h4 className="text-pink-300 font-bold text-sm mb-4 border-b border-white/20 pb-2">🌸 巴哈花精建議 (情緒穩定)</h4>
                   <ul className="grid grid-cols-2 gap-4 text-xs">
                     {topFlowers.map((f, i) => (
                       <li key={i} className="bg-white/10 p-4 rounded-2xl">
@@ -582,14 +593,10 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .print-page {
             width: 190mm !important;
-            min-height: 0 !important;
-            height: 277mm !important;
-            max-height: 277mm !important;
-            overflow: hidden !important;
+            min-height: 277mm !important;
             margin: 0 !important;
             padding: 10mm !important;
             page-break-after: always;
-            page-break-inside: avoid;
             box-sizing: border-box !important;
           }
           .print-page:last-child { page-break-after: avoid; }
