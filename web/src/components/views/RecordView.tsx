@@ -234,7 +234,15 @@ export const RecordView: FC<RecordViewProps> = ({
         return;
       }
       setFileStatus('analyzing');
-      const result = await analyzeEeg(parsed.samples, fileDob, useArtifactRemoval);
+      let result;
+      try {
+        result = await analyzeEeg(parsed.samples, fileDob, useArtifactRemoval);
+      } catch (wasmErr) {
+        console.error('analyzeEeg threw:', wasmErr);
+        setFileStatus('error');
+        setFileStatusMsg(`WASM 分析錯誤: ${wasmErr instanceof Error ? wasmErr.message : String(wasmErr)}`);
+        return;
+      }
       if (result.error) {
         setFileStatus('error');
         setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis') + `: ${result.error}`);
@@ -246,7 +254,14 @@ export const RecordView: FC<RecordViewProps> = ({
         ...(fileName ? { name: fileName } : {}),
         ...(fileSex   ? { sex: fileSex }  : {}),
       };
-      await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+      try {
+        await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+      } catch (reportErr) {
+        console.error('openHtmlReport threw:', reportErr);
+        setFileStatus('error');
+        setFileStatusMsg(`報告生成錯誤: ${reportErr instanceof Error ? reportErr.message : String(reportErr)}`);
+        return;
+      }
       setFileStatus('done');
       setFileStatusMsg(
         `${T(lang, 'recordFromFileSamples')}: ${parsed.samples.length.toLocaleString()}  |  ${T(lang, 'recordFromFileDuration')}: ${Math.floor(dur / 60)}m ${Math.floor(dur % 60)}s`,
@@ -254,7 +269,7 @@ export const RecordView: FC<RecordViewProps> = ({
     } catch (err) {
       console.error('File report error:', err);
       setFileStatus('error');
-      setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis'));
+      setFileStatusMsg(`${T(lang, 'recordFromFileErrAnalysis')}: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
