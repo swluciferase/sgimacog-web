@@ -597,7 +597,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               </p>
               {qrCodeDataUrl && (
                 <div className="flex-shrink-0 text-center">
-                  <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '64px', height: '64px' }} />
+                  <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '96px', height: '96px' }} />
                   <p className="text-[8px] text-slate-400 mt-1">掃描下載此報告</p>
                 </div>
               )}
@@ -839,7 +839,7 @@ export async function openHtmlReport(
     });
     if (resp.ok) {
       const { url } = await resp.json() as { url: string };
-      qrCodeDataUrl = await QRCode.toDataURL(url, { width: 200, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+      qrCodeDataUrl = await QRCode.toDataURL(url, { width: 400, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
     }
   } catch { /* no QR if upload fails */ }
 
