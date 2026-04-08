@@ -110,6 +110,37 @@ const RECS: Record<string, {
   },
 };
 
+const ACTIVITY_RECS: Record<string, { high: string[]; low: string[] }> = {
+  TBR: {
+    high: ['注意力訓練（冥想、專注遊戲）', '建立規律作息時間表', '減少螢幕與多工干擾'],
+    low:  ['放鬆練習（深呼吸、漸進式肌肉放鬆）', '規律正念冥想練習', '減少咖啡因攝取'],
+  },
+  FAA: {
+    high: ['情緒覺察練習（日記書寫、正念）', '維持規律睡眠時間', '冥想與深呼吸調節'],
+    low:  ['戶外活動與自然接觸', '增加社交參與活動', '正向心理學日常練習'],
+  },
+  APR: {
+    high: ['規律有氧運動', '設置挑戰性任務與學習目標', '短時間高專注練習'],
+    low:  ['冥想與瑜伽練習', '聆聽放鬆音樂', '定期休息，避免持續高壓'],
+  },
+  PAF: {
+    high: ['深度思考與計劃練習', '練習延遲決策，避免衝動', '正念冥想訓練'],
+    low:  ['腦力訓練（拼圖、閱讀、棋盤遊戲）', '確保充足睡眠與規律運動', '嘗試語言學習或新技能挑戰'],
+  },
+  RSA: {
+    high: ['增加休息並優化睡眠品質', '深呼吸、冥想或聆聽舒緩音樂', '減少高壓情境暴露'],
+    low:  ['注意力訓練活動（如舒爾特方格）', '設置具挑戰性的學習任務', '規律體能活動以提升覺醒度'],
+  },
+  COH: {
+    high: ['創意思考技巧練習（如六頂帽子法）', '多角度問題解決訓練', '接觸不同領域知識'],
+    low:  ['執行功能訓練（時間管理、目標設定）', '團隊合作與協作活動', '結構化學習與任務規劃'],
+  },
+  EnTP: {
+    high: ['設定明確目標與優先順序', '使用待辦清單與時間規劃工具', '正念練習以提升專注穩定性'],
+    low:  ['創意活動（藝術、音樂、手工藝）', '腦力激盪與發散思維練習', '嘗試新事物，培養開放心態'],
+  },
+};
+
 const INDEX_INFO: Record<string, { chName: string; unit: string; decimals: number }> = {
   TBR:  { chName: '大腦喚醒指數', unit: '',   decimals: 2 },
   APR:  { chName: '壓力調節指數', unit: '',   decimals: 2 },
@@ -176,6 +207,7 @@ interface ReportProps {
   brainIndices: Array<{
     id: string; name: string; value: string; tScore: number;
     status: string; description: string; supplements: string[]; bachFlowers: string[];
+    activities: string[];
     showRec: boolean;
   }>;
   capabilityProfile: Array<{ label: string; value: number; color: string }>;
@@ -409,15 +441,23 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                 <p className="text-sm text-slate-600 leading-relaxed mb-4">{idx.description}</p>
 
                 {idx.showRec && (
-                  <div className="grid grid-cols-2 gap-4 border-t border-red-200 pt-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">🥗 營養補充</p>
-                      <p className="text-xs text-slate-700">{idx.supplements.map(s => s.replace(/\s+[\d\.，,].*/u, '').trim()).join('、')}</p>
+                  <div className="border-t border-red-200 pt-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">🥗 營養補充</p>
+                        <p className="text-xs text-slate-700">{idx.supplements.map(s => s.replace(/\s+[\d\.，,].*/u, '').trim()).join('、')}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-pink-800 mb-1 uppercase tracking-wider">🌸 巴哈花精</p>
+                        <p className="text-xs text-slate-700">{idx.bachFlowers.join('、')}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-pink-800 mb-1 uppercase tracking-wider">🌸 巴哈花精</p>
-                      <p className="text-xs text-slate-700">{idx.bachFlowers.join('、')}</p>
-                    </div>
+                    {idx.activities.length > 0 && (
+                      <div className="border-t border-red-100 pt-3">
+                        <p className="text-[10px] font-bold text-emerald-800 mb-1 uppercase tracking-wider">🏃 活動建議</p>
+                        <p className="text-xs text-slate-700">{idx.activities.join('　•　')}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -649,6 +689,7 @@ function buildReportProps(
       description: TIER_DESC[key]?.[tier] ?? '',
       supplements: recs?.supps ?? [],
       bachFlowers: recs?.flowers ?? [],
+      activities:  showRec ? (ACTIVITY_RECS[key]?.[recDir] ?? []) : [],
       showRec,
     };
   });
