@@ -416,7 +416,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
 
         {/* === PAGE 5: BRAIN INDICES DETAILS === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col" style={{ breakBefore: 'page' }}>
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col">
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">七大腦波指標深度解析</h2>
 
           <div className="space-y-6">
@@ -474,50 +474,48 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
         </div>
 
-        {/* === PAGE 4: CAPABILITY & ADVICE & REFERENCES === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col" style={{ breakBefore: 'page' }}>
-          <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">能力剖析與調整方案</h2>
+        {/* === CAPABILITY & INTERVENTION (fixed single page) === */}
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col cap-page" style={{ breakBefore: 'page', breakAfter: 'page' }}>
+          <h2 className="text-xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-3">能力剖析與調整方案</h2>
 
-          {/* Capability Bars */}
-          <div className="mb-12">
-            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <TrendingUp className="text-emerald-500" /> {ageGroupLabel || '能力面向剖析'}
+          {/* Capability Bars — compact */}
+          <div className="mb-5">
+            <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+              <TrendingUp className="text-emerald-500 w-4 h-4" /> {ageGroupLabel || '能力面向剖析'}
             </h3>
             {ageNotApplicable ? (
               <>
-                <div className="mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
                   ⚠️ 受測者年齡未滿 7 歲，能力指標計算不適用於此年齡層，以下僅列示評估向度供參考。
                 </div>
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-2">
                   {capabilityProfile.map((cap, i) => {
                     const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
                     return (
-                      <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="w-24 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
-                          <IconComp className="w-3 h-3" />
-                          {cap.label}
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-20 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
+                          <IconComp className="w-3 h-3" />{cap.label}
                         </div>
-                        <div className="flex-grow h-4 bg-slate-100 rounded-full overflow-hidden" />
-                        <div className="w-12 text-xs text-slate-300 text-right">—</div>
+                        <div className="flex-grow h-2.5 bg-slate-100 rounded-full" />
+                        <div className="w-10 text-xs text-slate-300 text-right">—</div>
                       </div>
                     );
                   })}
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-2">
                 {capabilityProfile.map((cap, i) => {
                   const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
                   return (
-                    <div key={i} className="flex items-center gap-4">
-                      <div className="w-24 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
-                        <IconComp className="w-3 h-3" />
-                        {cap.label}
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-20 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
+                        <IconComp className="w-3 h-3" />{cap.label}
                       </div>
-                      <div className="flex-grow h-4 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="flex-grow h-2.5 bg-slate-100 rounded-full overflow-hidden">
                         <div className={`h-full ${cap.color}`} style={{ width: `${cap.value}%` }} />
                       </div>
-                      <div className="w-12 text-xs font-black text-indigo-600">{cap.value.toFixed(1)}%</div>
+                      <div className="w-10 text-xs font-black text-indigo-600">{cap.value.toFixed(1)}%</div>
                     </div>
                   );
                 })}
@@ -525,89 +523,96 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             )}
           </div>
 
-          {/* Intervention Program */}
-          <div className="bg-indigo-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden mb-12" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          {/* Intervention Program — compact */}
+          <div className="bg-indigo-900 rounded-[1.5rem] p-6 text-white shadow-xl relative overflow-hidden">
             <div className="relative z-10">
-              <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Leaf className="text-emerald-400" /> 建議調整方案 (4–8 週計畫)
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Leaf className="text-emerald-400 w-5 h-5" /> 建議調整方案 (4–8 週計畫)
               </h3>
-
-              <div className="space-y-8">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <h4 className="text-emerald-400 font-bold text-sm mb-4 border-b border-white/20 pb-2">🥗 營養補充建議 (生理平衡)</h4>
-                  <ul className="grid grid-cols-2 gap-4 text-xs">
+                  <h4 className="text-emerald-400 font-bold text-xs mb-2 border-b border-white/20 pb-1">🥗 營養補充建議</h4>
+                  <ul className="grid grid-cols-1 gap-1.5">
                     {topSupps.map((s, i) => (
-                      <li key={i} className="bg-white/10 px-4 py-3 rounded-2xl">
+                      <li key={i} className="bg-white/10 px-3 py-1.5 rounded-xl">
                         <p className="font-bold text-white text-xs">{s.name}</p>
                       </li>
                     ))}
                   </ul>
                 </div>
-
                 <div>
-                  <h4 className="text-pink-300 font-bold text-sm mb-4 border-b border-white/20 pb-2">🌸 巴哈花精建議 (情緒穩定)</h4>
-                  <ul className="grid grid-cols-2 gap-4 text-xs">
+                  <h4 className="text-pink-300 font-bold text-xs mb-2 border-b border-white/20 pb-1">🌸 巴哈花精建議</h4>
+                  <ul className="grid grid-cols-1 gap-1.5">
                     {topFlowers.map((f, i) => (
-                      <li key={i} className="bg-white/10 p-4 rounded-2xl">
-                        <p className="font-bold text-white mb-1">{f.name}</p>
-                        <p className="text-indigo-200">{f.desc}</p>
+                      <li key={i} className="bg-white/10 px-3 py-1.5 rounded-xl">
+                        <p className="font-bold text-white text-xs">{f.name}</p>
+                        {f.desc && <p className="text-indigo-200 text-[10px] mt-0.5">{f.desc}</p>}
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
+              {/* Action Steps */}
+              <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/20">
+                <div className="text-center">
+                  <Waves className="w-4 h-4 text-blue-300 mx-auto mb-1" />
+                  <h5 className="text-xs font-bold text-white">呼吸調節</h5>
+                  <p className="text-[9px] text-indigo-200 mt-0.5">每日睡前 4-7-8 呼吸 10 分鐘</p>
+                </div>
+                <div className="text-center">
+                  <Lightbulb className="w-4 h-4 text-amber-300 mx-auto mb-1" />
+                  <h5 className="text-xs font-bold text-white">多元刺激</h5>
+                  <p className="text-[9px] text-indigo-200 mt-0.5">增加感官活動提升大腦複雜度</p>
+                </div>
+                <div className="text-center">
+                  <RefreshCcw className="w-4 h-4 text-emerald-300 mx-auto mb-1" />
+                  <h5 className="text-xs font-bold text-white">間歇休息</h5>
+                  <p className="text-[9px] text-indigo-200 mt-0.5">使用番茄鐘避免連續腦部慢化</p>
+                </div>
+              </div>
             </div>
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-              <Brain className="w-64 h-64 text-white" />
+            <div className="absolute top-0 right-0 p-6 opacity-5">
+              <Brain className="w-48 h-48 text-white" />
             </div>
           </div>
 
-          {/* Action Steps */}
-          <div className="grid grid-cols-3 gap-4 mb-8" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 text-center">
-              <Waves className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-              <h5 className="text-xs font-bold text-slate-800">呼吸調節</h5>
-              <p className="text-[10px] text-slate-500 mt-1">每日睡前 4-7-8 呼吸 10 分鐘</p>
-            </div>
-            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 text-center">
-              <Lightbulb className="w-6 h-6 text-amber-500 mx-auto mb-2" />
-              <h5 className="text-xs font-bold text-slate-800">多元刺激</h5>
-              <p className="text-[10px] text-slate-500 mt-1">增加感官活動提升大腦複雜度</p>
-            </div>
-            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 text-center">
-              <RefreshCcw className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-              <h5 className="text-xs font-bold text-slate-800">間歇休息</h5>
-              <p className="text-[10px] text-slate-500 mt-1">使用番茄鐘避免連續腦部慢化</p>
-            </div>
+          <div className="mt-auto text-center text-[10px] text-slate-400 pt-4">
+            5/6 - SIGMACOG Brain Health Assessment Report
+          </div>
+        </div>
+
+        {/* === LAST PAGE: REFERENCES === */}
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col">
+          {/* Header */}
+          <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-8">
+            <img src={LOGO_SRC} alt="SigmaCog" style={{ height: '24px', width: 'auto' }} />
+            <span className="text-xs text-slate-400">{subjectInfo.reportId}</span>
           </div>
 
-          {/* References */}
-          <div className="mt-8 border-t border-slate-200 pt-6">
-            <h4 className="text-xs font-bold text-slate-600 mb-3">參考文獻 References</h4>
-            <ol className="text-[9px] text-slate-500 leading-relaxed space-y-1 list-decimal list-inside">
-              {[
-                'Clarke AR et al. Electroencephalogram differences in two subtypes of ADHD. Psychophysiology. 2001;38(2):212-21.',
-                'Clarke AR et al. EEG-defined subtypes of children with ADHD. Clin Neurophysiol. 2001;112(11):2098-105.',
-                'Barry RJ et al. A review of electrophysiology in ADHD: I. Qualitative and quantitative EEG. Clin Neurophysiol. 2003;114(2):171-83.',
-                'Monastra VJ et al. Assessing ADHD via quantitative EEG: an initial validation study. Neuropsychology. 1999;13(3):424-433.',
-                'Monastra VJ et al. Effects of stimulant therapy, EEG biofeedback, and parenting style on primary symptoms of ADHD. Appl Psychophysiol Biofeedback. 2002;27(4):231-49.',
-                'Loo SK, Barkley RA. Clinical utility of EEG in ADHD. Appl Neuropsychol. 2005;12(2):64-76.',
-                'Marshall PJ et al. Development of the EEG from 5 months to 4 years of age. Clin Neurophysiol. 2002;113(8):1199-208.',
-                'Bazanova OM, Vernon D. Interpreting EEG alpha activity. Neurosci Biobehav Rev. 2014;44:94-110.',
-                'Benedek M et al. EEG alpha synchronization is related to top-down processing in convergent and divergent thinking. Neuropsychologia. 2011;49(12):3505-11.',
-                'Forbes EE et al. Children\'s affect expression and frontal EEG asymmetry. J Abnorm Child Psychol. 2008;36(2):207-21.',
-                'Stewart JL et al. Frontal EEG asymmetry during emotional challenge differentiates individuals with and without lifetime MDD. J Affect Disord. 2011;129(1-3):167-74.',
-                'Thatcher RW et al. Development of cortical connections as measured by EEG coherence and phase delays. Hum Brain Mapp. 2008;29(12):1400-15.',
-                'Barry RJ et al. EEG coherence in children with ADHD and comorbid oppositional defiant disorder. Clin Neurophysiol. 2007;118(2):356-62.',
-                'Niedermeyer E, da Silva FL. Electroencephalography: Basic Principles, Clinical Applications, and Related Fields. Lippincott Williams & Wilkins; 2004.',
-              ].map((ref, i) => <li key={i}>{ref}</li>)}
-            </ol>
-          </div>
+          <h4 className="text-sm font-bold text-slate-700 mb-4">參考文獻 References</h4>
+          <ol className="text-[9px] text-slate-500 leading-relaxed space-y-1 list-decimal list-inside flex-1">
+            {[
+              'Clarke AR et al. Electroencephalogram differences in two subtypes of ADHD. Psychophysiology. 2001;38(2):212-21.',
+              'Clarke AR et al. EEG-defined subtypes of children with ADHD. Clin Neurophysiol. 2001;112(11):2098-105.',
+              'Barry RJ et al. A review of electrophysiology in ADHD: I. Qualitative and quantitative EEG. Clin Neurophysiol. 2003;114(2):171-83.',
+              'Monastra VJ et al. Assessing ADHD via quantitative EEG: an initial validation study. Neuropsychology. 1999;13(3):424-433.',
+              'Monastra VJ et al. Effects of stimulant therapy, EEG biofeedback, and parenting style on primary symptoms of ADHD. Appl Psychophysiol Biofeedback. 2002;27(4):231-49.',
+              'Loo SK, Barkley RA. Clinical utility of EEG in ADHD. Appl Neuropsychol. 2005;12(2):64-76.',
+              'Marshall PJ et al. Development of the EEG from 5 months to 4 years of age. Clin Neurophysiol. 2002;113(8):1199-208.',
+              'Bazanova OM, Vernon D. Interpreting EEG alpha activity. Neurosci Biobehav Rev. 2014;44:94-110.',
+              'Benedek M et al. EEG alpha synchronization is related to top-down processing in convergent and divergent thinking. Neuropsychologia. 2011;49(12):3505-11.',
+              'Forbes EE et al. Children\'s affect expression and frontal EEG asymmetry. J Abnorm Child Psychol. 2008;36(2):207-21.',
+              'Stewart JL et al. Frontal EEG asymmetry during emotional challenge differentiates individuals with and without lifetime MDD. J Affect Disord. 2011;129(1-3):167-74.',
+              'Thatcher RW et al. Development of cortical connections as measured by EEG coherence and phase delays. Hum Brain Mapp. 2008;29(12):1400-15.',
+              'Barry RJ et al. EEG coherence in children with ADHD and comorbid oppositional defiant disorder. Clin Neurophysiol. 2007;118(2):356-62.',
+              'Niedermeyer E, da Silva FL. Electroencephalography: Basic Principles, Clinical Applications, and Related Fields. Lippincott Williams & Wilkins; 2004.',
+            ].map((ref, i) => <li key={i}>{ref}</li>)}
+          </ol>
 
           <div className="border-t border-slate-200 pt-4 mt-6">
             <div className="flex items-start gap-6">
               <p className="text-[9px] text-slate-400 leading-relaxed flex-1">
-                聲明：本報告僅供個人健康參考，不具醫療診斷效力。若你有身心不適，請諮詢合格醫療人員。所有營養補充劑與花精使用建議請先諮詢專業人員。
+                聲明：本報告僅供個人健康參考，不具醫療診斷效力。若你有身心不適，請諮詢合格專業人員。所有營養補充劑與花精使用建議請先諮詢專業人員。
               </p>
               {qrCodeDataUrl && (
                 <div className="flex-shrink-0 text-center">
@@ -619,7 +624,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           <div className="mt-3 text-center text-[10px] text-slate-400">
-            5/5 - SIGMACOG Brain Health Assessment Report
+            6/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
@@ -640,6 +645,19 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             box-sizing: border-box !important;
           }
           .print-page:last-child { page-break-after: avoid; }
+          .cap-page {
+            width: 190mm !important;
+            min-height: 0 !important;
+            max-height: 277mm !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            break-before: page !important;
+            break-after: page !important;
+            page-break-before: always !important;
+            page-break-after: always !important;
+            box-sizing: border-box !important;
+          }
           .print-wrapper { margin: 0 !important; padding: 0 !important; gap: 0 !important; }
         }
       `}</style>
