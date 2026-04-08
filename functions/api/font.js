@@ -1,4 +1,4 @@
-export async function onRequest(context) {
+async function handleFontRequest(context) {
   const req = context.request;
   let text = '';
   
@@ -9,7 +9,6 @@ export async function onRequest(context) {
     text = url.searchParams.get('text');
   }
 
-  
   if (!text) {
     return new Response('Missing text parameter', { status: 400 });
   }
@@ -55,3 +54,6 @@ export async function onRequest(context) {
     return new Response('Internal error: ' + err.message, { status: 500 });
   }
 }
+
+export async function onRequestGet(context) { return handleFontRequest(context); }
+export async function onRequestPost(context) { return handleFontRequest(context); }
