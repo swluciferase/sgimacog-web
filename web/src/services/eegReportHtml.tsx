@@ -239,7 +239,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
     : '--';
 
   return (
-    <div className="min-h-screen bg-gray-100 p-0 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-gray-100 print:bg-white p-0 md:p-8 flex flex-col items-center">
       {/* Print Button */}
       <button
         id="printBtn"
@@ -337,8 +337,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             </div>
           </div>
 
-          <div className="mt-auto text-center text-[10px] text-slate-400">
-            2/5 - SIGMACOG Brain Health Assessment Report
+          <div className="text-center text-[10px] text-slate-400 mt-8">
+            2/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
@@ -390,27 +390,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             </table>
           </div>
 
-          {/* Indicator Descriptions */}
-          <h3 className="text-base font-bold text-indigo-900 mb-3">七大腦健康評估指標介紹</h3>
-          <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
-            {[
-              ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
-              ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波功率不對稱性，與情緒狀態及心理健康相關，可識別早期情緒失衡或低落傾向。'],
-              ['APR（Relative Alpha Ratio）', 'Alpha 波相對功率變化，反映孩童不同發展階段的腦部功能狀態，高值與放鬆相關，低值與專注有關。'],
-              ['PAF（Peak Alpha Frequency）', 'Alpha 波頻譜中最高功率密度的特定頻率，與大腦認知發展、功能成熟及神經元活動有關。'],
-              ['RSA（Resting State Alpha）', '靜態腦波中 α 波功率變化，閉眼時 α 波功率通常增加，廣泛應用於睡眠、注意力及認知功能研究。'],
-              ['COH（Cognitive Coherence）', '腦區之間腦電波活動的同步性，反映不同腦區的功能連接性。兒童年齡增長時，同調性通常會增加。'],
-              ['EnTP（EEG Entropy）', '評估大腦活動的複雜性。熵值越高代表信息處理能力越強；隨兒童年齡增長通常會增加。'],
-            ].map(([title, desc], i) => (
-              <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="font-bold text-indigo-800 mb-1">{title}</p>
-                <p>{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-auto text-center text-[10px] text-slate-400">
-            3/5 - SIGMACOG Brain Health Assessment Report
+          <div className="text-center text-[10px] text-slate-400 mt-4">
+            3/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
@@ -469,8 +450,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             <p>T分數平均值為 50，標準差為 10。T分數低於 30 或高於 70 代表指標與常模相比存在顯著差異，建議進行生活方式或補充劑調整。</p>
           </div>
 
-          <div className="mt-auto text-center text-[10px] text-slate-400">
-            4/5 - SIGMACOG Brain Health Assessment Report
+          <div className="text-center text-[10px] text-slate-400 mt-8">
+            4/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
 
@@ -479,7 +460,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           <h2 className="text-xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-3">能力剖析與調整方案</h2>
 
           {/* Capability Bars — compact */}
-          <div className="mb-5">
+          <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
               <TrendingUp className="text-emerald-500 w-4 h-4" /> {ageGroupLabel || '能力面向剖析'}
             </h3>
@@ -651,7 +632,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             max-height: 277mm !important;
             overflow: hidden !important;
             margin: 0 !important;
-            padding: 10mm !important;
+            padding: 14mm !important;
             break-before: page !important;
             break-after: page !important;
             page-break-before: always !important;
