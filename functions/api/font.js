@@ -1,0 +1,49 @@
+export async function onRequest(context) {
+  const url = new URL(context.request.url);
+  const text = url.searchParams.get('text');
+  
+  if (!text) {
+    return new Response('Missing text parameter', { status: 400 });
+  }
+
+  try {
+    const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&text=${encodeURIComponent(text)}`;
+    // Trick Google Fonts into returning TTF instead of WOFF2 by simulating an old client
+    const cssRes = await fetch(cssUrl, {
+      headers: { 
+        "User-Agent": "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)" 
+      }
+    });
+    
+    if (!cssRes.ok) {
+      return new Response('Failed to fetch font CSS', { status: 502 });
+    }
+    
+    const cssText = await cssRes.text();
+    
+    // Find all URL matches for TTF (could be multiple if both normal and bold are returned)
+    const matches = [...cssText.matchAll(/url\(([^)]+)\)/g)];
+    if (matches.length === 0) {
+      return new Response('No TTF URLs found in Google Fonts CSS', { status: 502 });
+    }
+    
+    // Pick the first URL
+    const ttfUrl = matches[0][1].replace(/['"]/g, '');
+    
+    const ttfRes = await fetch(ttfUrl);
+    if (!ttfRes.ok) {
+      return new Response('Failed to fetch TTF bytes', { status: 502 });
+    }
+    
+    // Return the binary data straight back to the client!
+    return new Response(ttfRes.body, {
+      headers: {
+        'Content-Type': 'font/ttf',
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  } catch (err) {
+    return new Response('Internal error: ' + err.message, { status: 500 });
+  }
+}

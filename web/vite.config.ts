@@ -22,8 +22,9 @@ export default defineConfig({
         numbersToExpressions: true,
         simplify: true,
         stringArrayShuffle: true,
-        splitStrings: true,
+        splitStrings: false,
         stringArrayThreshold: 0.8,
+        unicodeEscapeSequence: false,
         identifierNamesGenerator: 'hexadecimal'
       }
     })

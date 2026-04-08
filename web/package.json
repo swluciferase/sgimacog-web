@@ -11,6 +11,7 @@
     "build:wasm": "cd ../crate && wasm-pack build --target web --release --out-dir ../web/src/pkg"
   },
   "dependencies": {
+    "@fontsource/noto-sans-tc": "^5.2.9",
     "jspdf": "^4.2.1",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",

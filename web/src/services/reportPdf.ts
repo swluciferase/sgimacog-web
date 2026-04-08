@@ -247,7 +247,8 @@ function capabilityProfile(
 
 function setFont(doc: jsPDF, size: number, style: 'normal'|'bold' = 'normal', color = C.text) {
   doc.setFontSize(size);
-  doc.setFont('helvetica', style);
+  // Default to NotoSansTC (custom font) to support Chinese characters
+  doc.setFont('NotoSansTC', style);
   doc.setTextColor(...color);
 }
 
@@ -309,6 +310,49 @@ export async function generateReportPdf(
   deviceId: string | null,
 ): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  
+  try {
+    // 1. Gather all required text to generate a minimum TTF subset
+    const UI_WORDS = '腦波健康評估報告受測者資訊七大指標說明原始值分數總量表狀態適中過偏高低正常異常臨床紀錄筆記僅供研究用途非醫療設備掃描下載此連結小時後失效使用手機相機或年歲男女';
+    const ALPHA_NUM = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-:.,%()[]/ ';
+    let neededText = UI_WORDS + ALPHA_NUM + (subject.name || '') + (subject.notes || '');
+    neededText += JSON.stringify(INDEX_META);
+    // Add all capability dimension names
+    const caps1 = capabilityProfile({} as any, 20);
+    const caps2 = capabilityProfile({} as any, 40);
+    const caps3 = capabilityProfile({} as any, 70);
+    if (caps1) neededText += caps1.map(c => c.name).join('');
+    if (caps2) neededText += caps2.map(c => c.name).join('');
+    if (caps3) neededText += caps3.map(c => c.name).join('');
+    
+    const uniqueChars = Array.from(new Set(neededText)).join('');
+    
+    // 2. Fetch the TTF subset from our Edge API
+    // Ensure we handle proxied path (e.g. /eeg/api/font or base path)
+    const apiUrl = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api/font?text=' + encodeURIComponent(uniqueChars);
+    const fontRes = await fetch(apiUrl);
+    
+    if (fontRes.ok) {
+      const fontBuffer = await fontRes.arrayBuffer();
+      const bytes = new Uint8Array(fontBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const fontB64 = window.btoa(binary);
+      // 3. Inject into jsPDF
+      doc.addFileToVFS('NotoSansTC.ttf', fontB64);
+      doc.addFont('NotoSansTC.ttf', 'NotoSansTC', 'normal');
+      doc.addFont('NotoSansTC.ttf', 'NotoSansTC', 'bold');
+      doc.setFont('NotoSansTC');
+    } else {
+      console.warn('Failed to load custom font API, falling back to basic font.');
+      doc.setFont('helvetica'); // Fallback (garbled Chinese)
+    }
+  } catch (err) {
+    console.error('Subset font loading error:', err);
+  }
+
   const PW = 210;
   const PH = 297;
   const ML = 14, MR = 14;
