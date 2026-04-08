@@ -207,10 +207,10 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         列印 A4 報告
       </button>
 
-      <div className="w-full max-w-[210mm] space-y-8 print:space-y-0">
+      <div className="w-full max-w-[210mm] space-y-8 print:space-y-0 print-wrapper">
 
         {/* === PAGE 1: COVER & OVERVIEW === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
           {/* Header */}
           <div className="flex justify-between items-center border-b-2 border-indigo-900 pb-5 mb-8">
             <div className="flex items-center gap-4" style={{ height: '40px' }}>
@@ -310,7 +310,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         </div>
 
         {/* === PAGE 2: EEG BACKGROUND KNOWLEDGE === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
           <h2 className="text-2xl font-black text-slate-800 mb-6 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
 
           <div className="space-y-4 text-sm text-slate-600 leading-relaxed mb-6">
@@ -372,7 +372,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         </div>
 
         {/* === PAGE 3: BRAIN INDICES DETAILS === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">七大腦波指標深度解析</h2>
 
           <div className="space-y-6 flex-grow">
@@ -400,7 +400,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                   <div className="grid grid-cols-2 gap-4 border-t border-red-200 pt-4">
                     <div>
                       <p className="text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">🥗 營養補充</p>
-                      <p className="text-xs text-slate-700">{idx.supplements.join('、')}</p>
+                      <p className="text-xs text-slate-700">{idx.supplements.map(s => s.replace(/\s+[\d\.，,].*/u, '').trim()).join('、')}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-pink-800 mb-1 uppercase tracking-wider">🌸 巴哈花精</p>
@@ -423,7 +423,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         </div>
 
         {/* === PAGE 4: CAPABILITY & ADVICE & REFERENCES === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col print-page">
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">能力剖析與調整方案</h2>
 
           {/* Capability Bars */}
@@ -462,9 +462,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                   <h4 className="text-emerald-400 font-bold text-sm mb-4 border-b border-white/20 pb-2">🥗 營養補充建議 (生理平衡)</h4>
                   <ul className="grid grid-cols-2 gap-4 text-xs">
                     {topSupps.map((s, i) => (
-                      <li key={i} className="bg-white/10 p-4 rounded-2xl">
-                        <p className="font-bold text-white mb-1">{s.name}</p>
-                        <p className="text-indigo-200">{s.desc}</p>
+                      <li key={i} className="bg-white/10 px-4 py-3 rounded-2xl">
+                        <p className="font-bold text-white text-xs">{s.name}</p>
                       </li>
                     ))}
                   </ul>
@@ -552,11 +551,25 @@ const EegReportTemplate: React.FC<ReportProps> = ({
       </div>
 
       <style>{`
+        @page { size: A4; margin: 10mm; }
         @media print {
-          body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
-          .page-break { display: block; page-break-after: always; }
+          html, body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .print-page {
+            width: 190mm !important;
+            min-height: 0 !important;
+            height: 277mm !important;
+            max-height: 277mm !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            page-break-after: always;
+            page-break-inside: avoid;
+            box-sizing: border-box !important;
+          }
+          .print-page:last-child { page-break-after: avoid; }
+          .print-wrapper { margin: 0 !important; padding: 0 !important; gap: 0 !important; }
         }
       `}</style>
     </div>
@@ -634,11 +647,12 @@ function buildReportProps(
     const recs = RECS[idx.id]?.[dir];
     if (recs) {
       recs.supps.forEach(s => {
-        const [name, ...rest] = s.split(' ');
-        const key = name ?? s;
+        // Strip dosage (everything from first digit onward), keep only supplement type name
+        const nameOnly = s.replace(/\s+[\d\.，,].*/u, '').trim();
+        const key = nameOnly || s;
         if (!seenSupps.has(key) && topSupps.length < 6) {
           seenSupps.add(key);
-          topSupps.push({ name: key, desc: rest.join(' ') || '依建議劑量服用' });
+          topSupps.push({ name: key, desc: '' });
         }
       });
       recs.flowers.forEach(f => {
