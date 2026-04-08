@@ -174,6 +174,7 @@ interface ReportProps {
     showRec: boolean;
   }>;
   capabilityProfile: Array<{ label: string; value: number; color: string }>;
+  ageGroupLabel: string;
   summary: { abnormalNames: string[]; goodNames: string[] };
   topSupps: { name: string; desc: string }[];
   topFlowers: { name: string; desc: string }[];
@@ -182,7 +183,7 @@ interface ReportProps {
 }
 
 const EegReportTemplate: React.FC<ReportProps> = ({
-  subjectInfo, brainIndices, capabilityProfile, summary, topSupps, topFlowers, rppg, qrCodeDataUrl,
+  subjectInfo, brainIndices, capabilityProfile, ageGroupLabel, summary, topSupps, topFlowers, rppg, qrCodeDataUrl,
 }) => {
   const abnormalText = summary.abnormalNames.length > 0
     ? `你的 ${summary.abnormalNames.map(n => `${n}`).join(' 與 ')} 指標落入異常區間。這連帶反映大腦在激活與調節上存在不平衡，需要特別關注。`
@@ -419,7 +420,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           {/* Capability Bars */}
           <div className="mb-12">
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <TrendingUp className="text-emerald-500" /> 職場與生活能力百分比
+              <TrendingUp className="text-emerald-500" /> {ageGroupLabel || '能力面向剖析'}
             </h3>
             <div className="grid grid-cols-1 gap-4">
               {capabilityProfile.map((cap, i) => {
@@ -626,6 +627,12 @@ function buildReportProps(
       color: CAP_COLORS[i % CAP_COLORS.length]!,
     }));
 
+  const ageGroupLabel =
+    result.age >= 65 ? '樂齡長者 (65+) — 健康促進能力' :
+    result.age >= 25 ? '職場成人 (25–64) — 職場與生活能力' :
+    result.age >= 7  ? '學生族群 (7–24) — 學習發展潛能' :
+    '能力面向剖析';
+
   // Top supplements & flowers — collect from ALL abnormal indicators, deduplicate by name
   const seenSupps   = new Set<string>();
   const seenFlowers = new Set<string>();
@@ -684,6 +691,7 @@ function buildReportProps(
     },
     brainIndices,
     capabilityProfile,
+    ageGroupLabel,
     summary: {
       abnormalNames: abnormal.map(b => b.id),
       goodNames:     good.map(b => b.id),
