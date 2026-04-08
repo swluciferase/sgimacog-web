@@ -11,7 +11,7 @@ import { type RppgResults } from '../../services/reportPdf';
 import { openHtmlReport, type ReportLang } from '../../services/eegReportHtml';
 import { parseCsv } from '../../services/csvParser';
 
-const VISIOMYND_URL = 'https://rppg-web.pages.dev';
+const VISIOMYND_URL = 'https://www.sigmacog.xyz/visiomynd';
 const RPPG_CHANNEL  = 'sgimacog_rppg_sync';
 
 export interface RecordViewProps {
