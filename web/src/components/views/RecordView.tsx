@@ -164,6 +164,8 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
+        subjectInfo.name,
+        subjectInfo.sex,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
@@ -191,6 +193,8 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
+        subjectInfo.name,
+        subjectInfo.sex,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
@@ -205,7 +209,7 @@ export const RecordView: FC<RecordViewProps> = ({
         setReportStatus('error');
         return;
       }
-      openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
+      await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
       setReportStatus('done');
     } catch (err) {
       console.error('Report generation error:', err);
@@ -238,9 +242,13 @@ export const RecordView: FC<RecordViewProps> = ({
         setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis') + `: ${result.error}`);
         return;
       }
-      // Build a synthetic SubjectInfo with whatever the CSV has (deviceId from file)
-      const fileSubject = { ...subjectInfo };
-      openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+      // Build SubjectInfo from CSV metadata (name/sex override current form values if present)
+      const fileSubject = {
+        ...subjectInfo,
+        ...(parsed.name ? { name: parsed.name } : {}),
+        ...(parsed.sex ? { sex: parsed.sex as typeof subjectInfo.sex } : {}),
+      };
+      await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
       setFileStatus('done');
       setFileStatusMsg(
         `${T(lang, 'recordFromFileSamples')}: ${parsed.samples.length.toLocaleString()}  |  ${T(lang, 'recordFromFileDuration')}: ${Math.floor(dur / 60)}m ${Math.floor(dur % 60)}s`,

@@ -22,10 +22,12 @@ export function generateCsv(
   deviceId: string,
   filterDesc: string,
   notchDesc: string,
+  subjectName?: string,
+  subjectSex?: string,
 ): string {
   const lines: string[] = [];
 
-  // Header block — exactly 10 lines matching Cygnus CSV format
+  // Header block — 12 lines (lines 0–11), column header on line 12
   lines.push('Cygnus version: 0.28.0.7,File version: 2021.11');
   lines.push('Operative system: Browser');
   lines.push(`Record datetime: ${formatDatetime(startTime)}`);
@@ -36,8 +38,10 @@ export function generateCsv(
   lines.push('Data type / unit: EEG / micro-volt (uV)');
   lines.push(`Bandpass filter: ${filterDesc}`);
   lines.push(`Notch filter: ${notchDesc}`);
+  lines.push(`Subject name: ${subjectName ?? ''}`);
+  lines.push(`Subject sex: ${subjectSex ?? ''}`);
 
-  // Column headers (line 11 — must not be shifted by extra rows)
+  // Column headers (line 12)
   lines.push(
     'Timestamp,Serial Number,Fp1,Fp2,T7,T8,O1,O2,Fz,Pz,Event Id,Event Date,Event Duration,Software Marker,Software Marker Name',
   );
