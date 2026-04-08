@@ -103,8 +103,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '過度緊繃。腦力消耗極快，常伴隨強迫性思考，需特別關注情緒調節能力。',
     },
     supps: {
-      high: ['Omega-3 EPA/DHA 1000–2000 mg/天（降低神經炎症，改善注意力）', '鋅 15–30 mg/天（調節多巴胺，改善ADHD）', '磷脂醯絲氨酸(PS) 300 mg/天（改善工作記憶）', '鐵（缺鐵ferritin<30時補充，改善注意力）'],
-      low:  ['鎂(Glycinate) 300–400 mg/天，睡前（平衡Beta過高，促放鬆）', 'L-Theanine 200 mg/天（提升Alpha，降焦慮）', 'GABA 500–750 mg/天（平衡神經過度激活）'],
+      high: ['Omega-3 EPA/DHA（降低神經炎症，改善注意力）', '鋅（調節多巴胺）', '磷脂醯絲氨酸 (PS)（改善工作記憶）', '鐵（缺鐵時補充，改善注意力）'],
+      low:  ['鎂 (Glycinate)，睡前服用（平衡 Beta 過高，促放鬆）', 'L-Theanine（提升 Alpha，降焦慮）', 'GABA（平衡神經過度激活）'],
     },
     flowers: {
       high: ['Clematis（注意力渙散）', 'Chestnut Bud（重複錯誤、學習困難）', 'Cherry Plum（衝動控制差）', 'Hornbeam（任務沉重、傾向拖延）'],
@@ -122,8 +122,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '壓力透支。完全喪失放鬆調節能力，大腦運轉過熱且無法停下，需立即關注身心狀態。',
     },
     supps: {
-      high: ['維生素 B12(甲鈷胺) 1000 mcg/天（提升神經傳導效率）', 'Ginkgo Biloba 120–240 mg/天（改善腦部循環，促激活）', '咖啡因 100mg + L-Theanine 200mg（提升Beta，防焦慮）', '磷脂醯膽鹼 600 mg/天（乙醯膽鹼前驅物，支持認知）'],
-      low:  ['L-Theanine 200–400 mg/天（提升Alpha，促放鬆）', '鎂 300–400 mg/天（GABA前驅物，平衡過度激活）', 'Ashwagandha(KSM-66) 300–600 mg/天（降皮質醇，促放鬆）'],
+      high: ['維生素 B12 (甲鈷胺)（提升神經傳導效率）', 'Ginkgo Biloba（改善腦部循環，促激活）', '咖啡因 + L-Theanine（提升 Beta，防焦慮）', '磷脂醯膽鹼（乙醯膽鹼前驅物，支持認知）'],
+      low:  ['L-Theanine（提升 Alpha，促放鬆）', '鎂（GABA 前驅物，平衡過度激活）', 'Ashwagandha (KSM-66)（降皮質醇，促放鬆）'],
     },
     flowers: {
       high: ['Clematis（心不在焉、精神恍惚）', 'Hornbeam（缺乏動力投入）', 'Wild Rose（漠然無感）', 'Rock Rose（過度驚嚇）'],
@@ -141,8 +141,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '退縮消極。情緒韌性極低，社交主動性顯著下降，需要積極的心理支持介入。',
     },
     supps: {
-      high: ['Omega-3 EPA優先(EPA:DHA=3:1) 2000 mg/天（情緒穩定）', '鎂 400 mg/天（平衡神經興奮性）', '維生素 B6(P5P) 50 mg/天（血清素/GABA合成）'],
-      low:  ['Omega-3 EPA/DHA 1000–2000 mg/天（改善憂鬱FAA不對稱）', '維生素 D3 2000–4000 IU/天（提升情緒與前額葉活性）', 'SAMe 400–800 mg/天（血清素/多巴胺合成）', 'Saffron萃取 30 mg/天（效果接近低劑量SSRI）'],
+      high: ['Omega-3 EPA（情緒穩定）', '鎂（平衡神經興奮性）', '維生素 B6 (P5P)（血清素/GABA 合成）'],
+      low:  ['Omega-3 EPA/DHA（改善憂鬱 FAA 不對稱）', '維生素 D3（提升情緒與前額葉活性）', 'SAMe（血清素/多巴胺合成）', 'Saffron 萃取物'],
     },
     flowers: {
       high: ['Vervain（過度執著、信念極端）', 'Impatiens（急躁、缺乏耐心）', 'Cherry Plum（衝動失控）', 'Oak（不願休息）'],
@@ -160,8 +160,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '明顯慢化。反應遲緩，神經系統運作能量受限，建議評估是否有睡眠障礙或其他代謝因素。',
     },
     supps: {
-      high: ['L-Theanine 200 mg/天（防過度激活，維持平衡）', '鎂（維持電解質平衡，防止過激）'],
-      low:  ['Omega-3 DHA 1000–2000 mg/天（神經細胞膜主要成分，改善PAF）', '碘 150 mcg + 硒 200 mcg/天（甲狀腺支持，PAF高度相關）', 'Citicoline(CDP-Choline) 500–1000 mg/天（提升神經傳導效率）', '維生素 B1(硫胺素) 100 mg/天（大腦能量代謝關鍵輔酶）'],
+      high: ['L-Theanine（防過度激活，維持平衡）', '鎂（維持電解質平衡）'],
+      low:  ['Omega-3 DHA（神經細胞膜主要成分，改善 PAF）', '碘 + 硒（甲狀腺支持，PAF 高度相關）', 'Citicoline (CDP-Choline)（提升神經傳導效率）', '維生素 B1（大腦能量代謝關鍵輔酶）'],
     },
     flowers: {
       high: ['Vervain（過度執著投入）', 'Impatiens（急躁不耐）', 'Rock Water（對自身過度苛求）', 'Oak（不願停下休息）'],
@@ -179,8 +179,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '運轉過熱。缺乏修復性慢波調節，可能導致長期注意力耗竭，建議評估睡眠品質。',
     },
     supps: {
-      high: ['維生素 B12(甲鈷胺) 1000 mcg/天（提升神經傳導效率）', '磷脂醯膽鹼 600 mg/天（提升認知激活）', 'Ginkgo Biloba 120–240 mg/天（改善腦部血流）', '咖啡因 100mg + L-Theanine 200mg（改善警覺與認知效能）'],
-      low:  ['L-Theanine 200–400 mg/天（提升Low Alpha，帶來清醒放鬆感）', '鎂(Glycinate) 300–400 mg/天（下調神經過激）', 'Ashwagandha(KSM-66) 300–600 mg/天（促進Alpha低頻成分回升）', 'GABA 500 mg/天（平衡高頻神經激活）'],
+      high: ['維生素 B12 (甲鈷胺)（提升神經傳導效率）', '磷脂醯膽鹼（提升認知激活）', 'Ginkgo Biloba（改善腦部血流）', '咖啡因 + L-Theanine（改善警覺與認知效能）'],
+      low:  ['L-Theanine（提升 Low Alpha，帶來清醒放鬆感）', '鎂 (Glycinate)（下調神經過激）', 'Ashwagandha (KSM-66)（促進 Alpha 低頻成分回升）', 'GABA（平衡高頻神經激活）'],
     },
     flowers: {
       high: ['Hornbeam（精神懶散、傾向拖延）', 'Wild Rose（漠然無感、照表操課）', 'Clematis（心不在焉、游離當下）', 'Larch（缺乏自信不敢嘗試）'],
@@ -198,8 +198,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '網路斷連。各區資訊傳遞失效，難以進行整體性的思維整合，建議尋求專業評估。',
     },
     supps: {
-      high: ['Omega-3脂肪酸（維持膜流動性，避免過度同步）', '維生素 D3 2000 IU/天（調節神經興奮性，防過度同步）'],
-      low:  ['Omega-3 DHA 1500–2000 mg/天（恢復神經膜流動性，改善連結）', '磷脂醯絲氨酸(PS) + 磷脂醯膽鹼(PC) 各300mg（強化突觸功能）', '維生素 B6 50mg + 鎂 300mg（自閉症相關低COH首選介入）', 'Bacopa Monnieri 300 mg/天（改善神經傳導速度，增強連結）'],
+      high: ['Omega-3 脂肪酸（維持膜流動性，避免過度同步）', '維生素 D3（調節神經興奮性，防過度同步）'],
+      low:  ['Omega-3 DHA（恢復神經膜流動性，改善連結）', '磷脂醯絲氨酸 (PS) + 磷脂醯膽鹼 (PC)（強化突觸功能）', '維生素 B6 + 鎂（自閉症相關低 COH 首選介入）', 'Bacopa Monnieri（改善神經傳導速度，增強連結）'],
     },
     flowers: {
       high: ['Cherry Plum（理智無法控制衝動）', 'White Chestnut（思緒反覆循環無法放下）', 'Crab Apple（過度在意細節焦慮）', 'Vine（強勢、不接受意見）'],
@@ -217,8 +217,8 @@ const INDEX_META: IndexMeta[] = [
       vlow:  '認知封鎖。活動模式極其單調，缺乏系統動態調節空間，建議積極的認知復健介入。',
     },
     supps: {
-      high: ['維生素 B12 1000mcg + 葉酸 400mcg/天（改善海馬迴代謝）', '碘 + 硒（甲狀腺功能支持，平衡過高Theta）', '咖啡因 100mg + L-Theanine 200mg（提升Alpha/Beta，平衡Theta）'],
-      low:  ['Omega-3 DHA 1000–1500 mg/天（支持海馬迴突觸可塑性）', '褪黑激素 0.5–1 mg，睡前（促進深睡Theta/Delta交替）', '鎂(甘胺酸鎂) 300mg，睡前（支持入睡時Theta爬升）', '5-HTP 50–100mg，睡前（促進深睡時Theta產生）'],
+      high: ['維生素 B12 + 葉酸（改善海馬迴代謝）', '碘 + 硒（甲狀腺功能支持，平衡過高 Theta）', '咖啡因 + L-Theanine（提升 Alpha/Beta，平衡 Theta）'],
+      low:  ['Omega-3 DHA（支持海馬迴突觸可塑性）', '褪黑激素，睡前服用（促進深睡 Theta/Delta 交替）', '鎂 (甘胺酸鎂)，睡前服用（支持入睡時 Theta 爬升）', '5-HTP，睡前服用（促進深睡時 Theta 產生）'],
     },
     flowers: {
       high: ['Clematis（脫離現實、沉浸內在）', 'Star of Bethlehem（創傷相關解離）', 'Honeysuckle（思想回到過去）', 'Rescue Remedy（複方花精）'],
