@@ -312,8 +312,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
           {/* Brainwave Types Table */}
           <h3 className="text-base font-bold text-indigo-900 mb-3">腦波類型及其在不同狀態下的表現</h3>
-          <div className="flex gap-6 mb-6 items-start">
-            <img src={BRAINWAVE_IMG} alt="腦波類型示意圖" style={{ width: '160px', flexShrink: 0, borderRadius: '12px' }} />
+          <div className="flex gap-6 mb-6 items-stretch">
+            <img src={BRAINWAVE_IMG} alt="腦波類型示意圖" style={{ width: '150px', flexShrink: 0, borderRadius: '12px', objectFit: 'fill', display: 'block' }} />
             <div className="flex-grow overflow-hidden rounded-2xl border border-slate-200">
               <table className="w-full text-xs">
                 <thead className="bg-indigo-900 text-white">
