@@ -20,8 +20,6 @@ export interface CsvParseResult {
   filterDesc: string;
   notchDesc: string;
   sampleRate: number;
-  name: string;
-  sex: string;
   error?: string;
 }
 
@@ -33,11 +31,11 @@ export function parseCsv(text: string): CsvParseResult {
   const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
   if (lines.length < 12) {
-    return { samples: [], deviceId: '', recordDatetime: '', filterDesc: '', notchDesc: '', sampleRate: 1000, name: '', sex: '', error: 'csv_too_short' };
+    return { samples: [], deviceId: '', recordDatetime: '', filterDesc: '', notchDesc: '', sampleRate: 1000, error: 'csv_too_short' };
   }
 
-  // ── Parse header block (up to 20 lines to support both old and new format) ──
-  const headerLines = lines.slice(0, 20);
+  // ── Parse header block (lines 1–10) ──────────────────────────────────────
+  const headerLines = lines.slice(0, 10);
   const get = (prefix: string) => {
     const line = headerLines.find(l => l.startsWith(prefix));
     return line ? line.slice(prefix.length).trim() : '';
@@ -47,20 +45,14 @@ export function parseCsv(text: string): CsvParseResult {
   const deviceId       = get('Device ID:');
   const filterDesc     = get('Bandpass filter:');
   const notchDesc      = get('Notch filter:');
-  const name           = get('Subject name:');
-  const sex            = get('Subject sex:');
 
   // Detect sample rate from header ("Device sampling rate: 1000 samples/second")
   const srLine = get('Device sampling rate:');
   const srMatch = srLine.match(/(\d+)/);
   const sampleRate = srMatch ? parseInt(srMatch[1]!, 10) : 1000;
 
-  // ── Find column header line by scanning for "Timestamp" (supports both old 10-line and new 12-line header) ──
-  let colHeaderIdx = 10; // default for old format
-  for (let i = 0; i < Math.min(20, lines.length); i++) {
-    if (lines[i]!.trim().startsWith('Timestamp')) { colHeaderIdx = i; break; }
-  }
-  const colHeader = lines[colHeaderIdx]!;
+  // ── Verify column header line (line 11, index 10) ────────────────────────
+  const colHeader = lines[10]!;
   const cols = colHeader.split(',').map(c => c.trim());
   // Expected channel indices
   const tsIdx  = cols.indexOf('Timestamp');
@@ -70,14 +62,14 @@ export function parseCsv(text: string): CsvParseResult {
   const evtNameIdx = cols.indexOf('Software Marker Name');
 
   if (tsIdx === -1 || fp1Idx === -1) {
-    return { samples: [], deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, name, sex, error: 'csv_bad_header' };
+    return { samples: [], deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_bad_header' };
   }
 
   const chStart = fp1Idx; // Fp1, Fp2, T7, T8, O1, O2, Fz, Pz = 8 channels
 
   // ── Parse data rows ────────────────────────────────────────────────────────
   const samples: RecordedSample[] = [];
-  for (let i = colHeaderIdx + 1; i < lines.length; i++) {
+  for (let i = 11; i < lines.length; i++) {
     const line = lines[i]!.trim();
     if (!line) continue;
     const parts = line.split(',');
@@ -102,8 +94,8 @@ export function parseCsv(text: string): CsvParseResult {
   }
 
   if (samples.length === 0) {
-    return { samples, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, name, sex, error: 'csv_no_data' };
+    return { samples, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_no_data' };
   }
 
-  return { samples, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, name, sex };
+  return { samples, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate };
 }

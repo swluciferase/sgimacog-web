@@ -103,6 +103,8 @@ export const RecordView: FC<RecordViewProps> = ({
   const [fileStatus, setFileStatus] = useState<'idle' | 'parsing' | 'analyzing' | 'done' | 'error'>('idle');
   const [fileStatusMsg, setFileStatusMsg] = useState('');
   const [fileDob, setFileDob] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [fileSex, setFileSex] = useState<'M' | 'F' | 'Other' | ''>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
@@ -164,8 +166,6 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
-        subjectInfo.name,
-        subjectInfo.sex,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
@@ -193,8 +193,6 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
-        subjectInfo.name,
-        subjectInfo.sex,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
@@ -242,11 +240,11 @@ export const RecordView: FC<RecordViewProps> = ({
         setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis') + `: ${result.error}`);
         return;
       }
-      // Build SubjectInfo from CSV metadata (name/sex override current form values if present)
+      // Build SubjectInfo using the file-section UI fields
       const fileSubject = {
         ...subjectInfo,
-        ...(parsed.name ? { name: parsed.name } : {}),
-        ...(parsed.sex ? { sex: parsed.sex as typeof subjectInfo.sex } : {}),
+        ...(fileName ? { name: fileName } : {}),
+        ...(fileSex   ? { sex: fileSex }  : {}),
       };
       await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
       setFileStatus('done');
@@ -817,6 +815,45 @@ export const RecordView: FC<RecordViewProps> = ({
           {T(lang, 'recordFromFile')}
         </h3>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Name input */}
+          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>姓名:</label>
+          <input
+            type="text"
+            value={fileName}
+            onChange={e => setFileName(e.target.value)}
+            placeholder="受測者姓名"
+            style={{
+              background: 'rgba(10,20,35,0.9)',
+              border: '1px solid rgba(93,109,134,0.5)',
+              borderRadius: 6,
+              color: '#cdd6e8',
+              fontSize: 12,
+              padding: '5px 8px',
+              outline: 'none',
+              width: 100,
+            }}
+          />
+          {/* Sex select */}
+          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>性別:</label>
+          <select
+            value={fileSex}
+            onChange={e => setFileSex(e.target.value as 'M' | 'F' | 'Other' | '')}
+            style={{
+              background: 'rgba(10,20,35,0.9)',
+              border: '1px solid rgba(93,109,134,0.5)',
+              borderRadius: 6,
+              color: '#cdd6e8',
+              fontSize: 12,
+              padding: '5px 8px',
+              outline: 'none',
+              colorScheme: 'dark',
+            }}
+          >
+            <option value="">—</option>
+            <option value="M">男 (M)</option>
+            <option value="F">女 (F)</option>
+            <option value="Other">其他</option>
+          </select>
           {/* DOB input */}
           <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>
             {T(lang, 'recordDob')}:
