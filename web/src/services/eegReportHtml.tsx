@@ -374,7 +374,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                   { src: WAVE_THETA, name: 'Theta (θ)', freq: '4–7 Hz',    desc: '淺睡眠、冥想、潛意識活動與創造力' },
                   { src: WAVE_DELTA, name: 'Delta (δ)', freq: '0–4 Hz',    desc: '深度睡眠、完全放鬆與恢復' },
                 ] as const).map(({ src, name, freq, desc }, i) => (
-                  <tr key={i} className={i % 2 === 0 ? 'bg-slate-50' : 'bg-white'}>
+                  <tr key={i} className="bg-white">
                     <td className="p-0">
                       <img src={src} alt={name} style={{ width: '100%', display: 'block' }} />
                     </td>
