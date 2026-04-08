@@ -344,13 +344,13 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
         {/* === PAGE 3: EEG BACKGROUND KNOWLEDGE === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
-          <h2 className="text-2xl font-black text-slate-800 mb-3 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
+          <h2 className="text-2xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
 
-          <p className="text-sm text-slate-600 leading-relaxed mb-4">腦波（EEG）是大腦神經活動的電訊號，透過量測不同頻段的功率分布，可客觀反映大腦在認知、情緒、放鬆與睡眠各層面的運作狀態。本報告依據七大腦波指標提供個人化的腦健康評估與調整建議。</p>
+          <p className="text-sm text-slate-600 leading-relaxed mb-5">腦波（EEG）是大腦神經活動的電訊號，透過量測不同頻段的功率分布，可客觀反映大腦在認知、情緒、放鬆與睡眠各層面的運作狀態。本報告依據七大腦波指標提供個人化的腦健康評估與調整建議。</p>
 
           {/* Brainwave Types Table */}
-          <h3 className="text-sm font-bold text-indigo-900 mb-2">腦波類型及其在不同狀態下的表現</h3>
-          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200">
+          <h3 className="text-base font-bold text-indigo-900 mb-3">腦波類型及其在不同狀態下的表現</h3>
+          <div className="mb-5 overflow-hidden rounded-2xl border border-slate-200">
             <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '42%' }} />
@@ -388,8 +388,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           {/* Indicator Descriptions */}
-          <h3 className="text-sm font-bold text-indigo-900 mb-2">七大腦健康評估指標介紹</h3>
-          <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+          <h3 className="text-base font-bold text-indigo-900 mb-3">七大腦健康評估指標介紹</h3>
+          <div className="grid grid-cols-2 gap-2.5 text-xs text-slate-600">
             {[
               ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
               ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波不對稱性，與情緒狀態相關，可識別早期情緒失衡或低落傾向。'],
@@ -399,14 +399,14 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               ['COH（Cognitive Coherence）', '腦區之間腦電波活動的同步性，反映不同腦區的功能連接性與協調能力。'],
               ['EnTP（EEG Entropy）', '評估大腦活動的複雜性。熵值越高代表信息處理能力越強，隨年齡增長通常增加。'],
             ].map(([title, desc], i) => (
-              <div key={i} className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                <p className="font-bold text-indigo-800 mb-0.5">{title}</p>
+              <div key={i} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-indigo-800 mb-1">{title}</p>
                 <p>{desc}</p>
               </div>
             ))}
           </div>
 
-          <div className="text-center text-[10px] text-slate-400 mt-3">
+          <div className="mt-auto text-center text-[10px] text-slate-400">
             3/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
