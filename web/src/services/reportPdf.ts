@@ -245,10 +245,12 @@ function capabilityProfile(
 // Drawing helpers
 // ---------------------------------------------------------------------------
 
+let hasCustomFont = false;
+
 function setFont(doc: jsPDF, size: number, style: 'normal'|'bold' = 'normal', color = C.text) {
   doc.setFontSize(size);
-  // Default to NotoSansTC (custom font) to support Chinese characters
-  doc.setFont('NotoSansTC', style);
+  // Default to NotoSansTC if loaded, otherwise fallback to prevent crash
+  doc.setFont(hasCustomFont ? 'NotoSansTC' : 'helvetica', style);
   doc.setTextColor(...color);
 }
 
@@ -329,8 +331,11 @@ export async function generateReportPdf(
     
     // 2. Fetch the TTF subset from our Edge API
     // Ensure we handle proxied path (e.g. /eeg/api/font or base path)
-    const apiUrl = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api/font?text=' + encodeURIComponent(uniqueChars);
-    const fontRes = await fetch(apiUrl);
+    const apiUrl = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api/font';
+    const fontRes = await fetch(apiUrl, {
+      method: 'POST',
+      body: uniqueChars
+    });
     
     if (fontRes.ok) {
       const fontBuffer = await fontRes.arrayBuffer();
@@ -345,12 +350,15 @@ export async function generateReportPdf(
       doc.addFont('NotoSansTC.ttf', 'NotoSansTC', 'normal');
       doc.addFont('NotoSansTC.ttf', 'NotoSansTC', 'bold');
       doc.setFont('NotoSansTC');
+      hasCustomFont = true;
     } else {
       console.warn('Failed to load custom font API, falling back to basic font.');
+      hasCustomFont = false;
       doc.setFont('helvetica'); // Fallback (garbled Chinese)
     }
   } catch (err) {
     console.error('Subset font loading error:', err);
+    hasCustomFont = false;
   }
 
   const PW = 210;

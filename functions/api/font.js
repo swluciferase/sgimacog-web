@@ -1,6 +1,14 @@
 export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  const text = url.searchParams.get('text');
+  const req = context.request;
+  let text = '';
+  
+  if (req.method === 'POST') {
+    text = await req.text();
+  } else {
+    const url = new URL(req.url);
+    text = url.searchParams.get('text');
+  }
+
   
   if (!text) {
     return new Response('Missing text parameter', { status: 400 });
