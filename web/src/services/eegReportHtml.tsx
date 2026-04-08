@@ -639,6 +639,38 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             </div>
           </div>
 
+          {/* VisioMynd powered by FaceAI — only shown when rPPG data is available */}
+          {rppg && Object.keys(rppg).length > 0 && (
+            <div className="mx-8 mb-4">
+              <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-baseline gap-2">
+                生理健康快照 — VisioMynd
+                <span className="text-[10px] font-normal text-slate-400">powered by FaceAI</span>
+              </h3>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                  <Activity className="w-5 h-5 text-red-500 mx-auto mb-1" />
+                  <p className="text-[9px] text-slate-500 uppercase font-bold">HR 心率</p>
+                  <p className="font-bold text-slate-800 text-base mt-1">{rppgHR}</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                  <Heart className="w-5 h-5 text-indigo-500 mx-auto mb-1" />
+                  <p className="text-[9px] text-slate-500 uppercase font-bold">BP 血壓</p>
+                  <p className="font-bold text-slate-800 text-base mt-1">{rppgBP}</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                  <Zap className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                  <p className="text-[9px] text-slate-500 uppercase font-bold">SI 壓力指數</p>
+                  <p className="font-bold text-slate-800 text-base mt-1">{rppgSI}</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                  <Clock className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-[9px] text-slate-500 uppercase font-bold">FI 疲勞指數</p>
+                  <p className="font-bold text-slate-800 text-base mt-1">{rppgFI}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Footer logo */}
           <div className="flex flex-col items-center pb-6 gap-1">
             <div className="flex items-center gap-2">
