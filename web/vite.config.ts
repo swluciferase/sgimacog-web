@@ -12,7 +12,7 @@ export default defineConfig({
     react(),
     obfuscatorPlugin({
       include: ['src/**/*.js', 'src/**/*.ts', 'src/**/*.tsx'],
-      exclude: [/node_modules/, /src\/pkg\/.*\.js/],
+      exclude: [/node_modules/, /src\/pkg\/.*\.js/, /src\/services\/wasm\.ts/],
       apply: 'build',
       debugger: true,
       options: {
@@ -28,7 +28,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/',
+  base: './',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
