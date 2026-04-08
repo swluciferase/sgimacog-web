@@ -413,7 +413,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
 
         {/* === PAGE 5: BRAIN INDICES DETAILS === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-[277mm] p-[20mm] flex flex-col">
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">七大腦波指標深度解析</h2>
 
           <div className="space-y-6">
@@ -466,7 +466,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             <p>T分數平均值為 50，標準差為 10。T分數低於 30 或高於 70 代表指標與常模相比存在顯著差異，建議進行生活方式或補充劑調整。</p>
           </div>
 
-          <div className="text-center text-[10px] text-slate-400 mt-8">
+          <div className="mt-auto text-center text-[10px] text-slate-400">
             4/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
@@ -579,7 +579,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         </div>
 
         {/* === LAST PAGE: REFERENCES === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-[277mm] p-[20mm] flex flex-col">
           {/* Header */}
           <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-8">
             <img src={LOGO_SRC} alt="SigmaCog" style={{ height: '24px', width: 'auto' }} />
@@ -620,7 +620,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             </div>
           </div>
 
-          <div className="mt-3 text-center text-[10px] text-slate-400">
+          <div className="mt-auto text-center text-[10px] text-slate-400">
             6/6 - SIGMACOG Brain Health Assessment Report
           </div>
         </div>
@@ -644,7 +644,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           .print-page:last-child { page-break-after: avoid; }
           .cap-page {
             width: 190mm !important;
-            min-height: 0 !important;
+            min-height: 277mm !important;
             max-height: 277mm !important;
             overflow: hidden !important;
             margin: 0 !important;
