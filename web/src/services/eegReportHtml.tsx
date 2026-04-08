@@ -416,10 +416,10 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
 
         {/* === PAGE 5: BRAIN INDICES DETAILS === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col" style={{ breakBefore: 'page' }}>
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">七大腦波指標深度解析</h2>
 
-          <div className="space-y-6 flex-grow">
+          <div className="space-y-6">
             {brainIndices.map((idx) => (
               <div key={idx.id} style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }} className={`p-6 rounded-3xl border ${idx.tScore < 30 || idx.tScore > 70 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex justify-between items-center mb-3">
@@ -475,7 +475,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         </div>
 
         {/* === PAGE 4: CAPABILITY & ADVICE & REFERENCES === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col print-page">
+        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-0 p-[20mm] flex flex-col" style={{ breakBefore: 'page' }}>
           <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">能力剖析與調整方案</h2>
 
           {/* Capability Bars */}
@@ -526,7 +526,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           {/* Intervention Program */}
-          <div className="bg-indigo-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden mb-12">
+          <div className="bg-indigo-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden mb-12" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <div className="relative z-10">
               <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
                 <Leaf className="text-emerald-400" /> 建議調整方案 (4–8 週計畫)
@@ -563,7 +563,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           {/* Action Steps */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-3 gap-4 mb-8" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
             <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 text-center">
               <Waves className="w-6 h-6 text-blue-500 mx-auto mb-2" />
               <h5 className="text-xs font-bold text-slate-800">呼吸調節</h5>
