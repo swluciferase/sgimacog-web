@@ -7,8 +7,11 @@ import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
 import type { QualityConfig } from '../../hooks/useQualityMonitor';
 import { analyzeEeg, SAMPLE_RATE } from '../../services/eegReport';
-import { generateReportPdf } from '../../services/reportPdf';
+import { generateReportPdf, type RppgResults } from '../../services/reportPdf';
 import { parseCsv } from '../../services/csvParser';
+
+const VISIOMYND_URL = 'https://rppg-web.pages.dev';
+const RPPG_CHANNEL  = 'sgimacog_rppg_sync';
 
 export interface RecordViewProps {
   lang: Lang;
@@ -94,12 +97,27 @@ export const RecordView: FC<RecordViewProps> = ({
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
+  const [enableRppg, setEnableRppg] = useState(false);
+  const [rppgResults, setRppgResults] = useState<RppgResults | null>(null);
   const [fileStatus, setFileStatus] = useState<'idle' | 'parsing' | 'analyzing' | 'done' | 'error'>('idle');
   const [fileStatusMsg, setFileStatusMsg] = useState('');
   const [fileDob, setFileDob] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
+  const rppgChannelRef = useRef<BroadcastChannel | null>(null);
+
+  // ── rPPG BroadcastChannel setup ─────────────────────────────────────────
+  useEffect(() => {
+    const ch = new BroadcastChannel(RPPG_CHANNEL);
+    rppgChannelRef.current = ch;
+    ch.onmessage = (ev) => {
+      if (ev.data?.type === 'rppg_done') {
+        setRppgResults(ev.data.results as RppgResults);
+      }
+    };
+    return () => { ch.close(); rppgChannelRef.current = null; };
+  }, []);
 
   useEffect(() => {
     if (isRecording) {
@@ -119,7 +137,24 @@ export const RecordView: FC<RecordViewProps> = ({
     };
   }, [isRecording, startTime]);
 
+  // Open VisioMynd in a new tab with subject info pre-filled
+  const openVisioMynd = () => {
+    const params = new URLSearchParams();
+    if (subjectInfo.name) params.set('name', subjectInfo.name);
+    if (subjectInfo.dob)  params.set('dob',  subjectInfo.dob);
+    if (subjectInfo.sex)  params.set('sex',  subjectInfo.sex);
+    if (subjectInfo.id)   params.set('id',   subjectInfo.id);
+    window.open(`${VISIOMYND_URL}?${params.toString()}`, 'visiomynd_rppg');
+    // Also broadcast subject info for tabs already open
+    rppgChannelRef.current?.postMessage({ type: 'sgimacog_init', subject: subjectInfo });
+  };
+
+  const broadcastEegDone = () => {
+    rppgChannelRef.current?.postMessage({ type: 'eeg_done' });
+  };
+
   const handleStop = () => {
+    broadcastEegDone();
     onStopRecording();
     if (recordedSamples.length > 0 && startTime) {
       const content = generateCsv(
@@ -136,6 +171,7 @@ export const RecordView: FC<RecordViewProps> = ({
 
   // Plain stop — no download
   const handleStopOnly = () => {
+    broadcastEegDone();
     onStopRecording();
   };
 
@@ -159,6 +195,7 @@ export const RecordView: FC<RecordViewProps> = ({
       downloadCsv(content, filename);
     }
     // Run EEG analysis asynchronously
+    broadcastEegDone();
     setReportStatus('analyzing');
     try {
       const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '', useArtifactRemoval);
@@ -167,7 +204,7 @@ export const RecordView: FC<RecordViewProps> = ({
         setReportStatus('error');
         return;
       }
-      await generateReportPdf(result, subjectInfo, startTime, deviceId);
+      await generateReportPdf(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
       setReportStatus('done');
     } catch (err) {
       console.error('Report generation error:', err);
@@ -580,6 +617,50 @@ export const RecordView: FC<RecordViewProps> = ({
             {T(lang, 'recordArtifactRemoval')}
           </label>
 
+          {/* rPPG sync checkbox */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            cursor: isRecording ? 'not-allowed' : 'pointer',
+            userSelect: 'none',
+            fontSize: 13,
+            color: enableRppg ? '#5be0c0' : 'rgba(140,160,185,0.65)',
+            opacity: isRecording ? 0.6 : 1,
+          }}>
+            <input
+              type="checkbox"
+              checked={enableRppg}
+              disabled={isRecording}
+              onChange={e => {
+                setEnableRppg(e.target.checked);
+                if (e.target.checked) openVisioMynd();
+              }}
+              style={{ width: 14, height: 14, cursor: isRecording ? 'not-allowed' : 'pointer', accentColor: '#5be0c0' }}
+            />
+            同步 rPPG 錄製（VisioMynd）
+          </label>
+          {enableRppg && !isRecording && (
+            <button
+              onClick={openVisioMynd}
+              style={{
+                background: 'rgba(91,224,192,0.12)',
+                border: '1px solid rgba(91,224,192,0.4)',
+                borderRadius: 7,
+                color: '#5be0c0',
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '5px 12px',
+                cursor: 'pointer',
+              }}
+            >
+              開啟 VisioMynd ↗
+            </button>
+          )}
+          {rppgResults && (
+            <span style={{ fontSize: 11, color: '#5be0c0', background: 'rgba(91,224,192,0.1)', borderRadius: 5, padding: '3px 8px' }}>
+              ✓ rPPG 資料已接收
+            </span>
+          )}
+
           {/* Buttons */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {/* Event marker button (during recording) */}
@@ -657,7 +738,10 @@ export const RecordView: FC<RecordViewProps> = ({
               </button>
             </>) : (
               <button
-                onClick={onStartRecording}
+                onClick={() => {
+                  if (enableRppg) openVisioMynd();
+                  onStartRecording();
+                }}
                 disabled={!isConnected}
                 style={{
                   background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
