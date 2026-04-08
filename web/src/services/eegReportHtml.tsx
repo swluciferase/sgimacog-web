@@ -632,6 +632,13 @@ export async function openHtmlReport(
 ): Promise<void> {
   const props = buildReportProps(result, subject, startTime, deviceId, rppg);
 
+  // Open the window IMMEDIATELY (must be synchronous w.r.t. user gesture to pass popup blocker)
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write('<html><body style="background:#0a1422;color:#8ba3c8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:16px">報告生成中，請稍候…</body></html>');
+    win.document.close();
+  }
+
   // Try to upload the HTML and get a shareable URL for the QR code
   let qrCodeDataUrl: string | undefined;
   try {
@@ -653,9 +660,20 @@ export async function openHtmlReport(
   const htmlBody = ReactDOMServer.renderToStaticMarkup(<EegReportTemplate {...finalProps} />);
   const fullHtml = buildFullHtml(props.subjectInfo.id, htmlBody);
 
-  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, '_blank');
-  if (win) win.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(url), 5000));
-  else setTimeout(() => URL.revokeObjectURL(url), 30000);
+  if (win) {
+    // Write final HTML into the already-open window
+    win.document.open();
+    win.document.write(fullHtml);
+    win.document.close();
+  } else {
+    // Popup was blocked — fallback to blob URL (user may need to allow popups)
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const w2 = window.open(blobUrl, '_blank');
+    if (w2) w2.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(blobUrl), 5000));
+    else {
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+      throw new Error('瀏覽器封鎖了彈出視窗，請允許此網站開啟彈出視窗後重試');
+    }
+  }
 }
