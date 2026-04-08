@@ -761,10 +761,7 @@ export const RecordView: FC<RecordViewProps> = ({
               </button>
             </>) : (
               <button
-                onClick={() => {
-                  if (enableRppg) openVisioMynd();
-                  onStartRecording();
-                }}
+                onClick={onStartRecording}
                 disabled={!isConnected}
                 style={{
                   background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
