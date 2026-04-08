@@ -9,7 +9,7 @@ import ReactDOMServer from 'react-dom/server';
 import QRCode from 'qrcode';
 import {
   Activity, Heart, Zap, AlertCircle, CheckCircle2,
-  Leaf, ClipboardCheck, TrendingUp, User, Waves,
+  Leaf, ClipboardCheck, TrendingUp, User, Clock, Waves,
   Lightbulb, ShieldCheck, Briefcase, Compass, Smile,
   RefreshCcw, Network, Printer, Brain,
 } from 'lucide-react';
