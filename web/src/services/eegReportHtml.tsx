@@ -17,6 +17,8 @@ import type { ReportResult } from './eegReport';
 import type { SubjectInfo } from '../types/eeg';
 import type { RppgResults } from './reportPdf';
 
+export type ReportLang = 'zh-TW' | 'zh-CN' | 'en' | 'ja';
+
 const REPORT_API = 'https://www.sigmacog.xyz/api/report';
 
 // SigmaCog logo SVG (inlined as data URL for portability in the blob HTML)
@@ -161,6 +163,344 @@ const TIER_DESC: Record<string, Record<string, string>> = {
   EnTP: { vhigh: '訊號紊亂。資訊處理超載且無序，難以抓重點，建議增加結構化日程。', high: '高創造力。思維活躍聯想豐富，發散思考能力優秀，適合創新任務。', mid: '健康彈性。思維多樣性與穩定度達最佳平衡，能在創意與邏輯間切換。', low: '靈活性低。思維單調反應固定，可能存在長期倦怠，建議多元感官刺激。', vlow: '認知封鎖。活動模式極其單調，缺乏系統動態調節空間，需認知復健。' },
 };
 
+// ---------------------------------------------------------------------------
+// Multi-language report text
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const REPORT_TEXT: Record<ReportLang, Record<string, any>> = {
+  'zh-TW': {
+    htmlLang: 'zh-TW', reportTitle: '腦健康評估報告',
+    coverSlogan: '全年齡的腦力指南', coverTitle: '腦健康評估報告',
+    coverTitleSub: 'Brain Health Assessment Report', coverFooter: 'A Cognitive Guide in All Ages',
+    labelName: '受測者　Name', labelDate: '測驗日期　Date', labelAge: '生理年齡　Age',
+    labelSex: '性別　Sex', labelId: '受測者 ID', labelQuality: '訊號品質　Quality',
+    ageSuffix: ' 歲', sexM: '男', sexF: '女', sexOther: '其他', sexNone: '—',
+    printBtn: '列印 A4 報告',
+    disclaimerTitle: '免責聲明',
+    disclaimerBody: '本腦健康評估結果僅供個人參考與自我了解使用，不具醫療診斷或治療效力。若您對於自身健康或情緒狀態有任何疑慮，建議尋求合格之專業人員的協助。所有營養補充劑與花精建議僅供參考，使用前請諮詢專業人員，以確保適合個人狀況。',
+    aiLabel: '🤖 AI 生成聲明：',
+    aiBody: '本報告由經專業訓練的人工智能（AI）系統根據腦電波量測結果搭配大數據資料庫自動分析生成。報告中的指標解讀、能力剖析及調整建議由演算法計算產出。',
+    page3Title: '腦科學與腦健康管理',
+    page3Intro: '腦波（EEG）是大腦神經活動的電訊號，透過量測不同頻段的功率分布，可客觀反映大腦在認知、情緒、放鬆與睡眠各層面的運作狀態。本報告依據七大腦波指標提供個人化的腦健康評估與調整建議。',
+    bwTableTitle: '腦波類型及其在不同狀態下的表現',
+    bwColWave: '腦波示意', bwColType: '波型', bwColFreq: '頻率', bwColState: '主要狀態',
+    bwGamma: '高度專注、高級認知、跨區整合與意識', bwBeta: '清醒、專注、邏輯思維與問題解決',
+    bwAlpha: '清醒放鬆（閉眼休息或冥想）、減壓促進放鬆', bwTheta: '淺睡眠、冥想、潛意識活動與創造力',
+    bwDelta: '深度睡眠、完全放鬆與恢復',
+    indicatorIntroTitle: '七大腦健康評估指標介紹',
+    indicators: [
+      ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
+      ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波不對稱性，與情緒狀態相關，可識別早期情緒失衡或低落傾向。'],
+      ['APR（Relative Alpha Ratio）', 'Alpha 波相對功率變化，反映大腦不同狀態下的功能表現，高值與放鬆相關，低值與專注有關。'],
+      ['PAF（Peak Alpha Frequency）', 'Alpha 波頻譜中最高功率的特定頻率，與大腦認知發展、功能成熟及神經元活動有關。'],
+      ['RSA（Resting State Alpha）', '靜態腦波中 α 波功率變化，閉眼時 α 波通常增加，廣泛應用於睡眠、注意力及認知研究。'],
+      ['COH（Cognitive Coherence）', '腦區之間腦電波活動的同步性，反映不同腦區的功能連接性與協調能力。'],
+      ['EnTP（EEG Entropy）', '評估大腦活動的複雜性。熵值越高代表信息處理能力越強，隨年齡增長通常增加。'],
+    ],
+    page4Title: '七大腦波指標深度解析',
+    labelRawValue: '原始值', labelTScore: 'T分數',
+    labelSupp: '🥗 營養補充', labelFlower: '🌸 巴哈花精', labelActivity: '🏃 活動建議',
+    interpretNote: '指標判讀標準：',
+    interpretBody: 'T分數平均值為 50，標準差為 10。T分數低於 30 或高於 70 代表指標與常模相比存在顯著差異，建議進行生活方式或補充劑調整。',
+    page5Title: '能力剖析與調整方案', capProfileTitle: '能力面向剖析',
+    ageNA: '⚠️ 受測者年齡未滿 7 歲，能力指標計算不適用於此年齡層，以下僅列示評估向度供參考。',
+    interventionTitle: '建議調整方案 (4–8 週計畫)',
+    suppTitle: '🥗 營養補充建議', flowerTitle: '🌸 巴哈花精建議',
+    action1Title: '呼吸調節', action1Desc: '每日睡前 4-7-8 呼吸 10 分鐘',
+    action2Title: '多元刺激', action2Desc: '增加感官活動提升大腦複雜度',
+    action3Title: '間歇休息', action3Desc: '使用番茄鐘避免連續腦部慢化',
+    refTitle: '參考文獻 References',
+    refDisclaimer: '聲明：本報告僅供個人健康參考，不具醫療診斷效力。若你有身心不適，請諮詢合格專業人員。所有營養補充劑與花精使用建議請先諮詢專業人員。',
+    qrLabel: '掃描下載此報告',
+    ageGroupSenior: '樂齡長者 (65+) — 健康促進能力',
+    ageGroupAdult: '職場成人 (25–64) — 職場與生活能力',
+    ageGroupStudent: '學生族群 (7–24) — 學習發展潛能',
+    statusNormal: '正常', statusHigh: '偏高', statusLow: '偏低', statusAbnormal: '異常',
+    abnormalText: (names: string[]) => names.length > 0
+      ? `你的 ${names.join(' 與 ')} 指標落入異常區間。這連帶反映大腦在激活與調節上存在不平衡，需要特別關注。`
+      : '目前各項指標整體表現良好，大腦激活與調節處於平衡狀態。',
+    goodText: (names: string[]) => names.length > 0
+      ? `儘管部分指標需要關注，你的 ${names.join(' 與 ')} 仍維持在正常水平，顯示認知潛力與情緒穩定性具備良好基礎。`
+      : '整體指標表現均衡，展現出穩定的認知與情緒調節能力。',
+    rppgFatigue: (rmssd: number) => rmssd < 20 ? '高疲勞' : rmssd < 40 ? '中等' : '良好',
+    indexName: { TBR: '大腦喚醒指數', APR: '壓力調節指數', FAA: '情緒趨避指數', PAF: '處理速度指數', RSA: '慢化/疲勞指數', COH: '腦區連結指數', EnTP: '大腦複雜度指數' },
+    tierDesc: TIER_DESC,
+    activityRecs: ACTIVITY_RECS,
+    fallbackSupp: { name: 'Omega-3 EPA/DHA', desc: '維持神經膜健康，每日 1–2 g' },
+    fallbackFlower: { name: 'Rescue Remedy', desc: '日常情緒平衡維護' },
+    flowerDescFallback: '情緒調節',
+    studentLabels: ['專注持久力', '學習敏捷度', '邏輯整合力', '創意發散力', '情緒穩定性', '社交適應力', '考試抗壓力', '心智續航力'],
+  },
+  'zh-CN': {
+    htmlLang: 'zh-CN', reportTitle: '脑健康评估报告',
+    coverSlogan: '全年龄的脑力指南', coverTitle: '脑健康评估报告',
+    coverTitleSub: 'Brain Health Assessment Report', coverFooter: 'A Cognitive Guide in All Ages',
+    labelName: '受测者　Name', labelDate: '测验日期　Date', labelAge: '生理年龄　Age',
+    labelSex: '性别　Sex', labelId: '受测者 ID', labelQuality: '信号质量　Quality',
+    ageSuffix: ' 岁', sexM: '男', sexF: '女', sexOther: '其他', sexNone: '—',
+    printBtn: '打印 A4 报告',
+    disclaimerTitle: '免责声明',
+    disclaimerBody: '本脑健康评估结果仅供个人参考与自我了解使用，不具医疗诊断或治疗效力。若您对于自身健康或情绪状态有任何疑虑，建议寻求合格专业人员的协助。所有营养补充剂与花精建议仅供参考，使用前请咨询专业人员，以确保适合个人状况。',
+    aiLabel: '🤖 AI 生成声明：',
+    aiBody: '本报告由经专业训练的人工智能（AI）系统根据脑电波测量结果搭配大数据数据库自动分析生成。报告中的指标解读、能力剖析及调整建议由算法计算产出。',
+    page3Title: '脑科学与脑健康管理',
+    page3Intro: '脑波（EEG）是大脑神经活动的电信号，通过测量不同频段的功率分布，可客观反映大脑在认知、情绪、放松与睡眠各层面的运作状态。本报告依据七大脑波指标提供个性化的脑健康评估与调整建议。',
+    bwTableTitle: '脑波类型及其在不同状态下的表现',
+    bwColWave: '脑波示意', bwColType: '波型', bwColFreq: '频率', bwColState: '主要状态',
+    bwGamma: '高度专注、高级认知、跨区整合与意识', bwBeta: '清醒、专注、逻辑思维与问题解决',
+    bwAlpha: '清醒放松（闭眼休息或冥想）、减压促进放松', bwTheta: '浅睡眠、冥想、潜意识活动与创造力',
+    bwDelta: '深度睡眠、完全放松与恢复',
+    indicatorIntroTitle: '七大脑健康评估指标介绍',
+    indicators: [
+      ['TBR（Theta/Beta Ratio）', '常见于注意力缺陷评估。高 TBR 可能意味着较低的专注程度或注意力不集中。'],
+      ['FAA（Frontal Alpha Asymmetry）', '前额叶左右两侧 Alpha 波不对称性，与情绪状态相关，可识别早期情绪失衡或低落倾向。'],
+      ['APR（Relative Alpha Ratio）', 'Alpha 波相对功率变化，反映大脑不同状态下的功能表现，高值与放松相关，低值与专注有关。'],
+      ['PAF（Peak Alpha Frequency）', 'Alpha 波频谱中最高功率的特定频率，与大脑认知发展、功能成熟及神经元活动有关。'],
+      ['RSA（Resting State Alpha）', '静态脑波中 α 波功率变化，闭眼时 α 波通常增加，广泛应用于睡眠、注意力及认知研究。'],
+      ['COH（Cognitive Coherence）', '脑区之间脑电波活动的同步性，反映不同脑区的功能连接性与协调能力。'],
+      ['EnTP（EEG Entropy）', '评估大脑活动的复杂性。熵值越高代表信息处理能力越强，随年龄增长通常增加。'],
+    ],
+    page4Title: '七大脑波指标深度解析',
+    labelRawValue: '原始值', labelTScore: 'T分数',
+    labelSupp: '🥗 营养补充', labelFlower: '🌸 巴哈花精', labelActivity: '🏃 活动建议',
+    interpretNote: '指标判读标准：',
+    interpretBody: 'T分数平均值为 50，标准差为 10。T分数低于 30 或高于 70 代表指标与常模相比存在显著差异，建议进行生活方式或补充剂调整。',
+    page5Title: '能力剖析与调整方案', capProfileTitle: '能力面向剖析',
+    ageNA: '⚠️ 受测者年龄未满 7 岁，能力指标计算不适用于此年龄层，以下仅列示评估向度供参考。',
+    interventionTitle: '建议调整方案 (4–8 周计划)',
+    suppTitle: '🥗 营养补充建议', flowerTitle: '🌸 巴哈花精建议',
+    action1Title: '呼吸调节', action1Desc: '每日睡前 4-7-8 呼吸 10 分钟',
+    action2Title: '多元刺激', action2Desc: '增加感官活动提升大脑复杂度',
+    action3Title: '间歇休息', action3Desc: '使用番茄钟避免连续脑部慢化',
+    refTitle: '参考文献 References',
+    refDisclaimer: '声明：本报告仅供个人健康参考，不具医疗诊断效力。若你有身心不适，请咨询合格专业人员。所有营养补充剂与花精使用建议请先咨询专业人员。',
+    qrLabel: '扫描下载此报告',
+    ageGroupSenior: '乐龄长者 (65+) — 健康促进能力',
+    ageGroupAdult: '职场成人 (25–64) — 职场与生活能力',
+    ageGroupStudent: '学生族群 (7–24) — 学习发展潜能',
+    statusNormal: '正常', statusHigh: '偏高', statusLow: '偏低', statusAbnormal: '异常',
+    abnormalText: (names: string[]) => names.length > 0
+      ? `你的 ${names.join(' 与 ')} 指标落入异常区间。这连带反映大脑在激活与调节上存在不平衡，需要特别关注。`
+      : '目前各项指标整体表现良好，大脑激活与调节处于平衡状态。',
+    goodText: (names: string[]) => names.length > 0
+      ? `尽管部分指标需要关注，你的 ${names.join(' 与 ')} 仍维持在正常水平，显示认知潜力与情绪稳定性具备良好基础。`
+      : '整体指标表现均衡，展现出稳定的认知与情绪调节能力。',
+    rppgFatigue: (rmssd: number) => rmssd < 20 ? '高疲劳' : rmssd < 40 ? '中等' : '良好',
+    indexName: { TBR: '大脑唤醒指数', APR: '压力调节指数', FAA: '情绪趋避指数', PAF: '处理速度指数', RSA: '慢化/疲劳指数', COH: '脑区连结指数', EnTP: '大脑复杂度指数' },
+    tierDesc: {
+      TBR:  { vhigh: '觉醒不足。背景慢波过多，执行力难以启动，常表现为极度恍神。', high: '分心倾向。注意力容易被外界干扰，维持专注有一定难度。', mid: '状态平衡。理想的唤醒水平，能在任务与休息间流畅切换。', low: '警觉性高。皮质活动较快，大脑处于高度戒备，长期难以放松。', vlow: '过度紧绷。脑力消耗极快，常伴随强迫性思考，需关注情绪调节。' },
+      APR:  { vhigh: '反应淡漠。可能过度抑制外部刺激，建议适度提升活动刺激。', high: '深度宁静。平静安稳，心理弹性大，有助快速从压力恢复。', mid: '弹性良好。具备优质修复能力，大脑「待机」功能正常。', low: '抗压降低。大脑待机不足，长期处于应激状态，容易身心疲累。', vlow: '压力透支。完全丧失放松调节能力，大脑运转过热，需立即关注。' },
+      FAA:  { vhigh: '冒险冲动。强烈趋近动机，情绪亢奋，可能缺乏冲动控制。', high: '积极主动。性格外向进取，面对挑战多采正向归因，社交潜力良好。', mid: '情绪稳定。左右脑调节平衡，具良好情绪韧性，趋近与回避动机均衡。', low: '情绪低落。易受负面讯息影响，表现较强的退缩或消极行为。', vlow: '退缩消极。情绪韧性极低，社交主动性显著下降，需心理支持介入。' },
+      PAF:  { vhigh: '思绪飞跃。脑部运作过快，可能导致资讯超载而焦虑不安。', high: '思维敏捷。逻辑运算与反应速度优异，工作记忆潜力佳。', mid: '标准速。资讯处理效能符合年龄预期，神经传导效率平衡。', low: '效率下降。脑力疲劳特征，处理复杂事务较吃力，建议确保充足睡眠。', vlow: '明显慢化。反应迟缓，神经系统能量受限，建议评估睡眠或代谢因素。' },
+      RSA:  { vhigh: '明显慢化。高频功率缺失，认知效能与记忆连线受显著影响。', high: '轻度疲劳。大脑内省过度或能量不足，思考较缓，建议检视作息。', mid: '生理平衡。大脑节律分布符合年龄预期，Alpha 频段健康稳定。', low: '认知潜力。高频 Alpha 占优势，具优异学习敏锐度，是年轻健康特征。', vlow: '运转过热。缺乏修复性慢波调节，可能导致长期注意力耗竭。' },
+      COH:  { vhigh: '系统僵化。脑区过度同步，缺乏灵活分工，认知灵活性显著下降。', high: '思维惯性。思考容易陷入固定路径，对新资讯适应力较慢。', mid: '健康网络。区域间连通正常，能协调完成复杂任务。', low: '协作较弱。通讯不流畅，整合任务可能较吃力，建议加强脑力训练。', vlow: '网络断连。各区资讯传递失效，难以进行整体性思维整合。' },
+      EnTP: { vhigh: '讯号紊乱。资讯处理超载且无序，难以抓重点，建议增加结构化日程。', high: '高创造力。思维活跃联想丰富，发散思考能力优秀，适合创新任务。', mid: '健康弹性。思维多样性与稳定度达最佳平衡，能在创意与逻辑间切换。', low: '灵活性低。思维单调反应固定，可能存在长期倦怠，建议多元感官刺激。', vlow: '认知封锁。活动模式极其单调，缺乏系统动态调节空间，需认知复健。' },
+    },
+    activityRecs: {
+      TBR:  { high: ['注意力训练（冥想、专注游戏）', '建立规律作息时间表', '减少屏幕与多工干扰'], low: ['放松练习（深呼吸、渐进式肌肉放松）', '规律正念冥想练习', '减少咖啡因摄取'] },
+      FAA:  { high: ['情绪觉察练习（日记书写、正念）', '维持规律睡眠时间', '冥想与深呼吸调节'], low: ['户外活动与自然接触', '增加社交参与活动', '正向心理学日常练习'] },
+      APR:  { high: ['规律有氧运动', '设置挑战性任务与学习目标', '短时间高专注练习'], low: ['冥想与瑜伽练习', '聆听放松音乐', '定期休息，避免持续高压'] },
+      PAF:  { high: ['深度思考与计划练习', '练习延迟决策，避免冲动', '正念冥想训练'], low: ['脑力训练（拼图、阅读、棋盘游戏）', '确保充足睡眠与规律运动', '尝试语言学习或新技能挑战'] },
+      RSA:  { high: ['增加休息并优化睡眠品质', '深呼吸、冥想或聆听舒缓音乐', '减少高压情境暴露'], low: ['注意力训练活动（如舒尔特方格）', '设置具挑战性的学习任务', '规律体能活动以提升觉醒度'] },
+      COH:  { high: ['创意思考技巧练习（如六顶帽子法）', '多角度问题解决训练', '接触不同领域知识'], low: ['执行功能训练（时间管理、目标设定）', '团队合作与协作活动', '结构化学习与任务规划'] },
+      EnTP: { high: ['设定明确目标与优先顺序', '使用待办清单与时间规划工具', '正念练习以提升专注稳定性'], low: ['创意活动（艺术、音乐、手工艺）', '脑力激荡与发散思维练习', '尝试新事物，培养开放心态'] },
+    },
+    fallbackSupp: { name: 'Omega-3 EPA/DHA', desc: '维持神经膜健康，每日 1–2 g' },
+    fallbackFlower: { name: 'Rescue Remedy', desc: '日常情绪平衡维护' },
+    flowerDescFallback: '情绪调节',
+    studentLabels: ['专注持久力', '学习敏捷度', '逻辑整合力', '创意发散力', '情绪稳定性', '社交适应力', '考试抗压力', '心智续航力'],
+  },
+  'en': {
+    htmlLang: 'en', reportTitle: 'Brain Health Assessment Report',
+    coverSlogan: 'A Cognitive Guide for All Ages', coverTitle: 'Brain Health Assessment Report',
+    coverTitleSub: '腦健康評估報告', coverFooter: 'A Cognitive Guide in All Ages',
+    labelName: 'Name', labelDate: 'Date', labelAge: 'Age',
+    labelSex: 'Sex', labelId: 'Subject ID', labelQuality: 'Signal Quality',
+    ageSuffix: ' yrs', sexM: 'Male', sexF: 'Female', sexOther: 'Other', sexNone: '—',
+    printBtn: 'Print A4 Report',
+    disclaimerTitle: 'Disclaimer',
+    disclaimerBody: 'This brain health assessment is for personal reference and self-awareness only. It does not constitute medical diagnosis or treatment. If you have concerns about your health or emotional well-being, please consult a qualified professional. All supplement and flower essence recommendations are for reference only; consult a professional before use.',
+    aiLabel: '🤖 AI-Generated Report: ',
+    aiBody: 'This report is automatically generated by a professionally trained artificial intelligence (AI) system based on EEG measurements combined with a large-scale database. Index interpretations, capability profiles, and adjustment recommendations are produced by algorithms.',
+    page3Title: 'Brain Science & Brain Health Management',
+    page3Intro: 'EEG (Electroencephalography) captures the electrical signals of brain neural activity. By measuring power distribution across different frequency bands, it objectively reflects the brain\'s functioning in cognition, emotion, relaxation, and sleep. This report provides personalized brain health assessment and recommendations based on seven key EEG indices.',
+    bwTableTitle: 'Brainwave Types and Their Primary States',
+    bwColWave: 'Waveform', bwColType: 'Type', bwColFreq: 'Frequency', bwColState: 'Primary State',
+    bwGamma: 'Intense focus, higher cognition, cross-region integration & consciousness',
+    bwBeta: 'Alert, focused, logical thinking & problem-solving',
+    bwAlpha: 'Relaxed wakefulness (eyes-closed rest or meditation), stress reduction',
+    bwTheta: 'Light sleep, meditation, subconscious activity & creativity',
+    bwDelta: 'Deep sleep, complete relaxation & restoration',
+    indicatorIntroTitle: 'Introduction to the 7 Brain Health Indices',
+    indicators: [
+      ['TBR (Theta/Beta Ratio)', 'Commonly used in attention-deficit assessment. High TBR may indicate lower focus or inattention.'],
+      ['FAA (Frontal Alpha Asymmetry)', 'Left-right frontal Alpha asymmetry; related to emotional state. Can identify early emotional imbalance or depressive tendencies.'],
+      ['APR (Relative Alpha Ratio)', 'Relative Alpha power changes reflecting brain function. High values relate to relaxation; low values relate to focus.'],
+      ['PAF (Peak Alpha Frequency)', 'The specific Alpha peak frequency; related to cognitive development, neural maturity, and neuronal activity.'],
+      ['RSA (Resting State Alpha)', 'Alpha power changes in resting EEG. Alpha typically increases with eyes closed; widely used in sleep, attention, and cognition research.'],
+      ['COH (Cognitive Coherence)', 'Synchrony of EEG across brain regions, reflecting functional connectivity and coordination.'],
+      ['EnTP (EEG Entropy)', 'Measures complexity of brain activity. Higher entropy indicates stronger information-processing capacity; typically increases with age.'],
+    ],
+    page4Title: 'In-Depth Analysis of the 7 EEG Indices',
+    labelRawValue: 'Raw Value', labelTScore: 'T-Score',
+    labelSupp: '🥗 Nutrition', labelFlower: '🌸 Bach Flowers', labelActivity: '🏃 Activity Tips',
+    interpretNote: 'Interpretation Guide:',
+    interpretBody: 'T-scores have a mean of 50 and SD of 10. A T-score below 30 or above 70 indicates a significant deviation from the norm; lifestyle or supplement adjustments are recommended.',
+    page5Title: 'Capability Profile & Adjustment Plan', capProfileTitle: 'Capability Dimensions',
+    ageNA: '⚠️ Subject is under 7 years old. Capability index calculation does not apply to this age group. The dimensions below are listed for reference only.',
+    interventionTitle: 'Recommended Adjustment Plan (4–8 Week Program)',
+    suppTitle: '🥗 Supplement Recommendations', flowerTitle: '🌸 Bach Flower Recommendations',
+    action1Title: 'Breath Regulation', action1Desc: '4-7-8 breathing for 10 min before bed daily',
+    action2Title: 'Diverse Stimulation', action2Desc: 'Add sensory activities to boost brain complexity',
+    action3Title: 'Interval Rest', action3Desc: 'Use Pomodoro timer to prevent cognitive fatigue',
+    refTitle: 'References',
+    refDisclaimer: 'Disclaimer: This report is for personal health reference only and does not constitute medical diagnosis. If you experience any discomfort, consult a qualified professional before using any supplements or flower essences.',
+    qrLabel: 'Scan to download this report',
+    ageGroupSenior: 'Senior Adults (65+) — Health Promotion',
+    ageGroupAdult: 'Working Adults (25–64) — Workplace & Life Capabilities',
+    ageGroupStudent: 'Students (7–24) — Learning & Development Potential',
+    statusNormal: 'Normal', statusHigh: 'High', statusLow: 'Low', statusAbnormal: 'Abnormal',
+    abnormalText: (names: string[]) => names.length > 0
+      ? `Your ${names.join(' and ')} indices fall in the abnormal range, reflecting an imbalance in brain activation and regulation that warrants attention.`
+      : 'All indices are performing well. Brain activation and regulation are in balance.',
+    goodText: (names: string[]) => names.length > 0
+      ? `Despite some indices requiring attention, your ${names.join(' and ')} remain at normal levels, indicating a solid foundation of cognitive potential and emotional stability.`
+      : 'All indices are well-balanced, reflecting stable cognitive and emotional regulation.',
+    rppgFatigue: (rmssd: number) => rmssd < 20 ? 'High Fatigue' : rmssd < 40 ? 'Moderate' : 'Good',
+    indexName: { TBR: 'Arousal Index', APR: 'Stress Regulation Index', FAA: 'Emotional Asymmetry Index', PAF: 'Processing Speed Index', RSA: 'Slow/Fatigue Index', COH: 'Brain Connectivity Index', EnTP: 'Brain Complexity Index' },
+    tierDesc: {
+      TBR:  { vhigh: 'Insufficient arousal. Excess background slow waves make it hard to initiate tasks; often presents as extreme daydreaming.', high: 'Distraction tendency. Attention is easily disrupted; maintaining focus is moderately difficult.', mid: 'Balanced state. Ideal arousal level; able to switch smoothly between tasks and rest.', low: 'High alertness. Cortical activity is fast; the brain is on high alert and finds it hard to relax long-term.', vlow: 'Over-tension. Brain energy depletes rapidly, often with obsessive thinking; emotional regulation needs attention.' },
+      APR:  { vhigh: 'Emotional blunting. May be over-suppressing external stimuli; consider increasing activity stimulation.', high: 'Deep calm. Stable and tranquil with great mental resilience; helps recover quickly from stress.', mid: 'Good flexibility. Excellent recovery capacity; normal brain "standby" function.', low: 'Reduced stress tolerance. Insufficient brain rest; prolonged stress response, prone to physical and mental fatigue.', vlow: 'Stress depletion. Complete loss of relaxation ability; brain is overheating—needs immediate attention.' },
+      FAA:  { vhigh: 'Impulsive risk-taking. Strong approach motivation, emotional elation; may lack impulse control.', high: 'Proactive. Extroverted and ambitious; tends toward positive attribution—good social potential.', mid: 'Emotional stability. Balanced left-right regulation; good emotional resilience, balanced approach/avoidance motivation.', low: 'Low mood. Easily influenced by negative information; shows stronger withdrawal or passive behavior.', vlow: 'Withdrawn and passive. Very low emotional resilience; social initiative significantly reduced—psychological support recommended.' },
+      PAF:  { vhigh: 'Racing thoughts. Brain operating too fast; may cause information overload and anxiety.', high: 'Sharp thinking. Excellent logical processing and reaction speed; good working memory potential.', mid: 'Standard speed. Information processing meets age expectations; balanced neural transmission efficiency.', low: 'Reduced efficiency. Signs of mental fatigue; difficulty with complex tasks—ensure adequate sleep.', vlow: 'Notable slowing. Slow reactions; nervous system energy restricted—consider evaluating sleep or metabolic factors.' },
+      RSA:  { vhigh: 'Notable slowing. High-frequency power deficit significantly impacts cognitive efficiency and memory.', high: 'Mild fatigue. Excessive brain introspection or insufficient energy; slower thinking—review rest habits.', mid: 'Physiological balance. Brain rhythm distribution meets age expectations; healthy, stable Alpha band.', low: 'Cognitive potential. High-frequency Alpha dominance; excellent learning acuity—characteristic of young healthy brains.', vlow: 'Overheating. Lack of restorative slow-wave regulation; may lead to long-term attention depletion.' },
+      COH:  { vhigh: 'System rigidity. Over-synchronization of brain regions; lacks flexible division of labor—cognitive flexibility significantly reduced.', high: 'Habitual thinking. Prone to fixed thought patterns; slow to adapt to new information.', mid: 'Healthy network. Normal inter-regional connectivity; able to coordinate complex tasks.', low: 'Weak collaboration. Poor communication flow; integration tasks may be challenging—brain training recommended.', vlow: 'Network disconnect. Information transfer between regions has failed; unable to perform holistic thinking.' },
+      EnTP: { vhigh: 'Signal chaos. Information processing overloaded and disorganized; hard to prioritize—structured scheduling recommended.', high: 'High creativity. Active thinking with rich associations; excellent divergent thinking—suited for innovative tasks.', mid: 'Healthy flexibility. Optimal balance of thought diversity and stability; can switch between creative and logical modes.', low: 'Low flexibility. Monotonous and fixed responses; may indicate chronic fatigue—multi-sensory stimulation recommended.', vlow: 'Cognitive block. Extremely monotonous activity patterns; lacks dynamic regulation—cognitive rehabilitation needed.' },
+    },
+    activityRecs: {
+      TBR:  { high: ['Attention training (meditation, focus games)', 'Establish a regular daily schedule', 'Reduce screen time and multitasking'], low: ['Relaxation exercises (deep breathing, progressive muscle relaxation)', 'Regular mindfulness meditation', 'Reduce caffeine intake'] },
+      FAA:  { high: ['Emotional awareness practice (journaling, mindfulness)', 'Maintain consistent sleep schedule', 'Meditation and deep breathing regulation'], low: ['Outdoor activities and nature exposure', 'Increase social engagement', 'Daily positive psychology practices'] },
+      APR:  { high: ['Regular aerobic exercise', 'Set challenging tasks and learning goals', 'Short high-focus practice sessions'], low: ['Meditation and yoga practice', 'Listen to relaxing music', 'Regular breaks, avoid prolonged high-pressure situations'] },
+      PAF:  { high: ['Deep thinking and planning exercises', 'Practice delayed decision-making, avoid impulsivity', 'Mindfulness meditation training'], low: ['Brain training (puzzles, reading, board games)', 'Ensure adequate sleep and regular exercise', 'Try language learning or new skill challenges'] },
+      RSA:  { high: ['Increase rest and optimize sleep quality', 'Deep breathing, meditation or calming music', 'Reduce exposure to high-stress situations'], low: ['Attention training activities (e.g., Schulte grid)', 'Set challenging learning tasks', 'Regular physical activity to boost alertness'] },
+      COH:  { high: ['Creative thinking exercises (e.g., Six Thinking Hats)', 'Multi-perspective problem-solving training', 'Engage with diverse knowledge fields'], low: ['Executive function training (time management, goal-setting)', 'Teamwork and collaborative activities', 'Structured learning and task planning'] },
+      EnTP: { high: ['Set clear goals and priorities', 'Use to-do lists and time planning tools', 'Mindfulness practice to improve focus stability'], low: ['Creative activities (art, music, crafts)', 'Brainstorming and divergent thinking exercises', 'Try new things, cultivate an open mindset'] },
+    },
+    fallbackSupp: { name: 'Omega-3 EPA/DHA', desc: 'Supports neural membrane health, 1–2 g daily' },
+    fallbackFlower: { name: 'Rescue Remedy', desc: 'Daily emotional balance support' },
+    flowerDescFallback: 'Emotional regulation',
+    studentLabels: ['Sustained Focus', 'Learning Agility', 'Logical Integration', 'Creative Divergence', 'Emotional Stability', 'Social Adaptability', 'Exam Stress Tolerance', 'Mental Endurance'],
+  },
+  'ja': {
+    htmlLang: 'ja', reportTitle: '脳健康評価レポート',
+    coverSlogan: '全年齢の脳力ガイド', coverTitle: '脳健康評価レポート',
+    coverTitleSub: 'Brain Health Assessment Report', coverFooter: 'A Cognitive Guide in All Ages',
+    labelName: '受検者　Name', labelDate: '検査日　Date', labelAge: '年齢　Age',
+    labelSex: '性別　Sex', labelId: '受検者 ID', labelQuality: '信号品質　Quality',
+    ageSuffix: '歳', sexM: '男性', sexF: '女性', sexOther: 'その他', sexNone: '—',
+    printBtn: 'A4レポートを印刷',
+    disclaimerTitle: '免責事項',
+    disclaimerBody: 'この脳健康評価の結果は、個人の参考・自己理解のみを目的としており、医療診断や治療の効力を持つものではありません。健康や感情の状態についてご不安がある場合は、資格を持つ専門家にご相談ください。すべてのサプリメントおよびフラワーエッセンスの推奨事項は参考情報であり、使用前に専門家にご相談ください。',
+    aiLabel: '🤖 AI生成レポート：',
+    aiBody: '本レポートは、専門的にトレーニングされた人工知能（AI）システムがEEG測定結果とビッグデータベースを組み合わせて自動分析・生成したものです。指標の解釈、能力プロファイル、および調整提案はアルゴリズムによって算出されています。',
+    page3Title: '脳科学と脳健康管理',
+    page3Intro: 'EEG（脳波）は脳の神経活動の電気信号です。異なる周波数帯の電力分布を測定することで、認知・感情・リラックス・睡眠における脳の機能状態を客観的に反映します。本レポートは7つの主要EEG指標に基づいて、個別化された脳健康評価と改善提案を提供します。',
+    bwTableTitle: '脳波の種類と各状態における表れ方',
+    bwColWave: '波形', bwColType: '種類', bwColFreq: '周波数', bwColState: '主な状態',
+    bwGamma: '高度な集中、高次認知、脳領域間の統合と意識',
+    bwBeta: '覚醒・集中・論理的思考と問題解決',
+    bwAlpha: '覚醒リラックス（閉眼安静・瞑想）、ストレス軽減',
+    bwTheta: '浅い睡眠、瞑想、潜在意識活動と創造性',
+    bwDelta: '深い睡眠、完全なリラックスと回復',
+    indicatorIntroTitle: '7つの脳健康評価指標の紹介',
+    indicators: [
+      ['TBR（Theta/Beta Ratio）', '注意欠陥の評価に広く用いられます。高いTBRは集中力の低下や不注意を示す可能性があります。'],
+      ['FAA（Frontal Alpha Asymmetry）', '前頭葉の左右Alpha波の非対称性。感情状態と関連し、早期の感情的不均衡や抑うつ傾向を識別できます。'],
+      ['APR（Relative Alpha Ratio）', 'Alpha波の相対的な電力変化。高い値はリラックス、低い値は集中と関連します。'],
+      ['PAF（Peak Alpha Frequency）', 'Alpha波スペクトルのピーク周波数。認知発達・神経成熟・神経活動と関連します。'],
+      ['RSA（Resting State Alpha）', '安静時脳波のAlpha波電力変化。閉眼でAlpha波が増加し、睡眠・注意力・認知研究に広く用いられます。'],
+      ['COH（Cognitive Coherence）', '脳領域間の脳波同期性。異なる脳領域の機能的接続性と協調能力を反映します。'],
+      ['EnTP（EEG Entropy）', '脳活動の複雑さを評価します。エントロピーが高いほど情報処理能力が高く、年齢とともに増加します。'],
+    ],
+    page4Title: '7つのEEG指標の詳細分析',
+    labelRawValue: '生値', labelTScore: 'Tスコア',
+    labelSupp: '🥗 栄養補助', labelFlower: '🌸 バッチフラワー', labelActivity: '🏃 活動アドバイス',
+    interpretNote: '指標の判定基準：',
+    interpretBody: 'Tスコアの平均値は50、標準偏差は10です。Tスコアが30未満または70超の場合、規範と比較して有意な差異があり、生活習慣やサプリメントの調整が推奨されます。',
+    page5Title: '能力プロファイルと改善プラン', capProfileTitle: '能力の次元',
+    ageNA: '⚠️ 受検者が7歳未満のため、能力指標の計算はこの年齢層に適用されません。以下の評価次元は参考としてご覧ください。',
+    interventionTitle: '改善プランの提案（4〜8週間プログラム）',
+    suppTitle: '🥗 サプリメント提案', flowerTitle: '🌸 バッチフラワー提案',
+    action1Title: '呼吸調整', action1Desc: '就寝前に毎日4-7-8呼吸法を10分間実施',
+    action2Title: '多感覚刺激', action2Desc: '感覚活動を増やして脳の複雑さを高める',
+    action3Title: '定期的休憩', action3Desc: 'ポモドーロタイマーで認知疲労を防ぐ',
+    refTitle: '参考文献 References',
+    refDisclaimer: '免責事項：本レポートは個人の健康参考のみを目的とし、医療診断の効力を持ちません。身体的・精神的な不調がある場合は、資格を持つ専門家にご相談ください。すべてのサプリメントやフラワーエッセンスの使用前に専門家にご相談ください。',
+    qrLabel: 'スキャンしてレポートをダウンロード',
+    ageGroupSenior: '高齢者 (65+) — 健康促進能力',
+    ageGroupAdult: '社会人 (25–64) — 職場・生活能力',
+    ageGroupStudent: '学生 (7–24) — 学習・発達潜在能力',
+    statusNormal: '正常', statusHigh: '高め', statusLow: '低め', statusAbnormal: '異常',
+    abnormalText: (names: string[]) => names.length > 0
+      ? `あなたの${names.join('・')}指標は異常域に入っています。脳の活性化と調節に不均衡が生じており、特別な注意が必要です。`
+      : '現在、すべての指標が良好です。脳の活性化と調節はバランスが取れています。',
+    goodText: (names: string[]) => names.length > 0
+      ? `一部の指標に注意が必要ですが、あなたの${names.join('・')}は正常範囲を維持しており、認知力と感情安定性の良い基盤を示しています。`
+      : 'すべての指標がバランスよく、安定した認知・感情調節能力を示しています。',
+    rppgFatigue: (rmssd: number) => rmssd < 20 ? '高疲労' : rmssd < 40 ? '中程度' : '良好',
+    indexName: { TBR: '脳覚醒指数', APR: 'ストレス調整指数', FAA: '感情非対称指数', PAF: '処理速度指数', RSA: '慢化/疲労指数', COH: '脳接続指数', EnTP: '脳複雑度指数' },
+    tierDesc: {
+      TBR:  { vhigh: '覚醒不足。背景の低周波が過剰で実行機能を起動しにくく、極度の注意散漫として現れやすい。', high: '注意散漫傾向。外部刺激に注意が向きやすく、集中の維持に困難がある。', mid: '状態バランス。理想的な覚醒水準で、作業と休息をスムーズに切り替えられる。', low: '高警戒。皮質活動が速く脳が高度に警戒しており、長期的なリラックスが難しい。', vlow: '過緊張。脳力消費が極めて速く、強迫的思考を伴うことが多い。感情調整に注意が必要。' },
+      APR:  { vhigh: '感情鈍麻。外部刺激を過度に抑制している可能性があり、適度な活動刺激の増加を推奨。', high: '深い落ち着き。精神的弾力性が高く、ストレスからの素早い回復を助ける。', mid: '良好な柔軟性。優れた回復力を持ち、脳の「スタンバイ」機能が正常。', low: '耐ストレス低下。脳のスタンバイが不足し、慢性的なストレス状態で心身疲労が起きやすい。', vlow: 'ストレス枯渇。リラックス調整能力が完全に失われ、脳がオーバーヒート状態。即時対応が必要。' },
+      FAA:  { vhigh: '衝動的リスク志向。強い接近動機と感情的興奮があり、衝動制御が不十分な可能性。', high: '積極的。外向的で意欲的。課題に対してポジティブな帰属を行い、社会的潜在能力が高い。', mid: '感情安定。左右脳の調節バランスが良く、感情的回復力が高い。接近・回避動機が均衡。', low: '気分低下。ネガティブ情報の影響を受けやすく、引きこもりや消極的行動が現れやすい。', vlow: '引きこもり・消極的。感情的回復力が極めて低く、社会的積極性が著しく低下。心理的サポートが必要。' },
+      PAF:  { vhigh: '思考の暴走。脳が過剰に高速動作し、情報過負荷による不安を引き起こす可能性。', high: '鋭敏な思考。論理処理と反応速度が優れ、作業記憶の潜在能力が高い。', mid: '標準速度。情報処理効率が年齢相応で、神経伝達効率がバランス良い。', low: '効率低下。脳疲労の特徴。複雑な作業が困難。十分な睡眠を確保することを推奨。', vlow: '顕著な遅延。反応が遅く神経系のエネルギーが制限されている。睡眠や代謝要因の評価を推奨。' },
+      RSA:  { vhigh: '顕著な遅延。高周波電力の欠如により認知効率と記憶接続が著しく影響される。', high: '軽度の疲労。脳の内省が過剰またはエネルギー不足。思考が遅め。休息習慣の見直しを推奨。', mid: '生理的バランス。脳のリズム分布が年齢相応で、Alpha帯域が健康的で安定している。', low: '認知潜在力。高周波Alphaが優勢で、優れた学習鋭敏性を示す。若く健康な特徴。', vlow: 'オーバーヒート。修復的な低周波調整が不足し、長期的な注意力消耗につながる可能性。' },
+      COH:  { vhigh: 'システム硬直。脳領域が過同期し、柔軟な分業ができず認知的柔軟性が著しく低下。', high: '思考の惰性。固定した思考パターンに陥りやすく、新情報への適応が遅い。', mid: '健全なネットワーク。領域間の接続が正常で、複雑なタスクを協調して完了できる。', low: '協調の弱さ。情報伝達が滞り、統合タスクが困難な場合がある。脳トレーニングを推奨。', vlow: 'ネットワーク断絶。各領域間の情報伝達が機能不全。総合的な思考統合が困難。' },
+      EnTP: { vhigh: '信号混乱。情報処理が過負荷かつ無秩序。重要事項の把握が困難。構造化されたスケジュール管理を推奨。', high: '高い創造性。活発な思考と豊富な連想。優れた発散思考能力があり、革新的タスクに適している。', mid: '健全な柔軟性。思考の多様性と安定性の最適バランス。創造的モードと論理的モードを切り替えられる。', low: '柔軟性の低さ。単調で固定した反応パターン。長期的な倦怠感の可能性。多感覚刺激を推奨。', vlow: '認知ブロック。活動パターンが極めて単調で、動的調節空間が不足。認知リハビリテーションが必要。' },
+    },
+    activityRecs: {
+      TBR:  { high: ['注意力トレーニング（瞑想・集中ゲーム）', '規則正しい生活リズムの構築', 'スクリーン時間とマルチタスクの削減'], low: ['リラクゼーション練習（深呼吸・漸進的筋弛緩）', '定期的なマインドフルネス瞑想', 'カフェイン摂取の削減'] },
+      FAA:  { high: ['感情認識練習（日記・マインドフルネス）', '規則正しい睡眠時間の維持', '瞑想と深呼吸による調整'], low: ['屋外活動と自然との触れ合い', '社会参加活動の増加', '日常のポジティブ心理学実践'] },
+      APR:  { high: ['定期的な有酸素運動', '挑戦的なタスクと学習目標の設定', '短時間の高集中練習'], low: ['瞑想とヨガの実践', 'リラックス音楽を聴く', '定期的な休憩、長時間の高ストレス状況を避ける'] },
+      PAF:  { high: ['深い思考と計画練習', '衝動を避け決断を遅らせる練習', 'マインドフルネス瞑想トレーニング'], low: ['脳トレ（パズル・読書・ボードゲーム）', '十分な睡眠と定期的な運動を確保', '語学学習や新しいスキルへの挑戦'] },
+      RSA:  { high: ['休息を増やし睡眠の質を最適化', '深呼吸・瞑想または穏やかな音楽を聴く', '高ストレス状況への暴露を減らす'], low: ['注意力トレーニング活動（シュルテ表など）', '挑戦的な学習タスクの設定', '覚醒度向上のための定期的な運動'] },
+      COH:  { high: ['創造的思考技術の練習（シックスシンキングハッツなど）', '多角的な問題解決トレーニング', '多様な分野の知識に触れる'], low: ['実行機能トレーニング（時間管理・目標設定）', 'チームワークと協調活動', '構造化された学習とタスク計画'] },
+      EnTP: { high: ['明確な目標と優先順位の設定', 'タスクリストと時間計画ツールの活用', 'マインドフルネス練習で集中力を高める'], low: ['創造的活動（アート・音楽・工芸）', 'ブレインストーミングと発散思考練習', '新しいことに挑戦し、オープンマインドを培う'] },
+    },
+    fallbackSupp: { name: 'Omega-3 EPA/DHA', desc: '神経膜の健康を維持、1日1〜2g' },
+    fallbackFlower: { name: 'Rescue Remedy', desc: '日常の感情バランスサポート' },
+    flowerDescFallback: '感情調整',
+    studentLabels: ['集中持続力', '学習敏捷性', '論理統合力', '創造的発散力', '感情安定性', '社会適応力', '試験耐圧力', 'メンタル持続力'],
+  },
+};
+
+const CAP_LABEL_MAP: Record<string, Record<ReportLang, string>> = {
+  '職場執行力': { 'zh-TW': '職場執行力', 'zh-CN': '职场执行力', en: 'Work Execution', ja: '職場実行力' },
+  '溝通影響力': { 'zh-TW': '溝通影響力', 'zh-CN': '沟通影响力', en: 'Communication Influence', ja: 'コミュニケーション影響力' },
+  '系統思考力': { 'zh-TW': '系統思考力', 'zh-CN': '系统思考力', en: 'Systems Thinking', ja: 'システム思考力' },
+  '情緒情商':   { 'zh-TW': '情緒情商', 'zh-CN': '情绪情商', en: 'Emotional Intelligence', ja: '感情的知性' },
+  '決策判斷力': { 'zh-TW': '決策判斷力', 'zh-CN': '决策判断力', en: 'Decision Making', ja: '意思決定力' },
+  '職業續航力': { 'zh-TW': '職業續航力', 'zh-CN': '职业续航力', en: 'Career Endurance', ja: 'キャリア持続力' },
+  '壓力復原力': { 'zh-TW': '壓力復原力', 'zh-CN': '压力复原力', en: 'Stress Resilience', ja: 'ストレス回復力' },
+  '應變靈活性': { 'zh-TW': '應變靈活性', 'zh-CN': '应变灵活性', en: 'Adaptive Flexibility', ja: '適応の柔軟性' },
+  '專注持久力': { 'zh-TW': '專注持久力', 'zh-CN': '专注持久力', en: 'Sustained Focus', ja: '集中持続力' },
+  '學習敏捷度': { 'zh-TW': '學習敏捷度', 'zh-CN': '学习敏捷度', en: 'Learning Agility', ja: '学習敏捷性' },
+  '邏輯整合力': { 'zh-TW': '邏輯整合力', 'zh-CN': '逻辑整合力', en: 'Logical Integration', ja: '論理統合力' },
+  '創意發散力': { 'zh-TW': '創意發散力', 'zh-CN': '创意发散力', en: 'Creative Divergence', ja: '創造的発散力' },
+  '情緒穩定性': { 'zh-TW': '情緒穩定性', 'zh-CN': '情绪稳定性', en: 'Emotional Stability', ja: '感情安定性' },
+  '社交適應力': { 'zh-TW': '社交適應力', 'zh-CN': '社交适应力', en: 'Social Adaptability', ja: '社会適応力' },
+  '考試抗壓力': { 'zh-TW': '考試抗壓力', 'zh-CN': '考试抗压力', en: 'Exam Stress Tolerance', ja: '試験耐圧力' },
+  '心智續航力': { 'zh-TW': '心智續航力', 'zh-CN': '心智续航力', en: 'Mental Endurance', ja: 'メンタル持続力' },
+  '認知敏銳度': { 'zh-TW': '認知敏銳度', 'zh-CN': '认知敏锐度', en: 'Cognitive Acuity', ja: '認知鋭敏度' },
+  '記憶連結力': { 'zh-TW': '記憶連結力', 'zh-CN': '记忆连结力', en: 'Memory Connectivity', ja: '記憶連結力' },
+  '情緒平和度': { 'zh-TW': '情緒平和度', 'zh-CN': '情绪平和度', en: 'Emotional Equanimity', ja: '感情平穏度' },
+  '生活應變力': { 'zh-TW': '生活應變力', 'zh-CN': '生活应变力', en: 'Life Adaptability', ja: '生活適応力' },
+  '睡眠修復力': { 'zh-TW': '睡眠修復力', 'zh-CN': '睡眠修复力', en: 'Sleep Recovery', ja: '睡眠回復力' },
+  '社交參與度': { 'zh-TW': '社交參與度', 'zh-CN': '社交参与度', en: 'Social Engagement', ja: '社会参加度' },
+  '感覺整合力': { 'zh-TW': '感覺整合力', 'zh-CN': '感觉整合力', en: 'Sensory Integration', ja: '感覚統合力' },
+  '心智活力度': { 'zh-TW': '心智活力度', 'zh-CN': '心智活力度', en: 'Mental Vitality', ja: '精神活力度' },
+};
+
 function getTier(t: number): string {
   if (t > 90) return 'vhigh';
   if (t > 65) return 'high';
@@ -169,11 +509,12 @@ function getTier(t: number): string {
   return 'vlow';
 }
 
-function tierStatusLabel(t: number): string {
-  if (t >= 40 && t <= 60) return '正常';
-  if (t > 60) return '偏高';
-  if (t >= 30) return '偏低';
-  return '異常';
+function tierStatusLabel(t: number, lang: ReportLang): string {
+  const RT = REPORT_TEXT[lang];
+  if (t >= 40 && t <= 60) return RT.statusNormal;
+  if (t > 60) return RT.statusHigh;
+  if (t >= 30) return RT.statusLow;
+  return RT.statusAbnormal;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +541,7 @@ const CAP_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> 
 // Report component — exact template layout, dynamic data
 // ---------------------------------------------------------------------------
 interface ReportProps {
+  lang: ReportLang;
   subjectInfo: {
     reportId: string; id: string; name: string; age: string; sex: string;
     recordingDate: string; quality: string; generatedDate: string;
@@ -221,32 +563,26 @@ interface ReportProps {
 }
 
 const EegReportTemplate: React.FC<ReportProps> = ({
-  subjectInfo, brainIndices, capabilityProfile, ageGroupLabel, ageNotApplicable, summary, topSupps, topFlowers, rppg, qrCodeDataUrl,
+  lang, subjectInfo, brainIndices, capabilityProfile, ageGroupLabel, ageNotApplicable, summary, topSupps, topFlowers, rppg, qrCodeDataUrl,
 }) => {
-  const abnormalText = summary.abnormalNames.length > 0
-    ? `你的 ${summary.abnormalNames.map(n => `${n}`).join(' 與 ')} 指標落入異常區間。這連帶反映大腦在激活與調節上存在不平衡，需要特別關注。`
-    : '目前各項指標整體表現良好，大腦激活與調節處於平衡狀態。';
-
-  const goodText = summary.goodNames.length > 0
-    ? `儘管部分指標需要關注，你的 ${summary.goodNames.map(n => `${n}`).join(' 與 ')} 仍維持在正常水平，顯示認知潛力與情緒穩定性具備良好基礎。`
-    : '整體指標表現均衡，展現出穩定的認知與情緒調節能力。';
+  const RT = REPORT_TEXT[lang];
+  const abnormalText = RT.abnormalText(summary.abnormalNames);
+  const goodText = RT.goodText(summary.goodNames);
 
   const rppgHR = rppg?.hr   != null ? `${rppg.hr} BPM` : '--';
   const rppgBP = (rppg?.sbp != null && rppg?.dbp != null) ? `${rppg.sbp}/${rppg.dbp}` : '--';
   const rppgSI = rppg?.si   != null ? rppg.si.toFixed(1) : '--';
-  const rppgFI = rppg?.rmssd != null
-    ? (rppg.rmssd < 20 ? '高疲勞' : rppg.rmssd < 40 ? '中等' : '良好')
-    : '--';
+  const rppgFI = rppg?.rmssd != null ? RT.rppgFatigue(rppg.rmssd) : '--';
 
   return (
-    <div className="min-h-screen bg-gray-100 print:bg-white p-0 md:p-8 flex flex-col items-center">
+    <div className="report-root min-h-screen bg-gray-100 print:bg-white p-0 md:p-8 flex flex-col items-center">
       {/* Print Button */}
       <button
         id="printBtn"
         className="fixed top-6 right-6 z-50 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 hover:bg-indigo-700 transition-all no-print print:hidden"
       >
         <Printer className="w-5 h-5" />
-        列印 A4 報告
+        {RT.printBtn}
       </button>
 
       <div className="w-full max-w-[210mm] space-y-8 print:space-y-0 print-wrapper">
@@ -258,13 +594,13 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             <div className="flex items-center gap-2">
               <img src={LOGO_SRC} alt="SigmaCog" style={{ height: '28px', width: 'auto' }} />
             </div>
-            <span className="text-sm font-bold text-slate-600">全年齡的腦力指南</span>
+            <span className="text-sm font-bold text-slate-600">{RT.coverSlogan}</span>
           </div>
 
           {/* Title */}
           <div className="text-center mt-10 mb-4 px-8">
-            <h1 className="text-4xl font-black text-slate-800 mb-2">腦健康評估報告</h1>
-            <p className="text-slate-500 text-base">Brain Health Assessment Report</p>
+            <h1 className="text-4xl font-black text-slate-800 mb-2">{RT.coverTitle}</h1>
+            <p className="text-slate-500 text-base">{RT.coverTitleSub}</p>
           </div>
 
           {/* Brain illustration (composited) */}
@@ -278,27 +614,27 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           {/* Info bar */}
           <div className="mx-8 mb-8 rounded-2xl bg-slate-100 px-6 py-5 grid grid-cols-3 gap-4">
             <div>
-              <p className="text-[10px] text-slate-400 mb-1">受測者　Name</p>
+              <p className="text-[10px] text-slate-400 mb-1">{RT.labelName}</p>
               <p className="text-xl font-bold text-slate-800">{subjectInfo.name}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 mb-1">測驗日期　Date</p>
+              <p className="text-[10px] text-slate-400 mb-1">{RT.labelDate}</p>
               <p className="text-xl font-bold text-slate-800">{subjectInfo.recordingDate.slice(0, 10).replace(/-/g, '/')}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 mb-1">生理年齡　Age</p>
+              <p className="text-[10px] text-slate-400 mb-1">{RT.labelAge}</p>
               <p className="text-xl font-bold text-slate-800">{subjectInfo.age}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 mb-1">性別　Sex</p>
+              <p className="text-[10px] text-slate-400 mb-1">{RT.labelSex}</p>
               <p className="text-xl font-bold text-slate-800">{subjectInfo.sex}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 mb-1">受測者 ID</p>
+              <p className="text-[10px] text-slate-400 mb-1">{RT.labelId}</p>
               <p className="text-xl font-bold text-slate-800">{subjectInfo.id}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 mb-1">訊號品質　Quality</p>
+              <p className="text-[10px] text-slate-400 mb-1">{RT.labelQuality}</p>
               <p className="text-xl font-bold text-slate-800">{subjectInfo.quality}</p>
             </div>
           </div>
@@ -308,7 +644,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             <div className="flex items-center gap-2">
               <img src={LOGO_SRC} alt="SigmaCog" style={{ height: '22px', width: 'auto' }} />
             </div>
-            <p className="text-[9px] text-slate-400 tracking-widest">A Cognitive Guide in All Ages</p>
+            <p className="text-[9px] text-slate-400 tracking-widest">{RT.coverFooter}</p>
           </div>
         </div>
 
@@ -324,14 +660,14 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-8">
               <ShieldCheck className="w-8 h-8 text-slate-400" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-700 mb-8">免責聲明</h2>
+            <h2 className="text-2xl font-bold text-slate-700 mb-8">{RT.disclaimerTitle}</h2>
             <div className="bg-slate-50 rounded-3xl p-10 text-left max-w-[150mm] space-y-6">
               <p className="text-base text-slate-700 leading-[2] font-medium">
-                本腦健康評估結果僅供個人參考與自我了解使用，不具醫療診斷或治療效力。若您對於自身健康或情緒狀態有任何疑慮，建議尋求合格之專業人員的協助。所有營養補充劑與花精建議僅供參考，使用前請諮詢專業人員，以確保適合個人狀況。
+                {RT.disclaimerBody}
               </p>
               <div className="border-t border-slate-200 pt-6">
                 <p className="text-sm text-slate-500 leading-[2]">
-                  <span className="font-bold text-slate-600">🤖 AI 生成聲明：</span>本報告由經專業訓練的人工智能（AI）系統根據腦電波量測結果搭配大數據資料庫自動分析生成。報告中的指標解讀、能力剖析及調整建議由演算法計算產出。
+                  <span className="font-bold text-slate-600">{RT.aiLabel}</span>{RT.aiBody}
                 </p>
               </div>
             </div>
@@ -344,12 +680,12 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
         {/* === PAGE 3: EEG BACKGROUND KNOWLEDGE === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col break-after-page page-break print-page">
-          <h2 className="text-2xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-4">腦科學與腦健康管理</h2>
+          <h2 className="text-2xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-4">{RT.page3Title}</h2>
 
-          <p className="text-sm text-slate-600 leading-relaxed mb-5">腦波（EEG）是大腦神經活動的電訊號，透過量測不同頻段的功率分布，可客觀反映大腦在認知、情緒、放鬆與睡眠各層面的運作狀態。本報告依據七大腦波指標提供個人化的腦健康評估與調整建議。</p>
+          <p className="text-sm text-slate-600 leading-relaxed mb-5">{RT.page3Intro}</p>
 
           {/* Brainwave Types Table */}
-          <h3 className="text-base font-bold text-indigo-900 mb-3">腦波類型及其在不同狀態下的表現</h3>
+          <h3 className="text-base font-bold text-indigo-900 mb-3">{RT.bwTableTitle}</h3>
           <div className="mb-5 overflow-hidden rounded-2xl border border-slate-200">
             <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
               <colgroup>
@@ -360,19 +696,19 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               </colgroup>
               <thead className="bg-indigo-900 text-white">
                 <tr>
-                  <th className="p-2 text-left">腦波示意</th>
-                  <th className="p-2 text-left">波型</th>
-                  <th className="p-2 text-left">頻率</th>
-                  <th className="p-2 text-left">主要狀態</th>
+                  <th className="p-2 text-left">{RT.bwColWave}</th>
+                  <th className="p-2 text-left">{RT.bwColType}</th>
+                  <th className="p-2 text-left">{RT.bwColFreq}</th>
+                  <th className="p-2 text-left">{RT.bwColState}</th>
                 </tr>
               </thead>
               <tbody>
                 {([
-                  { src: WAVE_GAMMA, name: 'Gamma (γ)', freq: '40–200 Hz', desc: '高度專注、高級認知、跨區整合與意識' },
-                  { src: WAVE_BETA,  name: 'Beta (β)',  freq: '13–40 Hz',  desc: '清醒、專注、邏輯思維與問題解決' },
-                  { src: WAVE_ALPHA, name: 'Alpha (α)', freq: '7–13 Hz',   desc: '清醒放鬆（閉眼休息或冥想）、減壓促進放鬆' },
-                  { src: WAVE_THETA, name: 'Theta (θ)', freq: '4–7 Hz',    desc: '淺睡眠、冥想、潛意識活動與創造力' },
-                  { src: WAVE_DELTA, name: 'Delta (δ)', freq: '0–4 Hz',    desc: '深度睡眠、完全放鬆與恢復' },
+                  { src: WAVE_GAMMA, name: 'Gamma (γ)', freq: '40–200 Hz', desc: RT.bwGamma },
+                  { src: WAVE_BETA,  name: 'Beta (β)',  freq: '13–40 Hz',  desc: RT.bwBeta },
+                  { src: WAVE_ALPHA, name: 'Alpha (α)', freq: '7–13 Hz',   desc: RT.bwAlpha },
+                  { src: WAVE_THETA, name: 'Theta (θ)', freq: '4–7 Hz',    desc: RT.bwTheta },
+                  { src: WAVE_DELTA, name: 'Delta (δ)', freq: '0–4 Hz',    desc: RT.bwDelta },
                 ] as const).map(({ src, name, freq, desc }, i) => (
                   <tr key={i} className="bg-white">
                     <td className="p-0">
@@ -388,17 +724,9 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           {/* Indicator Descriptions */}
-          <h3 className="text-base font-bold text-indigo-900 mb-3">七大腦健康評估指標介紹</h3>
+          <h3 className="text-base font-bold text-indigo-900 mb-3">{RT.indicatorIntroTitle}</h3>
           <div className="grid grid-cols-2 gap-2.5 text-xs text-slate-600">
-            {[
-              ['TBR（Theta/Beta Ratio）', '常見於注意力缺陷評估。高 TBR 可能意味著較低的專注程度或注意力不集中。'],
-              ['FAA（Frontal Alpha Asymmetry）', '前額葉左右兩側 Alpha 波不對稱性，與情緒狀態相關，可識別早期情緒失衡或低落傾向。'],
-              ['APR（Relative Alpha Ratio）', 'Alpha 波相對功率變化，反映大腦不同狀態下的功能表現，高值與放鬆相關，低值與專注有關。'],
-              ['PAF（Peak Alpha Frequency）', 'Alpha 波頻譜中最高功率的特定頻率，與大腦認知發展、功能成熟及神經元活動有關。'],
-              ['RSA（Resting State Alpha）', '靜態腦波中 α 波功率變化，閉眼時 α 波通常增加，廣泛應用於睡眠、注意力及認知研究。'],
-              ['COH（Cognitive Coherence）', '腦區之間腦電波活動的同步性，反映不同腦區的功能連接性與協調能力。'],
-              ['EnTP（EEG Entropy）', '評估大腦活動的複雜性。熵值越高代表信息處理能力越強，隨年齡增長通常增加。'],
-            ].map(([title, desc], i) => (
+            {(RT.indicators as [string, string][]).map(([title, desc], i) => (
               <div key={i} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <p className="font-bold text-indigo-800 mb-1">{title}</p>
                 <p>{desc}</p>
@@ -413,8 +741,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
 
         {/* === PAGE 5: BRAIN INDICES DETAILS === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-[277mm] p-[20mm] flex flex-col">
-          <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">七大腦波指標深度解析</h2>
+        <div className="flow-page bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col">
+          <h2 className="text-2xl font-black text-slate-800 mb-8 border-l-4 border-indigo-900 pl-4">{RT.page4Title}</h2>
 
           <div className="space-y-6">
             {brainIndices.map((idx) => (
@@ -428,8 +756,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                     {idx.name}
                   </h4>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">原始值: {idx.value}</span>
-                    <span className="text-xs text-slate-500 ml-2">T分數:</span>
+                    <span className="text-xs text-slate-500">{RT.labelRawValue}: {idx.value}</span>
+                    <span className="text-xs text-slate-500 ml-2">{RT.labelTScore}:</span>
                     <span className={`px-4 py-1 rounded-full text-xs font-black ${idx.tScore < 30 || idx.tScore > 70 ? 'bg-red-500 text-white' : idx.tScore >= 40 && idx.tScore <= 60 ? 'bg-emerald-600 text-white' : 'bg-indigo-900 text-white'}`}>
                       {idx.tScore}
                     </span>
@@ -441,17 +769,17 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                   <div className="border-t border-red-200 pt-4 space-y-3">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">🥗 營養補充</p>
+                        <p className="text-[10px] font-bold text-red-800 mb-1 uppercase tracking-wider">{RT.labelSupp}</p>
                         <p className="text-xs text-slate-700">{idx.supplements.map(s => s.replace(/\s+[\d\.，,].*/u, '').trim()).join('、')}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold text-pink-800 mb-1 uppercase tracking-wider">🌸 巴哈花精</p>
+                        <p className="text-[10px] font-bold text-pink-800 mb-1 uppercase tracking-wider">{RT.labelFlower}</p>
                         <p className="text-xs text-slate-700">{idx.bachFlowers.join('、')}</p>
                       </div>
                     </div>
                     {idx.activities.length > 0 && (
                       <div className="border-t border-red-100 pt-3">
-                        <p className="text-[10px] font-bold text-emerald-800 mb-1 uppercase tracking-wider">🏃 活動建議</p>
+                        <p className="text-[10px] font-bold text-emerald-800 mb-1 uppercase tracking-wider">{RT.labelActivity}</p>
                         <p className="text-xs text-slate-700">{idx.activities.join('　•　')}</p>
                       </div>
                     )}
@@ -462,8 +790,8 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           </div>
 
           <div className="mt-8 p-6 bg-amber-50 border border-amber-200 rounded-2xl text-[10px] text-amber-800">
-            <p className="font-bold mb-1">指標判讀標準：</p>
-            <p>T分數平均值為 50，標準差為 10。T分數低於 30 或高於 70 代表指標與常模相比存在顯著差異，建議進行生活方式或補充劑調整。</p>
+            <p className="font-bold mb-1">{RT.interpretNote}</p>
+            <p>{RT.interpretBody}</p>
           </div>
 
           <div className="mt-auto text-center text-[10px] text-slate-400">
@@ -473,25 +801,26 @@ const EegReportTemplate: React.FC<ReportProps> = ({
 
         {/* === CAPABILITY & INTERVENTION (fixed single page) === */}
         <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col cap-page" style={{ breakBefore: 'page', breakAfter: 'page' }}>
-          <h2 className="text-xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-3">能力剖析與調整方案</h2>
+          <h2 className="text-xl font-black text-slate-800 mb-4 border-l-4 border-indigo-900 pl-3">{RT.page5Title}</h2>
 
           {/* Capability Bars — compact */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-              <TrendingUp className="text-emerald-500 w-4 h-4" /> {ageGroupLabel || '能力面向剖析'}
+              <TrendingUp className="text-emerald-500 w-4 h-4" /> {ageGroupLabel || RT.capProfileTitle}
             </h3>
             {ageNotApplicable ? (
               <>
                 <div className="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                  ⚠️ 受測者年齡未滿 7 歲，能力指標計算不適用於此年齡層，以下僅列示評估向度供參考。
+                  {RT.ageNA}
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   {capabilityProfile.map((cap, i) => {
                     const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
+                    const displayLabel = CAP_LABEL_MAP[cap.label]?.[lang] ?? cap.label;
                     return (
                       <div key={i} className="flex items-center gap-3">
                         <div className="w-20 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
-                          <IconComp className="w-3 h-3" />{cap.label}
+                          <IconComp className="w-3 h-3" />{displayLabel}
                         </div>
                         <div className="flex-grow h-2.5 bg-slate-100 rounded-full" />
                         <div className="w-10 text-xs text-slate-300 text-right">—</div>
@@ -504,10 +833,11 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               <div className="grid grid-cols-1 gap-2">
                 {capabilityProfile.map((cap, i) => {
                   const IconComp = CAP_ICON_MAP[cap.label] ?? Brain;
+                  const displayLabel = CAP_LABEL_MAP[cap.label]?.[lang] ?? cap.label;
                   return (
                     <div key={i} className="flex items-center gap-3">
                       <div className="w-20 text-[10px] font-bold text-slate-500 text-right flex items-center justify-end gap-1">
-                        <IconComp className="w-3 h-3" />{cap.label}
+                        <IconComp className="w-3 h-3" />{displayLabel}
                       </div>
                       <div className="flex-grow h-2.5 bg-slate-100 rounded-full overflow-hidden">
                         <div className={`h-full ${cap.color}`} style={{ width: `${cap.value}%` }} />
@@ -524,11 +854,11 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           <div className="bg-indigo-900 rounded-[1.5rem] p-6 text-white shadow-xl relative overflow-hidden">
             <div className="relative z-10">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Leaf className="text-emerald-400 w-5 h-5" /> 建議調整方案 (4–8 週計畫)
+                <Leaf className="text-emerald-400 w-5 h-5" /> {RT.interventionTitle}
               </h3>
               <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <h4 className="text-emerald-400 font-bold text-xs mb-2 border-b border-white/20 pb-1">🥗 營養補充建議</h4>
+                  <h4 className="text-emerald-400 font-bold text-xs mb-2 border-b border-white/20 pb-1">{RT.suppTitle}</h4>
                   <ul className="grid grid-cols-1 gap-1.5">
                     {topSupps.map((s, i) => (
                       <li key={i} className="bg-white/10 px-3 py-1.5 rounded-xl">
@@ -538,7 +868,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-pink-300 font-bold text-xs mb-2 border-b border-white/20 pb-1">🌸 巴哈花精建議</h4>
+                  <h4 className="text-pink-300 font-bold text-xs mb-2 border-b border-white/20 pb-1">{RT.flowerTitle}</h4>
                   <ul className="grid grid-cols-1 gap-1.5">
                     {topFlowers.map((f, i) => (
                       <li key={i} className="bg-white/10 px-3 py-1.5 rounded-xl">
@@ -553,18 +883,18 @@ const EegReportTemplate: React.FC<ReportProps> = ({
               <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/20">
                 <div className="text-center">
                   <Waves className="w-4 h-4 text-blue-300 mx-auto mb-1" />
-                  <h5 className="text-xs font-bold text-white">呼吸調節</h5>
-                  <p className="text-[9px] text-indigo-200 mt-0.5">每日睡前 4-7-8 呼吸 10 分鐘</p>
+                  <h5 className="text-xs font-bold text-white">{RT.action1Title}</h5>
+                  <p className="text-[9px] text-indigo-200 mt-0.5">{RT.action1Desc}</p>
                 </div>
                 <div className="text-center">
                   <Lightbulb className="w-4 h-4 text-amber-300 mx-auto mb-1" />
-                  <h5 className="text-xs font-bold text-white">多元刺激</h5>
-                  <p className="text-[9px] text-indigo-200 mt-0.5">增加感官活動提升大腦複雜度</p>
+                  <h5 className="text-xs font-bold text-white">{RT.action2Title}</h5>
+                  <p className="text-[9px] text-indigo-200 mt-0.5">{RT.action2Desc}</p>
                 </div>
                 <div className="text-center">
                   <RefreshCcw className="w-4 h-4 text-emerald-300 mx-auto mb-1" />
-                  <h5 className="text-xs font-bold text-white">間歇休息</h5>
-                  <p className="text-[9px] text-indigo-200 mt-0.5">使用番茄鐘避免連續腦部慢化</p>
+                  <h5 className="text-xs font-bold text-white">{RT.action3Title}</h5>
+                  <p className="text-[9px] text-indigo-200 mt-0.5">{RT.action3Desc}</p>
                 </div>
               </div>
             </div>
@@ -579,14 +909,14 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         </div>
 
         {/* === LAST PAGE: REFERENCES === */}
-        <div className="bg-white shadow-lg print:shadow-none w-full min-h-[296mm] print:min-h-[277mm] p-[20mm] flex flex-col">
+        <div className="flow-page bg-white shadow-lg print:shadow-none w-full min-h-[296mm] p-[20mm] flex flex-col">
           {/* Header */}
           <div className="flex justify-between items-center border-b border-slate-200 pb-4 mb-8">
             <img src={LOGO_SRC} alt="SigmaCog" style={{ height: '24px', width: 'auto' }} />
             <span className="text-xs text-slate-400">{subjectInfo.reportId}</span>
           </div>
 
-          <h4 className="text-sm font-bold text-slate-700 mb-4">參考文獻 References</h4>
+          <h4 className="text-sm font-bold text-slate-700 mb-4">{RT.refTitle}</h4>
           <ol className="text-[9px] text-slate-500 leading-relaxed space-y-1 list-decimal list-inside flex-1">
             {[
               'Clarke AR et al. Electroencephalogram differences in two subtypes of ADHD. Psychophysiology. 2001;38(2):212-21.',
@@ -609,12 +939,12 @@ const EegReportTemplate: React.FC<ReportProps> = ({
           <div className="border-t border-slate-200 pt-4 mt-6">
             <div className="flex items-start gap-6">
               <p className="text-[9px] text-slate-400 leading-relaxed flex-1">
-                聲明：本報告僅供個人健康參考，不具醫療診斷效力。若你有身心不適，請諮詢合格專業人員。所有營養補充劑與花精使用建議請先諮詢專業人員。
+                {RT.refDisclaimer}
               </p>
               {qrCodeDataUrl && (
                 <div className="flex-shrink-0 text-center">
                   <img src={qrCodeDataUrl} alt="QR Code" style={{ width: '96px', height: '96px' }} />
-                  <p className="text-[8px] text-slate-400 mt-1">掃描下載此報告</p>
+                  <p className="text-[8px] text-slate-400 mt-1">{RT.qrLabel}</p>
                 </div>
               )}
             </div>
@@ -632,6 +962,7 @@ const EegReportTemplate: React.FC<ReportProps> = ({
         @media print {
           html, body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
+          html, body, .report-root { background: white !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .print-page {
             width: 190mm !important;
@@ -642,6 +973,13 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             box-sizing: border-box !important;
           }
           .print-page:last-child { page-break-after: avoid; }
+          .flow-page {
+            width: 190mm !important;
+            min-height: 277mm !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            box-sizing: border-box !important;
+          }
           .cap-page {
             width: 190mm !important;
             min-height: 277mm !important;
@@ -672,7 +1010,9 @@ function buildReportProps(
   startTime: Date | null,
   deviceId: string | null,
   rppg?: RppgResults,
+  lang: ReportLang = 'zh-TW',
 ): ReportProps {
+  const RT = REPORT_TEXT[lang];
   const pad2 = (n: number) => String(n).padStart(2, '0');
   const now = new Date();
   const rec = startTime ?? now;
@@ -697,14 +1037,14 @@ function buildReportProps(
       : raw.toFixed(info.decimals);
     return {
       id:          key,
-      name:        `${info.chName} (${key})`,
+      name:        `${RT.indexName[key] ?? info.chName} (${key})`,
       value:       valueStr,
       tScore:      ts,
-      status:      tierStatusLabel(ts),
-      description: TIER_DESC[key]?.[tier] ?? '',
+      status:      tierStatusLabel(ts, lang),
+      description: RT.tierDesc[key]?.[tier] ?? '',
       supplements: recs?.supps ?? [],
       bachFlowers: recs?.flowers ?? [],
-      activities:  showRec ? (ACTIVITY_RECS[key]?.[recDir] ?? []) : [],
+      activities:  showRec ? (RT.activityRecs[key]?.[recDir] ?? []) : [],
       showRec,
     };
   });
@@ -725,12 +1065,12 @@ function buildReportProps(
 
   const ageNotApplicable = result.age < 7;
   const ageGroupLabel =
-    result.age >= 65 ? '樂齡長者 (65+) — 健康促進能力' :
-    result.age >= 25 ? '職場成人 (25–64) — 職場與生活能力' :
-    '學生族群 (7–24) — 學習發展潛能';
+    result.age >= 65 ? RT.ageGroupSenior :
+    result.age >= 25 ? RT.ageGroupAdult :
+    RT.ageGroupStudent;
 
   // For age < 7: show student-group labels without scores
-  const STUDENT_LABELS = ['專注持久力', '學習敏捷度', '邏輯整合力', '創意發散力', '情緒穩定性', '社交適應力', '考試抗壓力', '心智續航力'];
+  const STUDENT_LABELS: string[] = RT.studentLabels;
   const effectiveCapability = ageNotApplicable
     ? STUDENT_LABELS.map((label, i) => ({ label, value: 0, color: CAP_COLORS[i % CAP_COLORS.length]! }))
     : capabilityProfile;
@@ -761,7 +1101,7 @@ function buildReportProps(
           seenFlowers.add(key);
           topFlowers.push({
             name: key,
-            desc: paren > 0 ? f.slice(paren + 1).replace('）', '') : '情緒調節',
+            desc: paren > 0 ? f.slice(paren + 1).replace('）', '') : RT.flowerDescFallback,
           });
         }
       });
@@ -769,23 +1109,24 @@ function buildReportProps(
   });
 
   // Fallback if no abnormal
-  if (topSupps.length === 0)   topSupps.push({ name: 'Omega-3 EPA/DHA', desc: '維持神經膜健康，每日 1–2 g' });
-  if (topFlowers.length === 0) topFlowers.push({ name: 'Rescue Remedy', desc: '日常情緒平衡維護' });
+  if (topSupps.length === 0)   topSupps.push(RT.fallbackSupp);
+  if (topFlowers.length === 0) topFlowers.push(RT.fallbackFlower);
 
   // Auto-generate report ID: RPT-YYYYMMDD-XXXX
   const rptDate = `${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}`;
   const rptRnd  = Math.random().toString(36).slice(2, 6).toUpperCase();
   const reportId = `RPT-${rptDate}-${rptRnd}`;
 
-  const sexLabel = subject.sex === 'M' ? '男' : subject.sex === 'F' ? '女' : subject.sex === 'Other' ? '其他' : '—';
+  const sexLabel = subject.sex === 'M' ? RT.sexM : subject.sex === 'F' ? RT.sexF : subject.sex === 'Other' ? RT.sexOther : RT.sexNone;
   const quality = `${Math.round((result.cleanEpochs / Math.max(1, result.totalEpochs)) * 100)}%`;
 
   return {
+    lang,
     subjectInfo: {
       reportId,
       id:            subject.id  || '—',
       name:          subject.name || '—',
-      age:           `${result.age} 歲`,
+      age:           `${result.age}${RT.ageSuffix}`,
       sex:           sexLabel,
       recordingDate: `${rec.getFullYear()}/${pad2(rec.getMonth()+1)}/${pad2(rec.getDate())} ${pad2(rec.getHours())}:${pad2(rec.getMinutes())}:${pad2(rec.getSeconds())}`,
       quality,
@@ -809,13 +1150,14 @@ function buildReportProps(
 // Public API — opens the report in a new tab
 // ---------------------------------------------------------------------------
 
-function buildFullHtml(reportId: string, htmlBody: string): string {
+function buildFullHtml(reportId: string, htmlBody: string, lang: ReportLang = 'zh-TW'): string {
+  const RT = REPORT_TEXT[lang];
   return `<!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="${RT.htmlLang}">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>腦健康評估報告 — ${reportId}</title>
+  <title>${RT.reportTitle} — ${reportId}</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
@@ -833,8 +1175,9 @@ export async function openHtmlReport(
   startTime: Date | null,
   deviceId: string | null,
   rppg?: RppgResults,
+  lang: ReportLang = 'zh-TW',
 ): Promise<void> {
-  const props = buildReportProps(result, subject, startTime, deviceId, rppg);
+  const props = buildReportProps(result, subject, startTime, deviceId, rppg, lang);
 
   // Open the window IMMEDIATELY (must be synchronous w.r.t. user gesture to pass popup blocker)
   const win = window.open('', '_blank');
@@ -847,7 +1190,7 @@ export async function openHtmlReport(
   let qrCodeDataUrl: string | undefined;
   try {
     const prelimBody = ReactDOMServer.renderToStaticMarkup(<EegReportTemplate {...props} />);
-    const prelimHtml = buildFullHtml(props.subjectInfo.id, prelimBody);
+    const prelimHtml = buildFullHtml(props.subjectInfo.reportId, prelimBody, lang);
     const resp = await fetch(REPORT_API, {
       method: 'POST',
       headers: { 'Content-Type': 'text/html' },
@@ -862,7 +1205,7 @@ export async function openHtmlReport(
   // Final render with QR code embedded
   const finalProps = { ...props, qrCodeDataUrl };
   const htmlBody = ReactDOMServer.renderToStaticMarkup(<EegReportTemplate {...finalProps} />);
-  const fullHtml = buildFullHtml(props.subjectInfo.id, htmlBody);
+  const fullHtml = buildFullHtml(props.subjectInfo.reportId, htmlBody, lang);
 
   if (win) {
     // Write final HTML into the already-open window

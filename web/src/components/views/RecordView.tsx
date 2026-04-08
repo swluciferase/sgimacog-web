@@ -8,7 +8,7 @@ import { T } from '../../i18n';
 import type { QualityConfig } from '../../hooks/useQualityMonitor';
 import { analyzeEeg, SAMPLE_RATE } from '../../services/eegReport';
 import { type RppgResults } from '../../services/reportPdf';
-import { openHtmlReport } from '../../services/eegReportHtml';
+import { openHtmlReport, type ReportLang } from '../../services/eegReportHtml';
 import { parseCsv } from '../../services/csvParser';
 
 const VISIOMYND_URL = 'https://rppg-web.pages.dev';
@@ -105,6 +105,7 @@ export const RecordView: FC<RecordViewProps> = ({
   const [fileDob, setFileDob] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileSex, setFileSex] = useState<'M' | 'F' | 'Other' | ''>('');
+  const [fileReportLang, setFileReportLang] = useState<ReportLang>('zh-TW');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
@@ -255,7 +256,7 @@ export const RecordView: FC<RecordViewProps> = ({
         ...(fileSex   ? { sex: fileSex }  : {}),
       };
       try {
-        await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId);
+        await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId, undefined, fileReportLang);
       } catch (reportErr) {
         console.error('openHtmlReport threw:', reportErr);
         setFileStatus('error');
@@ -888,6 +889,27 @@ export const RecordView: FC<RecordViewProps> = ({
               colorScheme: 'dark',
             }}
           />
+          {/* Report language selector */}
+          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>報告語言:</label>
+          <select
+            value={fileReportLang}
+            onChange={e => setFileReportLang(e.target.value as ReportLang)}
+            style={{
+              background: 'rgba(10,20,35,0.9)',
+              border: '1px solid rgba(93,109,134,0.5)',
+              borderRadius: 6,
+              color: '#cdd6e8',
+              fontSize: 12,
+              padding: '5px 8px',
+              outline: 'none',
+              colorScheme: 'dark',
+            }}
+          >
+            <option value="zh-TW">繁體中文</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
           <input
             ref={fileInputRef}
             type="file"
