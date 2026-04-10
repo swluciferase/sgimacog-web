@@ -111,9 +111,13 @@ export async function analyzeEeg(
     };
   }
 
+  const tscores = parsed['tscores'] as TScores;
+  tscores.COH  = Math.sqrt(tscores.COH)  * 10;
+  tscores.EnTP = Math.sqrt(tscores.EnTP) * 10;
+
   return {
     indices:     parsed['indices']     as BrainIndices,
-    tscores:     parsed['tscores']     as TScores,
+    tscores,
     capability:  (parsed['capability'] as Record<string, number>) ?? {},
     age:         (parsed['age']        as number) ?? age,
     cleanEpochs:  parsed['cleanEpochs'] as number,
