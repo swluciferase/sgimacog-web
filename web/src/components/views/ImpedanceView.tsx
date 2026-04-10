@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react';
+import React, { useState, type FC } from 'react';
 import type { ImpedanceResult } from '../../types/eeg';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
@@ -141,16 +141,17 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
       <div style={{ display: 'flex', gap: 20, flex: 1, minHeight: 0 }}>
 
         {/* SVG head diagram */}
-        <div style={{
-          flex: '0 0 auto',
-          background: 'linear-gradient(135deg, rgba(8,17,30,0.95), rgba(5,12,22,0.95))',
-          border: '1px solid rgba(93,109,134,0.3)',
-          borderRadius: 14,
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}>
+        <div
+          className="nd-card"
+          style={{
+            '--card-accent': 'rgba(88,166,255,0.3)',
+            flex: '0 0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            marginBottom: 0,
+          } as React.CSSProperties}
+        >
           <svg
             viewBox="0 0 200 240"
             width="260"
@@ -266,7 +267,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
           {/* Channel cards grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+            gridTemplateColumns: 'repeat(4, 1fr)',
             gap: 10,
           }}>
             {ELECTRODE_POSITIONS.map((pos, idx) => {

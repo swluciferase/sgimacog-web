@@ -12,6 +12,7 @@ const translations: Record<string, Record<Lang, string>> = {
 
   // Nav tabs
   tabHome: { zh: '首頁', en: 'Home' },
+  tabConnect: { zh: '連線', en: 'Connect' },
   tabImpedance: { zh: '阻抗', en: 'Impedance' },
   tabSignal: { zh: '訊號', en: 'Signal' },
   tabFft: { zh: '頻譜', en: 'FFT' },
@@ -131,6 +132,13 @@ const translations: Record<string, Record<Lang, string>> = {
 
   // Header device ID
   headerDeviceId: { zh: '裝置', en: 'Device' },
+
+  // Sidebar Neural Dark
+  sidebarSectionMain:  { zh: '主功能', en: 'Navigation' },
+  sidebarDeviceInfo:   { zh: '裝置資訊', en: 'Device Info' },
+  sidebarSampleRate:   { zh: '採樣率', en: 'Sample Rate' },
+  sidebarPacketRate:   { zh: '封包/s', en: 'Pkt/s' },
+  sidebarSerial:       { zh: '序號', en: 'Serial' },
 
   // Impedance N/A
   impedanceNoSignal: { zh: 'N/A = 未偵測到訊號 / No signal detected', en: 'N/A = No signal detected / 未偵測到訊號' },

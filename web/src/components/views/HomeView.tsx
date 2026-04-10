@@ -1,4 +1,4 @@
-import { type FC, type ReactNode } from 'react';
+import React, { type FC, type ReactNode } from 'react';
 import type { ConnectionStatus } from '../../services/serial';
 import type { DeviceStats } from '../../types/eeg';
 import type { Lang } from '../../i18n';
@@ -83,15 +83,14 @@ export const HomeView: FC<HomeViewProps> = ({
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '8px 0' }}>
 
       {/* Status card */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(13,21,34,0.95), rgba(10,18,30,0.95))',
-        border: `1px solid ${isConnected ? 'rgba(63,185,80,0.35)' : 'rgba(93,109,134,0.3)'}`,
-        borderRadius: 14,
-        padding: '24px 28px',
-        marginBottom: 20,
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
+      <div
+        className="nd-card"
+        style={{
+          '--card-accent': isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(88,166,255,0.4)',
+          borderColor: isConnected ? 'rgba(63,185,80,0.25)' : 'rgba(93,109,134,0.2)',
+          marginBottom: 16,
+        } as React.CSSProperties}
+      >
         {/* Background glow */}
         <div style={{
           position: 'absolute',
@@ -207,22 +206,8 @@ export const HomeView: FC<HomeViewProps> = ({
       </div>
 
       {/* Instructions card */}
-      <div style={{
-        background: 'rgba(10, 18, 30, 0.7)',
-        border: '1px solid rgba(93,109,134,0.25)',
-        borderRadius: 14,
-        padding: '20px 24px',
-        marginBottom: 20,
-      }}>
-        <h3 style={{
-          margin: '0 0 14px',
-          fontSize: '0.95rem',
-          fontWeight: 600,
-          color: 'rgba(180,200,230,0.85)',
-          letterSpacing: '0.03em',
-        }}>
-          {T(lang, 'homeInstructions')}
-        </h3>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(88,166,255,0.3)', marginBottom: 16 } as React.CSSProperties}>
+        <h3 className="nd-card-title">{T(lang, 'homeInstructions')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
             T(lang, 'homeStep1'),

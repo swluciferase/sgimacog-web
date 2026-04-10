@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FC, type CSSProperties } from 'react';
+import React, { useEffect, useRef, useState, type FC, type CSSProperties } from 'react';
 import type { SubjectInfo } from '../../types/eeg';
 import { CHANNEL_LABELS, CHANNEL_COUNT } from '../../types/eeg';
 import type { RecordedSample } from '../../services/csvWriter';
@@ -110,6 +110,7 @@ export const RecordView: FC<RecordViewProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
   const rppgChannelRef = useRef<BroadcastChannel | null>(null);
+  const markersScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ── rPPG BroadcastChannel setup ─────────────────────────────────────────
   useEffect(() => {
@@ -290,6 +291,13 @@ export const RecordView: FC<RecordViewProps> = ({
     }
   }, [shouldAutoStop, isRecording]);
 
+  // Auto-scroll markers list to bottom when new marker added
+  useEffect(() => {
+    if (markersScrollRef.current) {
+      markersScrollRef.current.scrollTop = markersScrollRef.current.scrollHeight;
+    }
+  }, [eventMarkers.length]);
+
   const addMarker = () => {
     const id = Math.random().toString(36).substring(2, 9);
     const time = Date.now();
@@ -319,15 +327,13 @@ export const RecordView: FC<RecordViewProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 760 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 460px', gap: 18, alignItems: 'start' }}>
+
+      {/* ── Left column ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* Subject info form */}
-      <div style={{
-        background: 'rgba(8,17,30,0.85)',
-        border: '1px solid rgba(93,109,134,0.3)',
-        borderRadius: 14,
-        padding: '20px 24px',
-      }}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(88,166,255,0.4)', marginBottom: 0 } as React.CSSProperties}>
         <h3 style={{ margin: '0 0 16px', fontSize: '0.95rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
           {T(lang, 'recordTitle')}
         </h3>
@@ -405,12 +411,7 @@ export const RecordView: FC<RecordViewProps> = ({
       </div>
 
       {/* Quality monitor card */}
-      <div style={{
-        background: 'rgba(8,17,30,0.85)',
-        border: '1px solid rgba(93,109,134,0.3)',
-        borderRadius: 14,
-        padding: '18px 24px',
-      }}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(63,185,80,0.4)', marginBottom: 0 } as React.CSSProperties}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: qualityConfig.enabled ? 14 : 0 }}>
           <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
             {T(lang, 'recordQualityGrid')}
@@ -583,28 +584,29 @@ export const RecordView: FC<RecordViewProps> = ({
       </div>
 
       {/* Recording controls */}
-      <div style={{
-        background: 'rgba(8,17,30,0.85)',
-        border: `1px solid ${isRecording ? 'rgba(248,81,73,0.35)' : 'rgba(93,109,134,0.3)'}`,
-        borderRadius: 14,
-        padding: '18px 24px',
-        transition: 'border-color 0.3s',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-
-          {/* Status */}
+      <div
+        className="nd-card"
+        style={{
+          '--card-accent': isRecording ? 'rgba(248,81,73,0.5)' : 'rgba(93,109,134,0.3)',
+          borderColor: isRecording ? 'rgba(248,81,73,0.25)' : undefined,
+          transition: 'border-color 0.3s',
+          marginBottom: 0,
+        } as React.CSSProperties}
+      >
+        {/* Header row: title + status + checkboxes */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+          {/* Left: title or recording status */}
           {isRecording ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <div style={{
-                  width: 12, height: 12, borderRadius: '50%',
-                  background: '#f85149',
-                  animation: 'pulse 1s infinite',
-                }} />
-                <span style={{ color: '#f85149', fontWeight: 700, fontSize: 14 }}>
-                  {T(lang, 'signalRecording')}
-                </span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: '#f85149',
+                animation: 'pulse 1s infinite',
+                flexShrink: 0,
+              }} />
+              <span style={{ color: '#f85149', fontWeight: 700, fontSize: 14 }}>
+                {T(lang, 'signalRecording')}
+              </span>
               <span style={{
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 fontSize: 18, fontWeight: 700, color: '#c5d8f0',
@@ -614,53 +616,150 @@ export const RecordView: FC<RecordViewProps> = ({
               </span>
             </div>
           ) : (
-            <div style={{ color: 'rgba(140,160,185,0.65)', fontSize: 13 }}>
-              {!isConnected
-                ? T(lang, 'recordNotConnected')
-                : recordedSamples.length > 0
-                  ? `${T(lang, 'recordSamples')}: ${recordedSamples.length.toLocaleString()}`
-                  : T(lang, 'recordStart')}
-            </div>
+            <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+              {T(lang, 'recordStart')}
+            </span>
           )}
 
-          {/* Artifact removal checkbox */}
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            cursor: 'pointer',
-            userSelect: 'none',
-            fontSize: 13,
-            color: useArtifactRemoval ? '#58a6ff' : 'rgba(140,160,185,0.65)',
-          }}>
-            <input
-              type="checkbox"
-              checked={useArtifactRemoval}
-              onChange={e => setUseArtifactRemoval(e.target.checked)}
-              style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#58a6ff' }}
-            />
-            {T(lang, 'recordArtifactRemoval')}
-          </label>
+          {/* Right: checkboxes */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              cursor: 'pointer', userSelect: 'none', fontSize: 13,
+              color: useArtifactRemoval ? '#58a6ff' : 'rgba(140,160,185,0.65)',
+            }}>
+              <input
+                type="checkbox"
+                checked={useArtifactRemoval}
+                onChange={e => setUseArtifactRemoval(e.target.checked)}
+                style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#58a6ff' }}
+              />
+              {T(lang, 'recordArtifactRemoval')}
+            </label>
 
-          {/* rPPG sync checkbox */}
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            cursor: isRecording ? 'not-allowed' : 'pointer',
-            userSelect: 'none',
-            fontSize: 13,
-            color: enableRppg ? '#5be0c0' : 'rgba(140,160,185,0.65)',
-            opacity: isRecording ? 0.6 : 1,
-          }}>
-            <input
-              type="checkbox"
-              checked={enableRppg}
-              disabled={isRecording}
-              onChange={e => {
-                setEnableRppg(e.target.checked);
-                if (e.target.checked) openVisioMynd();
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              cursor: isRecording ? 'not-allowed' : 'pointer', userSelect: 'none', fontSize: 13,
+              color: enableRppg ? '#5be0c0' : 'rgba(140,160,185,0.65)',
+              opacity: isRecording ? 0.6 : 1,
+            }}>
+              <input
+                type="checkbox"
+                checked={enableRppg}
+                disabled={isRecording}
+                onChange={e => {
+                  setEnableRppg(e.target.checked);
+                  if (e.target.checked) openVisioMynd();
+                }}
+                style={{ width: 14, height: 14, cursor: isRecording ? 'not-allowed' : 'pointer', accentColor: '#5be0c0' }}
+              />
+              同步 rPPG 錄製（VisioMynd）
+            </label>
+
+            {rppgResults && (
+              <span style={{ fontSize: 11, color: '#5be0c0', background: 'rgba(91,224,192,0.1)', borderRadius: 5, padding: '3px 8px' }}>
+                ✓ rPPG 資料已接收
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Button row */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {isRecording ? (<>
+            <button
+              onClick={onStartRecording}
+              disabled
+              style={{
+                background: 'rgba(63,185,80,0.08)',
+                border: '1px solid rgba(63,185,80,0.25)',
+                borderRadius: 8,
+                color: 'rgba(63,185,80,0.4)',
+                fontSize: 13, fontWeight: 700,
+                padding: '9px 20px',
+                cursor: 'not-allowed',
               }}
-              style={{ width: 14, height: 14, cursor: isRecording ? 'not-allowed' : 'pointer', accentColor: '#5be0c0' }}
-            />
-            同步 rPPG 錄製（VisioMynd）
-          </label>
+            >
+              {T(lang, 'recordStart')}
+            </button>
+            <button
+              onClick={addMarker}
+              style={{
+                background: 'rgba(200,200,0,0.12)',
+                border: '1px solid rgba(220,220,0,0.4)',
+                borderRadius: 8,
+                color: 'rgba(240,230,80,0.9)',
+                fontSize: 13, fontWeight: 600,
+                padding: '9px 16px',
+                cursor: 'pointer',
+              }}
+            >
+              {T(lang, 'recordAddMarker')} [M]
+            </button>
+            <button
+              onClick={handleStopOnly}
+              style={{
+                background: 'rgba(100,110,130,0.15)',
+                border: '1px solid rgba(100,120,150,0.45)',
+                borderRadius: 8,
+                color: 'rgba(160,180,210,0.8)',
+                fontSize: 13, fontWeight: 600,
+                padding: '9px 16px',
+                cursor: 'pointer',
+              }}
+            >
+              {T(lang, 'recordStopOnly')}
+            </button>
+            <button
+              onClick={handleStop}
+              style={{
+                background: 'rgba(248,81,73,0.18)',
+                border: '1px solid rgba(248,81,73,0.55)',
+                borderRadius: 8,
+                color: '#f85149',
+                fontSize: 13, fontWeight: 700,
+                padding: '9px 20px',
+                cursor: 'pointer',
+              }}
+            >
+              {T(lang, 'recordStop')}
+            </button>
+            <button
+              onClick={handleStopAndReport}
+              disabled={reportStatus === 'analyzing'}
+              style={{
+                background: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.08)' : 'rgba(88,166,255,0.15)',
+                border: '1px solid rgba(88,166,255,0.5)',
+                borderRadius: 8,
+                color: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.5)' : '#58a6ff',
+                fontSize: 13, fontWeight: 700,
+                padding: '9px 18px',
+                cursor: reportStatus === 'analyzing' ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {reportStatus === 'analyzing'
+                ? T(lang, 'recordGeneratingReport')
+                : T(lang, 'recordStopReport')}
+            </button>
+          </>) : (
+            <button
+              onClick={onStartRecording}
+              disabled={!isConnected}
+              style={{
+                background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
+                border: `1px solid ${isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
+                borderRadius: 8,
+                color: isConnected ? '#3fb950' : 'rgba(100,120,140,0.5)',
+                fontSize: 13, fontWeight: 700,
+                padding: '9px 24px',
+                cursor: isConnected ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {T(lang, 'recordStart')}
+            </button>
+          )}
+
           {enableRppg && !isRecording && (
             <button
               onClick={openVisioMynd}
@@ -669,314 +768,142 @@ export const RecordView: FC<RecordViewProps> = ({
                 border: '1px solid rgba(91,224,192,0.4)',
                 borderRadius: 7,
                 color: '#5be0c0',
-                fontSize: 12,
-                fontWeight: 600,
-                padding: '5px 12px',
+                fontSize: 12, fontWeight: 600,
+                padding: '9px 14px',
                 cursor: 'pointer',
               }}
             >
               開啟 VisioMynd ↗
             </button>
           )}
-          {rppgResults && (
-            <span style={{ fontSize: 11, color: '#5be0c0', background: 'rgba(91,224,192,0.1)', borderRadius: 5, padding: '3px 8px' }}>
-              ✓ rPPG 資料已接收
-            </span>
-          )}
-
-          {/* Buttons */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {/* Event marker button (during recording) */}
-            {isRecording && (
-              <button
-                onClick={addMarker}
-                style={{
-                  background: 'rgba(200,200,0,0.12)',
-                  border: '1px solid rgba(220,220,0,0.4)',
-                  borderRadius: 8,
-                  color: 'rgba(240,230,80,0.9)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: '8px 14px',
-                  cursor: 'pointer',
-                }}
-              >
-                {T(lang, 'recordAddMarker')} [M]
-              </button>
-            )}
-
-            {/* Start / Stop */}
-            {isRecording ? (<>
-              <button
-                onClick={handleStopOnly}
-                style={{
-                  background: 'rgba(100,110,130,0.15)',
-                  border: '1px solid rgba(100,120,150,0.45)',
-                  borderRadius: 8,
-                  color: 'rgba(160,180,210,0.8)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '10px 16px',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {T(lang, 'recordStopOnly')}
-              </button>
-              <button
-                onClick={handleStop}
-                style={{
-                  background: 'rgba(248,81,73,0.18)',
-                  border: '1px solid rgba(248,81,73,0.55)',
-                  borderRadius: 8,
-                  color: '#f85149',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  padding: '10px 24px',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {T(lang, 'recordStop')}
-              </button>
-              <button
-                onClick={handleStopAndReport}
-                disabled={reportStatus === 'analyzing'}
-                style={{
-                  background: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.08)' : 'rgba(88,166,255,0.15)',
-                  border: '1px solid rgba(88,166,255,0.5)',
-                  borderRadius: 8,
-                  color: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.5)' : '#58a6ff',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  padding: '10px 20px',
-                  cursor: reportStatus === 'analyzing' ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.15s',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {reportStatus === 'analyzing'
-                  ? T(lang, 'recordGeneratingReport')
-                  : T(lang, 'recordStopReport')}
-              </button>
-            </>) : (
-              <button
-                onClick={onStartRecording}
-                disabled={!isConnected}
-                style={{
-                  background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
-                  border: `1px solid ${isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
-                  borderRadius: 8,
-                  color: isConnected ? '#3fb950' : 'rgba(100,120,140,0.5)',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  padding: '10px 24px',
-                  cursor: isConnected ? 'pointer' : 'not-allowed',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {T(lang, 'recordStart')}
-              </button>
-            )}
-          </div>
         </div>
-
-        {/* Stats during recording */}
-        {isRecording && (
-          <div style={{
-            marginTop: 14,
-            display: 'flex', gap: 20,
-            padding: '10px 14px',
-            background: 'rgba(5,14,23,0.7)',
-            borderRadius: 8,
-            border: '1px solid rgba(60,80,100,0.3)',
-          }}>
-            <div>
-              <span style={{ fontSize: 11, color: 'rgba(140,160,185,0.6)' }}>
-                {T(lang, 'recordSamples')}
-              </span>
-              <div style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                fontSize: 16, fontWeight: 700, color: '#7ec8f5',
-              }}>
-                {recordedSamples.length.toLocaleString()}
-              </div>
-            </div>
-            <div>
-              <span style={{ fontSize: 11, color: 'rgba(140,160,185,0.6)' }}>
-                {T(lang, 'recordPackets')}
-              </span>
-              <div style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                fontSize: 16, fontWeight: 700, color: '#7ec8f5',
-              }}>
-                {eventMarkers.length}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
+      </div>{/* end left column */}
+
+      {/* ── Right column ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
       {/* File report card */}
-      <div style={{
-        background: 'rgba(8,17,30,0.85)',
-        border: '1px solid rgba(93,109,134,0.3)',
-        borderRadius: 14,
-        padding: '18px 24px',
-      }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(227,160,48,0.4)', marginBottom: 0 } as React.CSSProperties}>
+        <h3 style={{ margin: '0 0 14px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
           {T(lang, 'recordFromFile')}
         </h3>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Name input */}
-          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>姓名:</label>
+
+        {/* Name */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={labelStyle}>姓名</label>
           <input
             type="text"
             value={fileName}
             onChange={e => setFileName(e.target.value)}
             placeholder="受測者姓名"
-            style={{
-              background: 'rgba(10,20,35,0.9)',
-              border: '1px solid rgba(93,109,134,0.5)',
-              borderRadius: 6,
-              color: '#cdd6e8',
-              fontSize: 12,
-              padding: '5px 8px',
-              outline: 'none',
-              width: 100,
-            }}
+            style={inputStyle}
           />
-          {/* Sex select */}
-          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>性別:</label>
-          <select
-            value={fileSex}
-            onChange={e => setFileSex(e.target.value as 'M' | 'F' | 'Other' | '')}
-            style={{
-              background: 'rgba(10,20,35,0.9)',
-              border: '1px solid rgba(93,109,134,0.5)',
-              borderRadius: 6,
-              color: '#cdd6e8',
-              fontSize: 12,
-              padding: '5px 8px',
-              outline: 'none',
-              colorScheme: 'dark',
-            }}
-          >
-            <option value="">—</option>
-            <option value="M">男 (M)</option>
-            <option value="F">女 (F)</option>
-            <option value="Other">其他</option>
-          </select>
-          {/* DOB input */}
-          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>
-            {T(lang, 'recordDob')}:
-          </label>
-          <input
-            type="date"
-            value={fileDob}
-            onChange={e => setFileDob(e.target.value)}
-            style={{
-              background: 'rgba(10,20,35,0.9)',
-              border: '1px solid rgba(93,109,134,0.5)',
-              borderRadius: 6,
-              color: '#cdd6e8',
-              fontSize: 12,
-              padding: '5px 8px',
-              outline: 'none',
-              colorScheme: 'dark',
-            }}
-          />
-          {/* Report language selector */}
-          <label style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)', whiteSpace: 'nowrap' }}>報告語言:</label>
+        </div>
+
+        {/* Sex + DOB row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div>
+            <label style={labelStyle}>性別</label>
+            <select
+              value={fileSex}
+              onChange={e => setFileSex(e.target.value as 'M' | 'F' | 'Other' | '')}
+              style={{ ...inputStyle, cursor: 'pointer', colorScheme: 'dark' }}
+            >
+              <option value="">—</option>
+              <option value="M">男 (M)</option>
+              <option value="F">女 (F)</option>
+              <option value="Other">其他</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>{T(lang, 'recordDob')}</label>
+            <input
+              type="date"
+              value={fileDob}
+              onChange={e => setFileDob(e.target.value)}
+              style={{ ...inputStyle, colorScheme: 'dark' }}
+            />
+          </div>
+        </div>
+
+        {/* Report language */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>報告語言</label>
           <select
             value={fileReportLang}
             onChange={e => setFileReportLang(e.target.value as ReportLang)}
-            style={{
-              background: 'rgba(10,20,35,0.9)',
-              border: '1px solid rgba(93,109,134,0.5)',
-              borderRadius: 6,
-              color: '#cdd6e8',
-              fontSize: 12,
-              padding: '5px 8px',
-              outline: 'none',
-              colorScheme: 'dark',
-            }}
+            style={{ ...inputStyle, cursor: 'pointer', colorScheme: 'dark' }}
           >
             <option value="zh-TW">繁體中文</option>
             <option value="zh-CN">简体中文</option>
             <option value="en">English</option>
             <option value="ja">日本語</option>
           </select>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            style={{ display: 'none' }}
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (file) handleFileReport(file);
-              // Reset so same file can be re-selected
-              e.target.value = '';
-            }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={fileStatus === 'parsing' || fileStatus === 'analyzing'}
-            style={{
-              background: (fileStatus === 'parsing' || fileStatus === 'analyzing')
-                ? 'rgba(88,166,255,0.07)'
-                : 'rgba(88,166,255,0.13)',
-              border: '1px solid rgba(88,166,255,0.45)',
-              borderRadius: 8,
-              color: (fileStatus === 'parsing' || fileStatus === 'analyzing')
-                ? 'rgba(88,166,255,0.45)'
-                : '#58a6ff',
-              fontSize: 13,
-              fontWeight: 600,
-              padding: '9px 20px',
-              cursor: (fileStatus === 'parsing' || fileStatus === 'analyzing') ? 'not-allowed' : 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {fileStatus === 'parsing'
-              ? T(lang, 'recordFromFileParsing')
-              : fileStatus === 'analyzing'
-                ? T(lang, 'recordFromFileAnalyzing')
-                : T(lang, 'recordFromFile')}
-          </button>
-
-          {/* Status message */}
-          {fileStatus !== 'idle' && (
-            <span style={{
-              fontSize: 12,
-              color: fileStatus === 'done'
-                ? '#3fb950'
-                : fileStatus === 'error'
-                  ? '#f85149'
-                  : 'rgba(160,180,210,0.7)',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            }}>
-              {fileStatus === 'done'
-                ? `✓ ${T(lang, 'recordFromFileSuccess')}  ${fileStatusMsg}`
-                : fileStatus === 'error'
-                  ? `✗ ${fileStatusMsg}`
-                  : fileStatusMsg || '…'}
-            </span>
-          )}
         </div>
-        <p style={{ margin: '10px 0 0', fontSize: 11, color: 'rgba(120,140,165,0.6)' }}>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          style={{ display: 'none' }}
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (file) handleFileReport(file);
+            e.target.value = '';
+          }}
+        />
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={fileStatus === 'parsing' || fileStatus === 'analyzing'}
+          style={{
+            width: '100%',
+            background: (fileStatus === 'parsing' || fileStatus === 'analyzing')
+              ? 'rgba(88,166,255,0.12)'
+              : 'rgba(88,166,255,0.22)',
+            border: '1px solid rgba(88,166,255,0.55)',
+            borderRadius: 8,
+            color: (fileStatus === 'parsing' || fileStatus === 'analyzing')
+              ? 'rgba(88,166,255,0.5)'
+              : '#58a6ff',
+            fontSize: 14,
+            fontWeight: 700,
+            padding: '11px 0',
+            cursor: (fileStatus === 'parsing' || fileStatus === 'analyzing') ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {fileStatus === 'parsing'
+            ? T(lang, 'recordFromFileParsing')
+            : fileStatus === 'analyzing'
+              ? T(lang, 'recordFromFileAnalyzing')
+              : T(lang, 'recordFromFile')}
+        </button>
+
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'rgba(120,140,165,0.55)', textAlign: 'center' }}>
           {T(lang, 'recordFromFileHint')} · {T(lang, 'recordArtifactRemoval')}: {useArtifactRemoval ? '✓' : '✗'}
         </p>
+
+        {/* Status message */}
+        {fileStatus !== 'idle' && (
+          <div style={{
+            marginTop: 8,
+            fontSize: 11,
+            color: fileStatus === 'done' ? '#3fb950' : fileStatus === 'error' ? '#f85149' : 'rgba(160,180,210,0.7)',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          }}>
+            {fileStatus === 'done'
+              ? `✓ ${T(lang, 'recordFromFileSuccess')}  ${fileStatusMsg}`
+              : fileStatus === 'error'
+                ? `✗ ${fileStatusMsg}`
+                : fileStatusMsg || '…'}
+          </div>
+        )}
       </div>
 
       {/* Event markers log */}
-      <div style={{
-        background: 'rgba(8,17,30,0.85)',
-        border: '1px solid rgba(93,109,134,0.25)',
-        borderRadius: 12,
-        padding: '14px 18px',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      }}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(88,166,255,0.3)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', marginBottom: 0 } as React.CSSProperties}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 13, color: 'rgba(240,230,80,0.9)' }}>
             {T(lang, 'recordMarkerLog')}
@@ -1000,7 +927,7 @@ export const RecordView: FC<RecordViewProps> = ({
             {T(lang, 'recordNoMarkers')}
           </div>
         ) : (
-          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+          <div ref={markersScrollRef} style={{ maxHeight: 232, overflowY: 'auto' }}>
             <table style={{ width: '100%', fontSize: 12, textAlign: 'left', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(93,109,134,0.3)' }}>
@@ -1022,6 +949,8 @@ export const RecordView: FC<RecordViewProps> = ({
           </div>
         )}
       </div>
+
+      </div>{/* end right column */}
     </div>
   );
 };

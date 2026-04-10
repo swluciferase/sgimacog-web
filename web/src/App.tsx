@@ -71,7 +71,7 @@ function computeNotchDesc(fp: FilterParams): string {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [activeTab, setActiveTab] = useState<TabType>('connect');
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [lang, setLang] = useState<Lang>('zh');
   const [showConnectModal, setShowConnectModal] = useState(false);
@@ -462,7 +462,7 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'home':
+      case 'connect':
         return (
           <HomeView
             status={status}
@@ -546,7 +546,7 @@ function App() {
 
   // Tab switching guards
   const handleTabChange = (tab: TabType) => {
-    // All non-home tabs require connection
+    // All non-connect tabs require connection
     const restricted = ['impedance', 'signal', 'fft', 'record'] as TabType[];
     if (restricted.includes(tab) && !isConnected) return;
     // Impedance blocked during recording
@@ -560,8 +560,6 @@ function App() {
     <div className="app-container">
       <Header
         status={status}
-        packetRate={deviceStats.packetRate}
-        deviceId={deviceId}
         lang={lang}
         onLangToggle={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
       />
@@ -573,6 +571,8 @@ function App() {
           isConnected={isConnected}
           isImpedanceActive={isImpedanceActive}
           isRecording={isRecording}
+          packetRate={deviceStats.packetRate}
+          deviceId={deviceId}
         />
         <main className="content-area">
           {renderContent()}
@@ -580,7 +580,7 @@ function App() {
       </div>
 
       {/* Recording indicator overlay badge (visible from any tab) */}
-      {isRecording && activeTab !== 'signal' && activeTab !== 'record' && (
+      {isRecording && activeTab !== 'signal' && activeTab !== 'record' && activeTab !== 'connect' && (
         <div style={{
           position: 'fixed',
           bottom: 16,
