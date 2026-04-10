@@ -3,6 +3,7 @@ import type { SubjectInfo } from '../../types/eeg';
 import { CHANNEL_LABELS, CHANNEL_COUNT } from '../../types/eeg';
 import type { RecordedSample } from '../../services/csvWriter';
 import { generateCsv, downloadCsv, buildCsvFilename } from '../../services/csvWriter';
+import { uploadSessionCsv, saveSessionResult, type SessionInfo } from '../../services/sessionApi';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
 import type { QualityConfig } from '../../hooks/useQualityMonitor';
@@ -37,6 +38,7 @@ export interface RecordViewProps {
   goodTimeSec: number;
   goodPercent: number;
   shouldAutoStop: boolean;
+  sessionInfo?: SessionInfo | null;
 }
 
 function formatDuration(ms: number): string {
@@ -94,6 +96,7 @@ export const RecordView: FC<RecordViewProps> = ({
   goodTimeSec,
   goodPercent,
   shouldAutoStop,
+  sessionInfo,
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
@@ -171,6 +174,9 @@ export const RecordView: FC<RecordViewProps> = ({
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
+      if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
+        uploadSessionCsv(sessionInfo.sessionId, sessionInfo.sessionToken, content, filename);
+      }
     }
   };
 
@@ -188,16 +194,21 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     // Stop recording and download CSV first
     onStopRecording();
+    let csvContent = '';
+    let csvFilename = '';
     if (recordedSamples.length > 0 && startTime) {
-      const content = generateCsv(
+      csvContent = generateCsv(
         recordedSamples,
         startTime,
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
       );
-      const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
-      downloadCsv(content, filename);
+      csvFilename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
+      downloadCsv(csvContent, csvFilename);
+      if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
+        uploadSessionCsv(sessionInfo.sessionId, sessionInfo.sessionToken, csvContent, csvFilename);
+      }
     }
     // Run EEG analysis asynchronously
     broadcastEegDone();
@@ -210,6 +221,18 @@ export const RecordView: FC<RecordViewProps> = ({
         return;
       }
       await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
+      // Save EEG metrics to project session
+      if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
+        saveSessionResult(sessionInfo.sessionId, sessionInfo.sessionToken, {
+          age:          result.age,
+          clean_epochs: result.cleanEpochs,
+          total_epochs: result.totalEpochs,
+          duration_sec: result.durationSec,
+          indices:      result.indices,
+          tscores:      result.tscores,
+          capability:   result.capability,
+        });
+      }
       setReportStatus('done');
     } catch (err) {
       console.error('Report generation error:', err);

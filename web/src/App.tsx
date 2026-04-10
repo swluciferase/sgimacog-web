@@ -37,6 +37,7 @@ import {
 import type { RecordedSample } from './services/csvWriter';
 import type { Lang } from './i18n';
 import { T } from './i18n';
+import { getSessionTokenFromUrl, fetchSessionInfo, type SessionInfo } from './services/sessionApi';
 
 // ── WASM interface types ──
 
@@ -123,6 +124,27 @@ function App() {
         biquad.notchState.fill(0);
       }
     }
+  }, []);
+
+  // ── Project session (from URL session_token) ──
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
+
+  useEffect(() => {
+    const token = sessionTokenRef.current;
+    if (!token) return;
+    fetchSessionInfo(token).then(info => {
+      if (!info) return;
+      setSessionInfo(info);
+      setSubjectInfo(prev => ({
+        id:    prev.id    || info.subject_id || '',
+        name:  prev.name  || info.name       || '',
+        dob:   prev.dob   || info.birth_date || '',
+        sex:   prev.sex   || (info.gender === 'M' ? 'M' : info.gender === 'F' ? 'F' : info.gender === 'O' ? 'Other' : '') as SubjectInfo['sex'],
+        notes: prev.notes || info.notes || '',
+      }));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Subject info ──
@@ -536,6 +558,7 @@ function App() {
             goodTimeSec={goodTimeSec}
             goodPercent={goodPercent}
             shouldAutoStop={shouldAutoStop}
+            sessionInfo={sessionInfo}
           />
         );
 
