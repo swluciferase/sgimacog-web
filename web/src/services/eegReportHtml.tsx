@@ -176,6 +176,7 @@ const REPORT_TEXT: Record<ReportLang, Record<string, any>> = {
     labelSex: '性別　Sex', labelId: '受測者 ID', labelQuality: '訊號品質　Quality',
     ageSuffix: ' 歲', sexM: '男', sexF: '女', sexOther: '第三性', sexNone: '—',
     printBtn: '列印 A4 報告',
+    consentFooter: '本報告依受測者知情同意產生，資料處理方式詳見隱私政策 sigmacog.xyz/privacy',
     disclaimerTitle: '免責聲明',
     disclaimerBody: '本腦健康評估結果僅供個人參考與自我了解使用，不具醫療診斷或治療效力。若您對於自身健康或情緒狀態有任何疑慮，建議尋求合格之專業人員的協助。所有營養補充劑與花精建議僅供參考，使用前請諮詢專業人員，以確保適合個人狀況。',
     aiLabel: '🤖 AI 生成聲明：',
@@ -239,6 +240,7 @@ const REPORT_TEXT: Record<ReportLang, Record<string, any>> = {
     labelSex: '性别　Sex', labelId: '受测者 ID', labelQuality: '信号质量　Quality',
     ageSuffix: ' 岁', sexM: '男', sexF: '女', sexOther: '第三性', sexNone: '—',
     printBtn: '打印 A4 报告',
+    consentFooter: '本报告依受测者知情同意产生，资料处理方式详见隐私政策 sigmacog.xyz/privacy',
     disclaimerTitle: '免责声明',
     disclaimerBody: '本脑健康评估结果仅供个人参考与自我了解使用，不具医疗诊断或治疗效力。若您对于自身健康或情绪状态有任何疑虑，建议寻求合格专业人员的协助。所有营养补充剂与花精建议仅供参考，使用前请咨询专业人员，以确保适合个人状况。',
     aiLabel: '🤖 AI 生成声明：',
@@ -318,6 +320,7 @@ const REPORT_TEXT: Record<ReportLang, Record<string, any>> = {
     labelSex: 'Sex', labelId: 'Subject ID', labelQuality: 'Signal Quality',
     ageSuffix: ' yrs', sexM: 'Male', sexF: 'Female', sexOther: 'Other', sexNone: '—',
     printBtn: 'Print A4 Report',
+    consentFooter: 'Generated with informed consent. For data handling details, see Privacy Policy: sigmacog.xyz/privacy',
     disclaimerTitle: 'Disclaimer',
     disclaimerBody: 'This brain health assessment is for personal reference and self-awareness only. It does not constitute medical diagnosis or treatment. If you have concerns about your health or emotional well-being, please consult a qualified professional. All supplement and flower essence recommendations are for reference only; consult a professional before use.',
     aiLabel: '🤖 AI-Generated Report: ',
@@ -399,6 +402,7 @@ const REPORT_TEXT: Record<ReportLang, Record<string, any>> = {
     labelSex: '性別　Sex', labelId: '受検者 ID', labelQuality: '信号品質　Quality',
     ageSuffix: '歳', sexM: '男性', sexF: '女性', sexOther: 'その他', sexNone: '—',
     printBtn: 'A4レポートを印刷',
+    consentFooter: '対象者のインフォームドコンセントに基づいて生成。データ処理の詳細はプライバシーポリシーをご覧ください：sigmacog.xyz/privacy',
     disclaimerTitle: '免責事項',
     disclaimerBody: 'この脳健康評価の結果は、個人の参考・自己理解のみを目的としており、医療診断や治療の効力を持つものではありません。健康や感情の状態についてご不安がある場合は、資格を持つ専門家にご相談ください。すべてのサプリメントおよびフラワーエッセンスの推奨事項は参考情報であり、使用前に専門家にご相談ください。',
     aiLabel: '🤖 AI生成レポート：',
@@ -983,8 +987,13 @@ const EegReportTemplate: React.FC<ReportProps> = ({
             </div>
           </div>
 
-          <div className="mt-auto text-center text-[10px] text-slate-400">
-            6/6 - SIGMACOG Brain Health Assessment Report
+          <div className="mt-auto">
+            <div className="text-center bg-slate-50 rounded-lg px-4 py-2 mb-3" style={{ border: '1px solid #e2e8f0' }}>
+              <p className="text-[9px] text-slate-400">{RT.consentFooter}</p>
+            </div>
+            <div className="text-center text-[10px] text-slate-400">
+              6/6 - SIGMACOG Brain Health Assessment Report
+            </div>
           </div>
         </div>
 

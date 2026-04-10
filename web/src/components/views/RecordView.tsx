@@ -102,6 +102,8 @@ export const RecordView: FC<RecordViewProps> = ({
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
   const [enableRppg, setEnableRppg] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [rppgResults, setRppgResults] = useState<RppgResults | null>(null);
   const [fileStatus, setFileStatus] = useState<'idle' | 'parsing' | 'analyzing' | 'done' | 'error'>('idle');
   const [fileStatusMsg, setFileStatusMsg] = useState('');
@@ -350,6 +352,7 @@ export const RecordView: FC<RecordViewProps> = ({
   };
 
   return (
+    <>
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 460px', gap: 18, alignItems: 'start' }}>
 
       {/* ── Left column ── */}
@@ -765,23 +768,40 @@ export const RecordView: FC<RecordViewProps> = ({
                 ? T(lang, 'recordGeneratingReport')
                 : T(lang, 'recordStopReport')}
             </button>
-          </>) : (
+          </>) : (<>
             <button
               onClick={onStartRecording}
-              disabled={!isConnected}
+              disabled={!isConnected || !consentGiven}
+              title={!consentGiven ? T(lang, 'disclaimerRequired') : undefined}
               style={{
-                background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
-                border: `1px solid ${isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
+                background: (isConnected && consentGiven) ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
+                border: `1px solid ${(isConnected && consentGiven) ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
                 borderRadius: 8,
-                color: isConnected ? '#3fb950' : 'rgba(100,120,140,0.5)',
+                color: (isConnected && consentGiven) ? '#3fb950' : 'rgba(100,120,140,0.5)',
                 fontSize: 13, fontWeight: 700,
                 padding: '9px 24px',
-                cursor: isConnected ? 'pointer' : 'not-allowed',
+                cursor: (isConnected && consentGiven) ? 'pointer' : 'not-allowed',
               }}
             >
               {T(lang, 'recordStart')}
             </button>
-          )}
+            <button
+              onClick={() => setShowDisclaimerModal(true)}
+              style={{
+                background: consentGiven ? 'rgba(63,185,80,0.1)' : 'rgba(88,166,255,0.1)',
+                border: `1px solid ${consentGiven ? 'rgba(63,185,80,0.4)' : 'rgba(88,166,255,0.35)'}`,
+                borderRadius: 8,
+                color: consentGiven ? '#3fb950' : '#58a6ff',
+                fontSize: 12, fontWeight: 600,
+                padding: '9px 14px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{consentGiven ? '✓' : '!'}</span>
+              {T(lang, 'disclaimerBtn')}
+            </button>
+          </>)}
 
           {enableRppg && !isRecording && (
             <button
@@ -975,5 +995,83 @@ export const RecordView: FC<RecordViewProps> = ({
 
       </div>{/* end right column */}
     </div>
+
+    {/* ── Disclaimer / Consent Modal ── */}
+    {showDisclaimerModal && (
+      <div
+        onClick={() => setShowDisclaimerModal(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.72)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)',
+          padding: 20,
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: '#0e1825',
+            border: '1px solid rgba(88,166,255,0.25)',
+            borderRadius: 14,
+            padding: '28px 32px',
+            maxWidth: 540,
+            width: '100%',
+            maxHeight: '85vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+          }}
+        >
+          <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 700, color: '#c5d8f0' }}>
+            {T(lang, 'disclaimerTitle')}
+          </h3>
+          <pre style={{
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            fontSize: 13, lineHeight: 1.75,
+            color: 'rgba(180,200,230,0.8)',
+            fontFamily: 'inherit',
+            margin: '0 0 20px',
+          }}>
+            {T(lang, 'disclaimerBody')}
+          </pre>
+          <label style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            cursor: 'pointer', userSelect: 'none',
+            padding: '14px 16px',
+            background: consentGiven ? 'rgba(63,185,80,0.08)' : 'rgba(88,166,255,0.06)',
+            border: `1px solid ${consentGiven ? 'rgba(63,185,80,0.3)' : 'rgba(88,166,255,0.2)'}`,
+            borderRadius: 8,
+            marginBottom: 16,
+          }}>
+            <input
+              type="checkbox"
+              checked={consentGiven}
+              onChange={e => setConsentGiven(e.target.checked)}
+              style={{ width: 16, height: 16, marginTop: 2, cursor: 'pointer', accentColor: '#3fb950', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13, color: consentGiven ? '#3fb950' : 'rgba(180,200,230,0.85)', fontWeight: 600, lineHeight: 1.5 }}>
+              {T(lang, 'disclaimerConsentLabel')}
+            </span>
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowDisclaimerModal(false)}
+              style={{
+                background: 'rgba(88,166,255,0.15)',
+                border: '1px solid rgba(88,166,255,0.4)',
+                borderRadius: 8,
+                color: '#58a6ff',
+                fontSize: 13, fontWeight: 700,
+                padding: '9px 24px',
+                cursor: 'pointer',
+              }}
+            >
+              {lang === 'zh' ? '確認' : 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };

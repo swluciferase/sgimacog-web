@@ -177,6 +177,22 @@ const translations: Record<string, Record<Lang, string>> = {
   recordReportTooShort:   { zh: '錄製時間不足 90 秒，無法生成報告', en: 'Recording must be at least 90 seconds to generate a report' },
   recordGeneratingReport: { zh: '分析中，請稍候…', en: 'Analyzing EEG, please wait…' },
   recordReportError:      { zh: '報告生成失敗', en: 'Report generation failed' },
+
+  // Disclaimer / consent
+  disclaimerBtn:          { zh: '資料蒐集知情同意', en: 'Data Collection Consent' },
+  disclaimerTitle:        { zh: '資料蒐集知情同意', en: 'Informed Consent for Data Collection' },
+  disclaimerBody: {
+    zh: '本系統（SigmaCog EEG App）將記錄您的腦電波（EEG）等生理資料。本服務由亞堤仕生醫科技股份有限公司提供，屬健康輔助工具，不具醫療診斷效力。\n\n【資料用途】\n・產生個人化健康評估報告\n・以去識別化方式用於服務改善、研究及 AI 模型訓練\n\n【資料儲存】\n資料以加密方式上傳至雲端伺服器，原始資料保存期限為最後一次使用起 10 年。\n\n您有權查詢、更正或要求刪除個人資料。詳見隱私政策：sigmacog.xyz/privacy\n\n────\n施測說明：請向受測者口頭說明以上內容並取得同意後，再勾選下方選項開始錄製。',
+    en: 'This system (SigmaCog EEG App) will record your electroencephalography (EEG) and other physiological data. This service is provided by Artise Biomedical Co., Ltd. as a wellness tool and does not constitute medical diagnosis.\n\n[Data Use]\n· Generating personalized health assessment reports\n· De-identified service improvement, research, and AI model training\n\n[Data Storage]\nData is encrypted and uploaded to cloud servers. Raw data is retained for 10 years from the date of last service use.\n\nYou have the right to access, correct, or request deletion of your data. See Privacy Policy: sigmacog.xyz/privacy\n\n────\nAssessor Note: Please verbally explain the above to the subject and obtain their agreement before ticking the box below.',
+  },
+  disclaimerConsentLabel: {
+    zh: '已向受測者口頭說明並獲得同意',
+    en: 'Subject has been verbally informed and has given consent',
+  },
+  disclaimerRequired: {
+    zh: '請先完成知情同意程序再開始錄製',
+    en: 'Please complete the informed consent process before recording',
+  },
 };
 
 export const T = (lang: Lang, key: string): string =>
