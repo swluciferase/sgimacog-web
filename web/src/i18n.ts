@@ -79,7 +79,7 @@ const translations: Record<string, Record<Lang, string>> = {
   recordSex: { zh: '性別', en: 'Sex' },
   recordSexMale: { zh: '男', en: 'Male' },
   recordSexFemale: { zh: '女', en: 'Female' },
-  recordSexOther: { zh: '其他', en: 'Other' },
+  recordSexOther: { zh: '第三性', en: 'Non-binary' },
   recordNotes: { zh: '備注', en: 'Notes' },
   recordStart: { zh: '開始錄製', en: 'Start Recording' },
   recordStopOnly: { zh: '停止', en: 'Stop' },

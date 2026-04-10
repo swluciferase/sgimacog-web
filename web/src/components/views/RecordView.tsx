@@ -814,7 +814,7 @@ export const RecordView: FC<RecordViewProps> = ({
               <option value="">—</option>
               <option value="M">男 (M)</option>
               <option value="F">女 (F)</option>
-              <option value="Other">其他</option>
+              <option value="Other">第三性</option>
             </select>
           </div>
           <div>
