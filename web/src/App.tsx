@@ -570,7 +570,7 @@ function App() {
   // Tab switching guards
   const handleTabChange = (tab: TabType) => {
     // All non-connect tabs require connection
-    const restricted = ['impedance', 'signal', 'fft', 'record'] as TabType[];
+    const restricted = ['impedance', 'signal', 'fft'] as TabType[];
     if (restricted.includes(tab) && !isConnected) return;
     // Impedance blocked during recording
     if (tab === 'impedance' && isRecording) return;

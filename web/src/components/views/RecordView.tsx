@@ -109,6 +109,7 @@ export const RecordView: FC<RecordViewProps> = ({
   const [fileStatus, setFileStatus] = useState<'idle' | 'parsing' | 'analyzing' | 'done' | 'error'>('idle');
   const [fileStatusMsg, setFileStatusMsg] = useState('');
   const [fileDob, setFileDob] = useState('');
+  const [fileId, setFileId] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileSex, setFileSex] = useState<'M' | 'F' | 'Other' | ''>('');
   const [fileReportLang, setFileReportLang] = useState<ReportLang>('zh-TW');
@@ -315,8 +316,9 @@ export const RecordView: FC<RecordViewProps> = ({
       // Build SubjectInfo using the file-section UI fields
       const fileSubject = {
         ...subjectInfo,
+        ...(fileId   ? { id: fileId }     : {}),
         ...(fileName ? { name: fileName } : {}),
-        ...(fileSex   ? { sex: fileSex }  : {}),
+        ...(fileSex  ? { sex: fileSex }   : {}),
       };
       try {
         await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId, undefined, fileReportLang);
@@ -904,6 +906,18 @@ export const RecordView: FC<RecordViewProps> = ({
         <h3 style={{ margin: '0 0 14px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
           {T(lang, 'recordFromFile')}
         </h3>
+
+        {/* Subject ID */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={labelStyle}>{T(lang, 'recordSubjectId')}</label>
+          <input
+            type="text"
+            value={fileId}
+            onChange={e => setFileId(e.target.value)}
+            placeholder={T(lang, 'recordSubjectId')}
+            style={inputStyle}
+          />
+        </div>
 
         {/* Name */}
         <div style={{ marginBottom: 10 }}>

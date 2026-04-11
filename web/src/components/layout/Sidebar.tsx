@@ -58,7 +58,7 @@ export const Sidebar: FC<SidebarProps> = ({
     { id: 'connect',   labelKey: 'tabConnect',   icon: <ConnectIcon />,   requiresConnect: false },
     { id: 'impedance', labelKey: 'tabImpedance', icon: <ImpedanceIcon />, requiresConnect: true  },
     { id: 'signal',    labelKey: 'tabSignal',    icon: <WaveformIcon />,  requiresConnect: true  },
-    { id: 'record',    labelKey: 'tabRecord',    icon: <RecordIcon />,    requiresConnect: true  },
+    { id: 'record',    labelKey: 'tabRecord',    icon: <RecordIcon />,    requiresConnect: false },
   ];
 
   // Strip "STEEG_" prefix for display
