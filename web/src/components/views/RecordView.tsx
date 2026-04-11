@@ -100,6 +100,7 @@ export const RecordView: FC<RecordViewProps> = ({
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
+  const [autoStopMode, setAutoStopMode] = useState<'csv' | 'report'>('csv');
   const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
   const [enableRppg, setEnableRppg] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
@@ -186,6 +187,42 @@ export const RecordView: FC<RecordViewProps> = ({
   const handleStopOnly = () => {
     broadcastEegDone();
     onStopRecording();
+  };
+
+  // Auto-stop + report: always saves CSV, generates report only if data ≥ 90s (no alert on short data)
+  const handleAutoStopReport = async () => {
+    broadcastEegDone();
+    onStopRecording();
+    if (recordedSamples.length === 0 || !startTime) return;
+    const content = generateCsv(recordedSamples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc);
+    const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
+    downloadCsv(content, filename);
+    if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
+      uploadSessionCsv(sessionInfo.sessionId, sessionInfo.sessionToken, content, filename);
+    }
+    const durationSec = recordedSamples.length / SAMPLE_RATE;
+    if (durationSec < 90) return; // too short for report; CSV already saved
+    setReportStatus('analyzing');
+    try {
+      const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '', useArtifactRemoval);
+      if (result.error) { setReportStatus('error'); return; }
+      await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
+      if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
+        saveSessionResult(sessionInfo.sessionId, sessionInfo.sessionToken, {
+          age:          result.age,
+          clean_epochs: result.cleanEpochs,
+          total_epochs: result.totalEpochs,
+          duration_sec: result.durationSec,
+          indices:      result.indices,
+          tscores:      result.tscores,
+          capability:   result.capability,
+        });
+      }
+      setReportStatus('done');
+    } catch (err) {
+      console.error('Auto-stop report error:', err);
+      setReportStatus('error');
+    }
   };
 
   const handleStopAndReport = async () => {
@@ -300,11 +337,9 @@ export const RecordView: FC<RecordViewProps> = ({
     }
   };
 
-  // Auto-stop when quality target is reached — also downloads CSV
-  const onStopRecordingRef = useRef(onStopRecording);
-  onStopRecordingRef.current = onStopRecording;
-  const handleStopRef = useRef(handleStop);
-  handleStopRef.current = handleStop;
+  // Auto-stop when quality target is reached
+  const handleAutoStopRef = useRef<() => void | Promise<void>>(handleStop);
+  handleAutoStopRef.current = autoStopMode === 'report' ? handleAutoStopReport : handleStop;
   useEffect(() => {
     if (!isRecording) {
       autoStoppedRef.current = false;
@@ -312,7 +347,7 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     if (shouldAutoStop && !autoStoppedRef.current) {
       autoStoppedRef.current = true;
-      handleStopRef.current();
+      void handleAutoStopRef.current();
     }
   }, [shouldAutoStop, isRecording]);
 
@@ -525,6 +560,43 @@ export const RecordView: FC<RecordViewProps> = ({
               {T(lang, 'recordSensitivityLenient')} → {T(lang, 'recordSensitivityStrict')}
             </span>
           </div>
+
+          {/* Auto-stop mode toggle — only shown when a finite target duration is set */}
+          {isFinite(qualityConfig.targetDurationSec) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)', whiteSpace: 'nowrap' }}>
+                {T(lang, 'recordAutoStopMode')}:
+              </label>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(['csv', 'report'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => setAutoStopMode(mode)}
+                    disabled={isRecording}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 5,
+                      border: `1px solid ${autoStopMode === mode
+                        ? (mode === 'report' ? 'rgba(88,166,255,0.6)' : 'rgba(248,81,73,0.5)')
+                        : 'rgba(93,109,134,0.4)'}`,
+                      background: autoStopMode === mode
+                        ? (mode === 'report' ? 'rgba(88,166,255,0.18)' : 'rgba(248,81,73,0.12)')
+                        : 'transparent',
+                      color: autoStopMode === mode
+                        ? (mode === 'report' ? '#8ecfff' : '#f85149')
+                        : 'rgba(160,180,210,0.5)',
+                      fontSize: 12, fontWeight: 600,
+                      cursor: isRecording ? 'not-allowed' : 'pointer',
+                      opacity: isRecording ? 0.55 : 1,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {mode === 'csv' ? T(lang, 'recordAutoStopCsv') : T(lang, 'recordAutoStopReport')}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 8-channel STD grid */}

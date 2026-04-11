@@ -177,6 +177,9 @@ const translations: Record<string, Record<Lang, string>> = {
   recordReportTooShort:   { zh: '錄製時間不足 90 秒，無法生成報告', en: 'Recording must be at least 90 seconds to generate a report' },
   recordGeneratingReport: { zh: '分析中，請稍候…', en: 'Analyzing EEG, please wait…' },
   recordReportError:      { zh: '報告生成失敗', en: 'Report generation failed' },
+  recordAutoStopMode:     { zh: '達標後', en: 'On target' },
+  recordAutoStopCsv:      { zh: '存檔', en: 'Save CSV' },
+  recordAutoStopReport:   { zh: '存檔＋報告', en: 'Save + Report' },
 
   // Disclaimer / consent
   disclaimerBtn:          { zh: '資料蒐集知情同意', en: 'Data Collection Consent' },
