@@ -479,6 +479,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               sessionInfo={sessionInfo}
               channelLabels={channelLabels}
               isFlexibleElectrode={deviceId?.startsWith('STEEG_DG819') ?? false}
+              isImpedanceActive={isImpedanceActive}
             />
           </div>
         </div>
@@ -499,7 +500,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-device layout — renders DevicePanel × n
 // ─────────────────────────────────────────────────────────────────────────────
-function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal, syncMarkerOn }: {
+function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal, syncMarkerOn, onAnyImpedanceActiveChange }: {
   deviceCount: number;
   lang: Lang;
   sessionInfo: SessionInfo | null;
@@ -508,8 +509,20 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
   disconnectSignal: number;
   eventSignal: number;
   syncMarkerOn: boolean;
+  onAnyImpedanceActiveChange: (active: boolean) => void;
 }) {
   const [focusedDevice, setFocusedDevice] = useState(0);
+  const [impedanceActiveSet, setImpedanceActiveSet] = useState<Set<number>>(new Set());
+
+  const handleImpedanceActiveChange = (idx: number, active: boolean) => {
+    setImpedanceActiveSet(prev => {
+      const next = new Set(prev);
+      if (active) next.add(idx); else next.delete(idx);
+      onAnyImpedanceActiveChange(next.size > 0);
+      return next;
+    });
+  };
+
   const layoutClass = `multi-layout n${deviceCount}`;
   return (
     <div className={layoutClass}>
@@ -526,6 +539,7 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
           syncMarkerOn={syncMarkerOn}
           isFocused={focusedDevice === i}
           onFocus={() => setFocusedDevice(i)}
+          onImpedanceActiveChange={active => handleImpedanceActiveChange(i, active)}
         />
       ))}
     </div>
@@ -544,6 +558,7 @@ function App() {
   const [disconnectSignal, setDisconnectSignal] = useState(0);
   const [eventSignal, setEventSignal] = useState(0);
   const [syncMarkerOn, setSyncMarkerOn] = useState(false);
+  const [anyImpedanceActive, setAnyImpedanceActive] = useState(false);
   const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
 
   useEffect(() => {
@@ -583,6 +598,7 @@ function App() {
         onSimultaneousDisconnect={() => setDisconnectSignal(n => n + 1)}
         syncMarkerOn={syncMarkerOn}
         onToggleSyncMarker={() => setSyncMarkerOn(v => !v)}
+        anyImpedanceActive={anyImpedanceActive}
       />
 
       {deviceCount === 1
@@ -596,6 +612,7 @@ function App() {
             disconnectSignal={disconnectSignal}
             eventSignal={eventSignal}
             syncMarkerOn={syncMarkerOn}
+            onAnyImpedanceActiveChange={setAnyImpedanceActive}
           />
       }
     </div>

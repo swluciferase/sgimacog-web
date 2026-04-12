@@ -349,13 +349,14 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
   }, [serial, getCommands, parser]);
 
   const handleStartRecording = useCallback(() => {
+    if (isImpedanceActive) return; // impedance measurement in progress — block recording
     recordSamplesRef.current = [];
     recordTimestampRef.current = 0;
     setRecordStartTime(new Date());
     setRecordedSamples([]);
     setIsRecording(true);
     autoStopFiredRef.current = false;
-  }, []);
+  }, [isImpedanceActive]);
 
   const handleStopRecording = useCallback(() => {
     setIsRecording(false);

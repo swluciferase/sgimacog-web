@@ -198,7 +198,7 @@ const translations: Record<string, Record<Lang, string>> = {
   },
 
   // Flexible electrode mode (STEEG_DG819)
-  electrodeMode:         { zh: '可選電極模式 (DG819)', en: 'Flexible Electrode Mode (DG819)' },
+  electrodeMode:         { zh: '請依照實際電極位置調整', en: 'Adjust to match actual electrode positions' },
   electrodeEditBtn:      { zh: '⚙ 設定電極', en: '⚙ Electrodes' },
   electrodeEditTitle:    { zh: 'CH 1–8 電極位置指定', en: 'CH 1–8 Electrode Assignment' },
   electrodeEditApply:    { zh: '套用', en: 'Apply' },

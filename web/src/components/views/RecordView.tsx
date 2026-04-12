@@ -47,6 +47,8 @@ export interface RecordViewProps {
   channelLabels?: string[];
   /** True when device is in flexible electrode mode */
   isFlexibleElectrode?: boolean;
+  /** True when impedance measurement is active — blocks starting recording */
+  isImpedanceActive?: boolean;
 }
 
 function formatDuration(ms: number): string {
@@ -109,6 +111,7 @@ export const RecordView: FC<RecordViewProps> = ({
   stopAndSaveSignal = 0,
   channelLabels,
   isFlexibleElectrode = false,
+  isImpedanceActive = false,
 }) => {
   // Report generation allowed only if electrode layout matches default (for flexible mode)
   const defaultLabels = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'];
@@ -882,15 +885,16 @@ export const RecordView: FC<RecordViewProps> = ({
           </>) : (<>
             <button
               onClick={onStartRecording}
-              disabled={!isConnected}
+              disabled={!isConnected || isImpedanceActive}
+              title={isImpedanceActive ? (lang === 'zh' ? '阻抗量測中，無法錄製' : 'Stop impedance measurement first') : undefined}
               style={{
-                background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
-                border: `1px solid ${isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
+                background: (isConnected && !isImpedanceActive) ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
+                border: `1px solid ${(isConnected && !isImpedanceActive) ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
                 borderRadius: 8,
-                color: isConnected ? '#3fb950' : 'rgba(100,120,140,0.5)',
+                color: (isConnected && !isImpedanceActive) ? '#3fb950' : 'rgba(100,120,140,0.5)',
                 fontSize: 13, fontWeight: 700,
                 padding: '9px 24px',
-                cursor: isConnected ? 'pointer' : 'not-allowed',
+                cursor: (isConnected && !isImpedanceActive) ? 'pointer' : 'not-allowed',
               }}
             >
               {T(lang, 'recordStart')}

@@ -13,6 +13,8 @@ export interface HeaderProps {
   onSimultaneousDisconnect: () => void;
   syncMarkerOn: boolean;
   onToggleSyncMarker: () => void;
+  /** True when any device is measuring impedance — simultaneous record should be blocked */
+  anyImpedanceActive?: boolean;
 }
 
 // EEG_logo.svg inline — brand colors preserved from logo file
@@ -43,7 +45,7 @@ const EEG_LOGO_SVG = (
 export const Header: FC<HeaderProps> = ({
   lang, onLangToggle, deviceCount, onAddDevice, onRemoveDevice,
   showMultiControls, onSimultaneousRecord, onSimultaneousStop, onSimultaneousDisconnect,
-  syncMarkerOn, onToggleSyncMarker,
+  syncMarkerOn, onToggleSyncMarker, anyImpedanceActive = false,
 }) => {
   return (
     <header style={{
@@ -92,9 +94,18 @@ export const Header: FC<HeaderProps> = ({
         <div style={{ display: 'flex', gap: 4, marginLeft: '.5rem' }}>
           <button
             className="dev-count-btn"
-            onClick={onSimultaneousRecord}
-            title={lang === 'zh' ? '同時開始錄製所有已連線裝置' : 'Record all connected devices'}
-            style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'var(--green)', borderColor: 'rgba(128,200,84,.4)' }}
+            onClick={anyImpedanceActive ? undefined : onSimultaneousRecord}
+            disabled={anyImpedanceActive}
+            title={anyImpedanceActive
+              ? (lang === 'zh' ? '有裝置正在量測阻抗，無法同時錄製' : 'A device is measuring impedance — stop it first')
+              : (lang === 'zh' ? '同時開始錄製所有已連線裝置' : 'Record all connected devices')}
+            style={{
+              width: 'auto', padding: '0 8px', fontSize: '.6rem',
+              color: anyImpedanceActive ? 'rgba(128,200,84,.3)' : 'var(--green)',
+              borderColor: anyImpedanceActive ? 'rgba(128,200,84,.15)' : 'rgba(128,200,84,.4)',
+              cursor: anyImpedanceActive ? 'not-allowed' : 'pointer',
+              opacity: anyImpedanceActive ? 0.45 : 1,
+            }}
           >
             {lang === 'zh' ? '同時錄製' : 'Rec All'}
           </button>

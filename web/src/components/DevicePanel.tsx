@@ -41,18 +41,20 @@ export interface DevicePanelProps {
   isFocused?: boolean;
   /** Called when user interacts with this panel (sets it as focused) */
   onFocus?: () => void;
+  /** Called whenever this device's impedance-active state changes */
+  onImpedanceActiveChange?: (active: boolean) => void;
 }
 
 export const DevicePanel: FC<DevicePanelProps> = ({
-  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false, isFocused, onFocus,
+  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false, isFocused, onFocus, onImpedanceActiveChange,
 }) => {
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
 
-  // Broadcast: simultaneous record
+  // Broadcast: simultaneous record (skipped if impedance active)
   useEffect(() => {
     if (recordSignal === 0) return;
-    if (d.isConnected && !d.isRecording) d.handleStartRecording();
+    if (d.isConnected && !d.isRecording && !d.isImpedanceActive) d.handleStartRecording();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordSignal]);
 
@@ -62,6 +64,11 @@ export const DevicePanel: FC<DevicePanelProps> = ({
     if (d.isConnected) d.handleDisconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disconnectSignal]);
+
+  // Report impedance-active state changes up to parent (for multi-device Rec All blocking)
+  useEffect(() => {
+    onImpedanceActiveChange?.(d.isImpedanceActive);
+  }, [d.isImpedanceActive, onImpedanceActiveChange]);
 
   // stopSignal is forwarded to RecordView as stopAndSaveSignal so it handles stop+save together
 
@@ -81,9 +88,11 @@ export const DevicePanel: FC<DevicePanelProps> = ({
 
   const statusTxt = d.isRecording
     ? `${lang === 'zh' ? '錄製中' : 'REC'} ${fmt(elapsedMs)}`
-    : d.isConnected
-      ? (lang === 'zh' ? '已連線' : 'Connected')
-      : (lang === 'zh' ? '未連線' : 'Disconnected');
+    : d.isImpedanceActive
+      ? (lang === 'zh' ? '阻抗量測中' : 'Measuring')
+      : d.isConnected
+        ? (lang === 'zh' ? '已連線' : 'Connected')
+        : (lang === 'zh' ? '未連線' : 'Disconnected');
 
   return (
     <div
@@ -109,7 +118,13 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             </button>
           )}
           {d.isConnected && !d.isRecording && (
-            <button className="dp-btn dp-btn-green" onClick={d.handleStartRecording}>
+            <button
+              className="dp-btn dp-btn-green"
+              onClick={d.handleStartRecording}
+              disabled={d.isImpedanceActive}
+              title={d.isImpedanceActive ? (lang === 'zh' ? '阻抗量測中，無法錄製' : 'Stop impedance measurement first') : undefined}
+              style={{ opacity: d.isImpedanceActive ? 0.35 : 1, cursor: d.isImpedanceActive ? 'not-allowed' : 'pointer' }}
+            >
               ⬤ {lang === 'zh' ? '錄製' : 'Rec'}
             </button>
           )}
@@ -234,6 +249,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             stopAndSaveSignal={stopSignal}
             channelLabels={d.channelLabels}
             isFlexibleElectrode={d.deviceMode === 'flexible'}
+            isImpedanceActive={d.isImpedanceActive}
             compact
           />
         </div>
