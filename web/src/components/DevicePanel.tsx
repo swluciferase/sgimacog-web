@@ -37,10 +37,14 @@ export interface DevicePanelProps {
   stopSignal?: number;
   /** When true, Space/M key in WaveformView is suppressed (handled globally by App) */
   syncMarkerOn?: boolean;
+  /** Whether this panel is the currently focused one (receives keyboard markers when sync is OFF) */
+  isFocused?: boolean;
+  /** Called when user interacts with this panel (sets it as focused) */
+  onFocus?: () => void;
 }
 
 export const DevicePanel: FC<DevicePanelProps> = ({
-  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false,
+  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false, isFocused, onFocus,
 }) => {
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
@@ -85,6 +89,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
     <div
       className={`dev-panel ${statusClass}`}
       style={{ '--dp-color': deviceColor } as React.CSSProperties}
+      onMouseDown={() => onFocus?.()}
     >
       {/* ── Panel Header ── */}
       <div className="dp-head">
@@ -192,6 +197,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             onEventMarker={d.handleEventMarker}
             externalMarkerSignal={eventSignal}
             syncMarkerMode={syncMarkerOn}
+            isFocused={isFocused}
           />
         </div>
 

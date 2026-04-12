@@ -25,6 +25,11 @@ export interface WaveformViewProps {
   externalMarkerSignal?: number;
   /** When true, suppress local Space/M key handler (App handles it globally in sync mode) */
   syncMarkerMode?: boolean;
+  /**
+   * In multi-device mode (when defined): only respond to keyboard when true.
+   * In single-device mode (undefined): fall back to offsetParent visibility check.
+   */
+  isFocused?: boolean;
 }
 
 const CHANNEL_COLORS: [number, number, number, number][] = [
@@ -190,6 +195,7 @@ export const WaveformView = ({
   onEventMarker,
   externalMarkerSignal = 0,
   syncMarkerMode = false,
+  isFocused,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -288,26 +294,35 @@ export const WaveformView = ({
     if (last?.eegChannels) latestUvRef.current = last.eegChannels;
   }, [packets]);
 
-  // Keyboard markers — only when canvas is visible AND sync mode is OFF
-  // (when syncMarkerMode is ON, the App-level global handler fires eventSignal instead)
+  // Keyboard markers — sync mode OFF only.
+  // Multi-device (isFocused defined): fires only when this panel is focused.
+  // Single-device (isFocused undefined): fires when canvas is visible (offsetParent check).
   useEffect(() => {
-    if (syncMarkerMode) return;
+    if (syncMarkerMode) return; // sync ON: global App handler fires eventSignal instead
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.key === 'm' || e.key === 'M') {
-        if (canvasRef.current && canvasRef.current.offsetParent !== null) {
-          e.preventDefault();
-          addMarker();
-        }
+      if (e.code !== 'Space' && e.key !== 'm' && e.key !== 'M') return;
+      // Skip if user is typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      // Multi-device: only fire for the focused panel
+      // Single-device: fire when canvas is visible
+      const shouldFire = isFocused !== undefined
+        ? isFocused
+        : (canvasRef.current?.offsetParent !== null);
+      if (shouldFire) {
+        e.preventDefault();
+        addMarker();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [addMarker, syncMarkerMode]);
+  }, [addMarker, syncMarkerMode, isFocused]);
 
-  // External broadcast marker (from simultaneous-event button)
+  // External broadcast marker (sync-ON global key or simultaneous-event button).
+  // No isRecording guard here — addMarker is always safe to call; CSV-save guard lives in useDevice.
   useEffect(() => {
     if (externalMarkerSignal === 0) return;
-    if (isRecording) addMarker();
+    addMarker();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalMarkerSignal]);
 

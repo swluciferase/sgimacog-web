@@ -500,6 +500,7 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
   eventSignal: number;
   syncMarkerOn: boolean;
 }) {
+  const [focusedDevice, setFocusedDevice] = useState(0);
   const layoutClass = `multi-layout n${deviceCount}`;
   return (
     <div className={layoutClass}>
@@ -514,6 +515,8 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
           disconnectSignal={disconnectSignal}
           eventSignal={eventSignal}
           syncMarkerOn={syncMarkerOn}
+          isFocused={focusedDevice === i}
+          onFocus={() => setFocusedDevice(i)}
         />
       ))}
     </div>
