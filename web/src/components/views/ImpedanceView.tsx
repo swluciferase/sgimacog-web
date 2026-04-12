@@ -1,4 +1,4 @@
-import React, { useState, type FC } from 'react';
+import { useState, type FC } from 'react';
 import type { ImpedanceResult } from '../../types/eeg';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
@@ -24,11 +24,9 @@ const ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
   { label: 'Pz',  cx: 100, cy: 148 },
 ];
 
-// AC amplitude threshold below which we consider the electrode unconnected / no signal
 const NO_SIGNAL_AMPLITUDE_UV = 0.5;
-const LOW_IMPEDANCE_NA_KOHM = 10; // readings below this indicate no electrode contact
+const LOW_IMPEDANCE_NA_KOHM = 10;
 
-// Quality thresholds (KΩ): <150 = excellent, <300 = good, <600 = poor, ≥600 = bad
 function getQuality(kohm: number): ImpedanceResult['quality'] {
   if (kohm < 150) return 'excellent';
   if (kohm < 300) return 'good';
@@ -36,24 +34,24 @@ function getQuality(kohm: number): ImpedanceResult['quality'] {
   return 'bad';
 }
 
+// Colors matching the gradient colorbar
 function qualityColor(quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal'): string {
   switch (quality) {
-    case 'excellent': return '#3fb950';
-    case 'good':      return '#85e89d';
-    case 'poor':      return '#e3a030';
-    case 'bad':       return '#f85149';
-    default:          return '#555e6a';
+    case 'excellent': return '#68cc8a';
+    case 'good':      return '#9ed070';
+    case 'poor':      return '#d8c060';
+    case 'bad':       return '#d07070';
+    default:          return '#284050';
   }
 }
 
-function qualityLabel(quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal', lang: Lang): string {
+function qualityFill(quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal'): string {
   switch (quality) {
-    case 'excellent': return T(lang, 'impedanceExcellent');
-    case 'good':      return T(lang, 'impedanceGood');
-    case 'poor':      return T(lang, 'impedancePoor');
-    case 'bad':       return T(lang, 'impedanceBad');
-    case 'noSignal':  return 'N/A';
-    default:          return '--';
+    case 'excellent': return 'rgba(104,204,138,.18)';
+    case 'good':      return 'rgba(158,208,112,.14)';
+    case 'poor':      return 'rgba(216,192,96,.14)';
+    case 'bad':       return 'rgba(208,112,112,.16)';
+    default:          return 'rgba(40,64,80,.5)';
   }
 }
 
@@ -67,7 +65,6 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
 }) => {
   const [isActive, setIsActive] = useState(false);
 
-  // Map results by channel index (0-based, matches ELECTRODE_POSITIONS order)
   const resultByIndex = new Map<number, ImpedanceResult>();
   if (impedanceResults) {
     for (const r of impedanceResults) {
@@ -86,112 +83,78 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
     }
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 16 }}>
-
-      {/* Toolbar */}
+  if (!isConnected) {
+    return (
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 16px',
-        background: 'rgba(5,14,23,0.8)',
-        border: '1px solid rgba(93,109,134,0.3)',
-        borderRadius: 10,
-        flexWrap: 'wrap',
-        gap: 10,
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', flex: 1, gap: 8, padding: '24px 0',
+        color: 'var(--faint)', fontSize: '.75rem',
       }}>
-        <span style={{ color: 'rgba(180,200,230,0.85)', fontSize: '0.95rem', fontWeight: 600 }}>
-          {T(lang, 'impedanceTitle')}
-        </span>
+        <div style={{ fontFamily: "'Crimson Pro', serif", fontStyle: 'italic', fontSize: '2.2rem', color: 'var(--dim)', lineHeight: 1 }}>○</div>
+        <div>{lang === 'zh' ? '請先連線裝置' : 'Connect a device first'}</div>
+      </div>
+    );
+  }
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {!isConnected && (
-            <span style={{ fontSize: 12, color: 'rgba(248,81,73,0.8)' }}>
-              {T(lang, 'impedanceNotConnected')}
-            </span>
-          )}
-          {isRecording && (
-            <span style={{ fontSize: 12, color: 'rgba(248,81,73,0.8)' }}>
-              {T(lang, 'impedanceBlockedByRecording')}
-            </span>
-          )}
-          <button
-            onClick={handleToggle}
-            disabled={!isConnected || isRecording}
-            style={{
-              background: isActive
-                ? 'rgba(248,81,73,0.18)'
-                : 'rgba(63,185,80,0.15)',
-              border: `1px solid ${isActive ? 'rgba(248,81,73,0.5)' : 'rgba(63,185,80,0.45)'}`,
-              borderRadius: 8,
-              color: isActive ? '#f85149' : '#3fb950',
-              fontSize: 13,
-              fontWeight: 600,
-              padding: '8px 18px',
-              cursor: (isConnected && !isRecording) ? 'pointer' : 'not-allowed',
-              opacity: (isConnected && !isRecording) ? 1 : 0.4,
-              transition: 'all 0.15s',
-            }}
-          >
-            {isActive ? T(lang, 'impedanceStop') : T(lang, 'impedanceStart')}
-          </button>
-        </div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+
+      {/* Measure / Stop buttons row */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexShrink: 0 }}>
+        <button
+          onClick={handleToggle}
+          disabled={isRecording}
+          style={{
+            flex: 1,
+            padding: '.3rem .6rem',
+            borderRadius: 3,
+            border: `1px solid ${isActive ? 'rgba(208,112,112,.45)' : 'rgba(72,186,166,.45)'}`,
+            background: isActive ? 'rgba(208,112,112,.12)' : 'rgba(72,186,166,.12)',
+            color: isActive ? 'var(--red)' : 'var(--teal)',
+            fontSize: '.72rem',
+            fontFamily: "'IBM Plex Mono', monospace",
+            cursor: isRecording ? 'not-allowed' : 'pointer',
+            opacity: isRecording ? .4 : 1,
+            transition: 'all .15s',
+            letterSpacing: '.05em',
+          }}
+        >
+          {isActive ? T(lang, 'impedanceStop') : T(lang, 'impedanceStart')}
+        </button>
       </div>
 
-      {/* Main content */}
-      <div style={{ display: 'flex', gap: 20, flex: 1, minHeight: 0 }}>
-
-        {/* SVG head diagram */}
-        <div
-          className="nd-card"
-          style={{
-            '--card-accent': 'rgba(88,166,255,0.3)',
-            flex: '0 0 auto',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            marginBottom: 0,
-          } as React.CSSProperties}
-        >
+      {/* Brain SVG — fills available space */}
+      <div className="imp-brain-wrap">
+        <div className="imp-brain-svg-wrap">
           <svg
             viewBox="0 0 200 240"
-            width="260"
-            height="312"
-            style={{ display: 'block' }}
+            preserveAspectRatio="xMidYMid meet"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
           >
-            {/* Head outline — oval */}
-            <ellipse cx="100" cy="118" rx="88" ry="106"
-              fill="rgba(14,26,44,0.8)"
-              stroke="rgba(93,109,134,0.55)"
+            {/* Head outline */}
+            <ellipse cx="100" cy="118" rx="82" ry="100"
+              fill="rgba(13,23,32,.8)"
+              stroke="rgba(72,186,166,0.2)"
               strokeWidth="1.5"
             />
             {/* Nose */}
-            <path d="M93 16 Q100 8 107 16"
-              fill="none"
-              stroke="rgba(93,109,134,0.4)"
-              strokeWidth="1.5"
+            <path d="M93 20 Q100 12 107 20"
+              fill="none" stroke="rgba(72,186,166,0.18)" strokeWidth="1.4"
             />
             {/* Left ear */}
-            <path d="M12 100 Q4 112 12 124"
-              fill="none"
-              stroke="rgba(93,109,134,0.4)"
-              strokeWidth="1.5"
+            <path d="M18 104 Q10 116 18 128"
+              fill="none" stroke="rgba(72,186,166,0.18)" strokeWidth="1.4"
             />
             {/* Right ear */}
-            <path d="M188 100 Q196 112 188 124"
-              fill="none"
-              stroke="rgba(93,109,134,0.4)"
-              strokeWidth="1.5"
+            <path d="M182 104 Q190 116 182 128"
+              fill="none" stroke="rgba(72,186,166,0.18)" strokeWidth="1.4"
             />
-            {/* Center cross lines */}
-            <line x1="100" y1="14" x2="100" y2="224"
-              stroke="rgba(93,109,134,0.2)"
-              strokeWidth="1"
-              strokeDasharray="4 4"
+            {/* Center guides */}
+            <line x1="100" y1="18" x2="100" y2="220"
+              stroke="rgba(72,186,166,0.1)" strokeWidth="1" strokeDasharray="3 4"
             />
-            <line x1="12" y1="118" x2="188" y2="118"
-              stroke="rgba(93,109,134,0.2)"
-              strokeWidth="1"
-              strokeDasharray="4 4"
+            <line x1="18" y1="118" x2="182" y2="118"
+              stroke="rgba(72,186,166,0.1)" strokeWidth="1" strokeDasharray="3 4"
             />
 
             {/* Electrode nodes */}
@@ -207,52 +170,42 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                 : isNoSignal ? 'noSignal'
                 : getQuality(kohm!);
               const color = qualityColor(quality);
+              const fill  = qualityFill(quality);
               const isDim = quality === 'unknown' || quality === 'noSignal';
 
               return (
                 <g key={pos.label}>
-                  {/* Glow ring */}
                   {!isDim && (
-                    <circle
-                      cx={pos.cx} cy={pos.cy}
-                      r={16}
-                      fill="none"
-                      stroke={color}
-                      strokeWidth="1"
-                      opacity="0.3"
+                    <circle cx={pos.cx} cy={pos.cy} r={15}
+                      fill="none" stroke={color} strokeWidth="1" opacity=".25"
                     />
                   )}
-                  {/* Main circle */}
                   <circle
-                    cx={pos.cx} cy={pos.cy}
-                    r={12}
-                    fill={isDim ? 'rgba(30,42,60,0.9)' : `${color}22`}
+                    cx={pos.cx} cy={pos.cy} r={11}
+                    fill={fill}
                     stroke={color}
-                    strokeWidth={isDim ? 1 : 2}
-                    opacity={isDim ? 0.5 : 1}
+                    strokeWidth={isDim ? 1 : 1.5}
+                    opacity={isDim ? .45 : 1}
                   />
-                  {/* Channel label */}
                   <text
                     x={pos.cx} y={pos.cy + 1}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={isDim ? 'rgba(150,165,185,0.5)' : color}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill={isDim ? 'rgba(88,136,136,.5)' : color}
                     fontSize="7"
-                    fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
-                    fontWeight="700"
+                    fontFamily="'IBM Plex Mono', monospace"
+                    fontWeight="500"
                   >
                     {pos.label}
                   </text>
-                  {/* Impedance value or N/A below */}
-                  {result !== undefined && (
+                  {result !== undefined && !isNoSignal && (
                     <text
-                      x={pos.cx} y={pos.cy + 21}
+                      x={pos.cx} y={pos.cy + 20}
                       textAnchor="middle"
-                      fill="rgba(200,220,245,0.75)"
-                      fontSize="6"
-                      fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+                      fill="rgba(200,224,216,.65)"
+                      fontSize="5.5"
+                      fontFamily="'IBM Plex Mono', monospace"
                     >
-                      {isNoSignal ? 'N/A' : `${kohm!.toFixed(0)}kΩ`}
+                      {kohm!.toFixed(0)}k
                     </text>
                   )}
                 </g>
@@ -261,151 +214,30 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
           </svg>
         </div>
 
-        {/* Right panel: channel list + legend */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-          {/* Channel cards grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 10,
-          }}>
-            {ELECTRODE_POSITIONS.map((pos, idx) => {
-              const result = resultByIndex.get(idx);
-              const kohm = result?.impedanceKohm;
-              const isNoSignal = result !== undefined && (
-                (result.acAmplitude ?? 0) < NO_SIGNAL_AMPLITUDE_UV ||
-                result.impedanceKohm < LOW_IMPEDANCE_NA_KOHM
-              );
-              const quality: ImpedanceResult['quality'] | 'unknown' | 'noSignal' =
-                result === undefined ? 'unknown'
-                : isNoSignal ? 'noSignal'
-                : getQuality(kohm!);
-              const color = qualityColor(quality);
-              const isDim = quality === 'unknown' || quality === 'noSignal';
-
-              return (
-                <div
-                  key={pos.label}
-                  style={{
-                    background: 'rgba(8,17,30,0.8)',
-                    border: `1px solid ${!isDim ? color + '55' : 'rgba(60,75,95,0.4)'}`,
-                    borderRadius: 10,
-                    padding: '12px 14px',
-                    transition: 'border-color 0.3s',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{
-                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                      fontSize: 14, fontWeight: 700,
-                      color: !isDim ? color : 'rgba(140,160,190,0.7)',
-                    }}>
-                      {pos.label}
-                    </span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600,
-                      color: color,
-                      background: `${color}18`,
-                      border: `1px solid ${color}44`,
-                      borderRadius: 4,
-                      padding: '2px 6px',
-                      opacity: isDim ? 0.5 : 1,
-                    }}>
-                      {qualityLabel(quality, lang)}
-                    </span>
-                  </div>
-                  <div style={{
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                    fontSize: 18, fontWeight: 700,
-                    color: !isDim ? color : 'rgba(100,115,135,0.5)',
-                  }}>
-                    {result === undefined
-                      ? '--'
-                      : isNoSignal
-                        ? 'N/A'
-                        : kohm!.toFixed(1)}
-                    <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 3 }}>
-                      {result !== undefined && !isNoSignal ? T(lang, 'kohm') : ''}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Quality legend */}
-          <div style={{
-            background: 'rgba(8,17,30,0.7)',
-            border: '1px solid rgba(60,75,95,0.35)',
-            borderRadius: 10,
-            padding: '12px 16px',
-          }}>
-            <div style={{ fontSize: 12, color: 'rgba(140,160,185,0.7)', marginBottom: 8, fontWeight: 600 }}>
-              {T(lang, 'impedanceLegend')}
+        {/* Gradient colorbar */}
+        <div className="imp-colorbar">
+          <div className="imp-colorbar-track" />
+          <div className="imp-colorbar-labels">
+            <div>
+              <div style={{ color: '#68cc8a', fontWeight: 500 }}>{lang === 'zh' ? '優秀' : 'Exc'}</div>
+              <div style={{ color: 'var(--muted)' }}>&lt;150kΩ</div>
             </div>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {(
-                [
-                  { quality: 'excellent' as const, range: '< 150 kΩ' },
-                  { quality: 'good'      as const, range: '< 300 kΩ' },
-                  { quality: 'poor'      as const, range: '< 600 kΩ' },
-                  { quality: 'bad'       as const, range: '≥ 600 kΩ' },
-                ]
-              ).map(item => (
-                <div key={item.quality} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{
-                    width: 12, height: 12, borderRadius: '50%',
-                    background: qualityColor(item.quality),
-                  }} />
-                  <span style={{ fontSize: 12, color: qualityColor(item.quality) }}>
-                    {qualityLabel(item.quality, lang)}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'rgba(130,150,175,0.6)' }}>
-                    {item.range}
-                  </span>
-                </div>
-              ))}
-              {/* N/A legend entry */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 12, height: 12, borderRadius: '50%',
-                  background: '#555e6a',
-                }} />
-                <span style={{ fontSize: 12, color: '#555e6a' }}>N/A</span>
-                <span style={{ fontSize: 11, color: 'rgba(130,150,175,0.6)' }}>
-                  無訊號
-                </span>
-              </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#9ed070', fontWeight: 500 }}>{lang === 'zh' ? '良好' : 'Good'}</div>
+              <div style={{ color: 'var(--muted)' }}>&lt;300kΩ</div>
             </div>
-            {/* N/A explanation note */}
-            <div style={{
-              marginTop: 10,
-              fontSize: 11,
-              color: 'rgba(130,150,175,0.65)',
-              padding: '5px 8px',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: 5,
-            }}>
-              {T(lang, 'impedanceNoSignal')}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#d8c060', fontWeight: 500 }}>{lang === 'zh' ? '尚可' : 'Poor'}</div>
+              <div style={{ color: 'var(--muted)' }}>&lt;600kΩ</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ color: '#d07070', fontWeight: 500 }}>{lang === 'zh' ? '不良' : 'Bad'}</div>
+              <div style={{ color: 'var(--muted)' }}>≥600kΩ</div>
             </div>
           </div>
-
-          {/* Status info */}
-          {!isActive && isConnected && (
-            <div style={{
-              fontSize: 13,
-              color: 'rgba(140,160,190,0.6)',
-              padding: '8px 12px',
-              background: 'rgba(88,166,255,0.04)',
-              border: '1px solid rgba(88,166,255,0.15)',
-              borderRadius: 8,
-            }}>
-              {T(lang, 'impedanceNotMeasured')} — {T(lang, 'impedanceStart').toLowerCase()}
-            </div>
-          )}
         </div>
       </div>
+
     </div>
   );
 };

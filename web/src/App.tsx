@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import type { TabType } from './components/layout/Sidebar';
 import { HomeView } from './components/views/HomeView';
 import { ImpedanceView } from './components/views/ImpedanceView';
 import { WaveformView } from './components/views/WaveformView';
-import { FftView } from './components/views/FftView';
 import { RecordView } from './components/views/RecordView';
 import { ConnectModal } from './components/modals/ConnectModal';
 import { useEegStream } from './hooks/useEegStream';
@@ -72,7 +69,6 @@ function computeNotchDesc(fp: FilterParams): string {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('connect');
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [lang, setLang] = useState<Lang>('zh');
   const [showConnectModal, setShowConnectModal] = useState(false);
@@ -482,152 +478,86 @@ function App() {
 
   const isConnected = status === 'connected';
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'connect':
-        return (
-          <HomeView
-            status={status}
-            stats={deviceStats}
-            deviceId={deviceId}
-            lang={lang}
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-          />
-        );
-
-      case 'impedance':
-        return (
-          <ImpedanceView
-            impedanceResults={latestImpedance ?? undefined}
-            isConnected={isConnected}
-            isRecording={isRecording}
-            lang={lang}
-            onEnterImpedanceMode={handleEnterImpedance}
-            onExitImpedanceMode={handleExitImpedance}
-          />
-        );
-
-      case 'signal':
-      case 'fft':
-        return (
-          <div style={{ display: 'flex', height: '100%', gap: 8, overflow: 'hidden' }}>
-            <div style={{ flex: 2, minWidth: 0, overflow: 'hidden' }}>
-              <WaveformView
-                packets={latestPackets}
-                filterParams={filterParams}
-                filterBiquadRef={filterBiquadRef}
-                onFilterChange={handleFilterChange}
-                lang={lang}
-                isRecording={isRecording}
-                onEventMarker={handleEventMarker}
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-              <FftView
-                packets={latestPackets}
-                filterParams={filterParams}
-                filterBiquadRef={filterBiquadRef}
-                lang={lang}
-              />
-            </div>
-          </div>
-        );
-
-      case 'record':
-        return (
-          <RecordView
-            lang={lang}
-            isConnected={isConnected}
-            isRecording={isRecording}
-            subjectInfo={subjectInfo}
-            onSubjectInfoChange={setSubjectInfo}
-            onStartRecording={handleStartRecording}
-            onStopRecording={handleStopRecording}
-            recordedSamples={recordedSamples}
-            deviceId={deviceId}
-            filterDesc={computeFilterDesc(filterParams)}
-            notchDesc={computeNotchDesc(filterParams)}
-            startTime={recordStartTime}
-            onEventMarker={handleEventMarker}
-            eventMarkers={eventMarkers}
-            onClearEventMarkers={() => setEventMarkers([])}
-            qualityConfig={qualityConfig}
-            onQualityConfigChange={setQualityConfig}
-            currentWindowStds={currentWindowStds}
-            goodTimeSec={goodTimeSec}
-            goodPercent={goodPercent}
-            shouldAutoStop={shouldAutoStop}
-            sessionInfo={sessionInfo}
-          />
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  // Tab switching guards
-  const handleTabChange = (tab: TabType) => {
-    // All non-connect tabs require connection
-    const restricted = ['impedance', 'signal', 'fft'] as TabType[];
-    if (restricted.includes(tab) && !isConnected) return;
-    // Impedance blocked during recording
-    if (tab === 'impedance' && isRecording) return;
-    // Signal blocked while impedance measurement is active
-    if (tab === 'signal' && isImpedanceActive) return;
-    setActiveTab(tab);
-  };
-
   return (
     <div className="app-container">
       <Header
-        status={status}
         lang={lang}
         onLangToggle={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
       />
-      <div className="main-layout">
-        <Sidebar
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          lang={lang}
-          isConnected={isConnected}
-          isImpedanceActive={isImpedanceActive}
-          isRecording={isRecording}
-          packetRate={deviceStats.packetRate}
-          deviceId={deviceId}
-        />
-        <main className="content-area">
-          {renderContent()}
-        </main>
-      </div>
 
-      {/* Recording indicator overlay badge (visible from any tab) */}
-      {isRecording && activeTab !== 'signal' && activeTab !== 'record' && activeTab !== 'connect' && (
-        <div style={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-          background: 'rgba(248,81,73,0.18)',
-          border: '1px solid rgba(248,81,73,0.5)',
-          borderRadius: 10,
-          padding: '8px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          zIndex: 100,
-          backdropFilter: 'blur(8px)',
-        }}>
-          <div style={{
-            width: 9, height: 9, borderRadius: '50%',
-            background: '#f85149',
-            animation: 'pulse 1s infinite',
-          }} />
-          <span style={{ fontSize: 13, color: '#f85149', fontWeight: 600 }}>
-            {T(lang, 'signalRecording')} — {recordedSamples.length.toLocaleString()} samples
-          </span>
+      {/* 3-column layout — always visible */}
+      <div className="main-layout">
+
+        {/* Col 1: Connect + Impedance */}
+        <div className="layout-col" style={{ maxWidth: 300 }}>
+          <div className="layout-col-inner">
+            <div className="sh"><span className="sh-g">⊕</span>{lang === 'zh' ? '裝置連線' : 'Device'}</div>
+            <HomeView
+              status={status}
+              stats={deviceStats}
+              deviceId={deviceId}
+              lang={lang}
+              onConnect={handleConnect}
+              onDisconnect={handleDisconnect}
+            />
+            <div className="sh" style={{ marginTop: 10 }}>
+              <span className="sh-g">~</span>{lang === 'zh' ? '電極阻抗' : 'Impedance'}
+            </div>
+            <ImpedanceView
+              impedanceResults={latestImpedance ?? undefined}
+              isConnected={isConnected}
+              isRecording={isRecording}
+              lang={lang}
+              onEnterImpedanceMode={handleEnterImpedance}
+              onExitImpedanceMode={handleExitImpedance}
+            />
+          </div>
         </div>
-      )}
+
+        {/* Col 2: Signal */}
+        <div className="layout-col-signal">
+          <WaveformView
+            packets={latestPackets}
+            filterParams={filterParams}
+            filterBiquadRef={filterBiquadRef}
+            onFilterChange={handleFilterChange}
+            lang={lang}
+            isRecording={isRecording}
+            onEventMarker={handleEventMarker}
+          />
+        </div>
+
+        {/* Col 3: Record */}
+        <div className="layout-col" style={{ maxWidth: 340 }}>
+          <div className="layout-col-inner">
+            <RecordView
+              lang={lang}
+              isConnected={isConnected}
+              isRecording={isRecording}
+              subjectInfo={subjectInfo}
+              onSubjectInfoChange={setSubjectInfo}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              recordedSamples={recordedSamples}
+              deviceId={deviceId}
+              filterDesc={computeFilterDesc(filterParams)}
+              notchDesc={computeNotchDesc(filterParams)}
+              startTime={recordStartTime}
+              onEventMarker={handleEventMarker}
+              eventMarkers={eventMarkers}
+              onClearEventMarkers={() => setEventMarkers([])}
+              qualityConfig={qualityConfig}
+              onQualityConfigChange={setQualityConfig}
+              currentWindowStds={currentWindowStds}
+              goodTimeSec={goodTimeSec}
+              goodPercent={goodPercent}
+              shouldAutoStop={shouldAutoStop}
+              sessionInfo={sessionInfo}
+            />
+          </div>
+        </div>
+
+      </div>
 
       {/* Connect Modal */}
       {showConnectModal && (

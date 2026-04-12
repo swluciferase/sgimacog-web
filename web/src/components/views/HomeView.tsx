@@ -52,10 +52,10 @@ const InfoRow: FC<{ label: string; value: ReactNode }> = ({ label, value }) => (
   <div style={{
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '10px 0',
-    borderBottom: '1px solid rgba(93,109,134,0.15)',
+    borderBottom: '1px solid var(--border)',
   }}>
-    <span style={{ color: 'rgba(140,160,185,0.8)', fontSize: 13 }}>{label}</span>
-    <span style={{ color: '#c5d8f0', fontSize: 13, fontWeight: 500 }}>{value}</span>
+    <span style={{ color: 'var(--muted)', fontSize: 13 }}>{label}</span>
+    <span style={{ color: 'var(--cream)', fontSize: 13, fontWeight: 500 }}>{value}</span>
   </div>
 );
 
@@ -86,8 +86,8 @@ export const HomeView: FC<HomeViewProps> = ({
       <div
         className="nd-card"
         style={{
-          '--card-accent': isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(88,166,255,0.4)',
-          borderColor: isConnected ? 'rgba(63,185,80,0.25)' : 'rgba(93,109,134,0.2)',
+          '--card-accent': isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(72,186,166,0.4)',
+          borderColor: isConnected ? 'rgba(63,185,80,0.25)' : 'var(--border)',
           marginBottom: 16,
         } as React.CSSProperties}
       >
@@ -99,7 +99,7 @@ export const HomeView: FC<HomeViewProps> = ({
           borderRadius: '50%',
           background: isConnected
             ? 'radial-gradient(circle, rgba(63,185,80,0.08), transparent 70%)'
-            : 'radial-gradient(circle, rgba(88,166,255,0.06), transparent 70%)',
+            : 'radial-gradient(circle, rgba(72,186,166,0.06), transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -112,7 +112,7 @@ export const HomeView: FC<HomeViewProps> = ({
               boxShadow: isConnected ? `0 0 10px ${statusColor}` : 'none',
               animation: isConnecting ? 'pulse 1.5s infinite' : 'none',
             }} />
-            <span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#dce9f8' }}>
+            <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--cream)' }}>
               {statusLabel}
             </span>
           </div>
@@ -141,11 +141,11 @@ export const HomeView: FC<HomeViewProps> = ({
               disabled={isConnecting}
               style={{
                 background: isConnecting
-                  ? 'rgba(88,166,255,0.12)'
+                  ? 'rgba(72,186,166,0.12)'
                   : 'rgba(63,185,80,0.18)',
-                border: `1px solid ${isConnecting ? 'rgba(88,166,255,0.45)' : 'rgba(63,185,80,0.5)'}`,
+                border: `1px solid ${isConnecting ? 'rgba(72,186,166,0.45)' : 'rgba(63,185,80,0.5)'}`,
                 borderRadius: 8,
-                color: isConnecting ? '#58a6ff' : '#3fb950',
+                color: isConnecting ? 'var(--teal)' : '#3fb950',
                 fontSize: 13,
                 fontWeight: 600,
                 padding: '8px 18px',
@@ -165,8 +165,8 @@ export const HomeView: FC<HomeViewProps> = ({
               label={T(lang, 'homeDeviceId')}
               value={
                 <span style={{
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontSize: 12, color: '#7ec8f5',
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  fontSize: 12, color: 'var(--teal)',
                 }}>
                   {deviceId ?? T(lang, 'unknown')}
                 </span>
@@ -180,7 +180,7 @@ export const HomeView: FC<HomeViewProps> = ({
               label={T(lang, 'homePacketRate')}
               value={
                 <span style={{
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontFamily: "'IBM Plex Mono', monospace",
                 }}>
                   {stats.packetRate} pkt/s
                 </span>
@@ -196,8 +196,8 @@ export const HomeView: FC<HomeViewProps> = ({
             </div>
           </div>
         ) : (
-          <div style={{ color: 'rgba(140,160,190,0.65)', fontSize: 14, lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 600, color: 'rgba(180,200,230,0.8)', marginBottom: 6 }}>
+          <div style={{ color: 'rgba(87,136,136,0.65)', fontSize: 14, lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 600, color: 'rgba(200,224,216,0.8)', marginBottom: 6 }}>
               {T(lang, 'homeNotConnectedTitle')}
             </div>
             <div>{T(lang, 'homeNotConnectedHint')}</div>
@@ -206,7 +206,7 @@ export const HomeView: FC<HomeViewProps> = ({
       </div>
 
       {/* Instructions card */}
-      <div className="nd-card" style={{ '--card-accent': 'rgba(88,166,255,0.3)', marginBottom: 16 } as React.CSSProperties}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(72,186,166,0.3)', marginBottom: 16 } as React.CSSProperties}>
         <h3 className="nd-card-title">{T(lang, 'homeInstructions')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
@@ -216,15 +216,15 @@ export const HomeView: FC<HomeViewProps> = ({
           ].map((step, i) => (
             <div key={i} style={{
               display: 'flex', gap: 10, alignItems: 'flex-start',
-              color: 'rgba(160,180,210,0.75)', fontSize: 13, lineHeight: 1.55,
+              color: 'rgba(136,176,168,0.75)', fontSize: 13, lineHeight: 1.55,
             }}>
               <span style={{
-                background: 'rgba(30,65,115,0.7)',
-                border: '1px solid rgba(88,166,255,0.3)',
+                background: 'rgba(13,40,56,0.7)',
+                border: '1px solid rgba(72,186,166,0.3)',
                 borderRadius: '50%',
                 width: 22, height: 22,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 700, color: '#58a6ff',
+                fontSize: 11, fontWeight: 700, color: 'var(--teal)',
                 flexShrink: 0, marginTop: 1,
               }}>{i + 1}</span>
               <span>{step.replace(/^\d+\.\s*/, '')}</span>
@@ -236,10 +236,10 @@ export const HomeView: FC<HomeViewProps> = ({
       {/* Browser requirement note */}
       <div style={{
         padding: '10px 16px',
-        background: 'rgba(88,166,255,0.06)',
-        border: '1px solid rgba(88,166,255,0.2)',
+        background: 'rgba(72,186,166,0.06)',
+        border: '1px solid rgba(72,186,166,0.2)',
         borderRadius: 8,
-        color: 'rgba(135,175,220,0.7)',
+        color: 'rgba(92,196,168,0.7)',
         fontSize: 12,
         display: 'flex', alignItems: 'center', gap: 8,
         marginBottom: 10,

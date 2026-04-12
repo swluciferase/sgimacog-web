@@ -1,137 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+
 :root {
-  --bg-primary: #080f1a;
-  --bg-secondary: #0d1520;
-  --bg-tertiary: #111e30;
-  --text-primary: #dce9f8;
-  --text-secondary: #8b949e;
-  --accent-green: #3fb950;
-  --accent-red: #f85149;
-  --accent-blue: #58a6ff;
-  --border: rgba(93, 109, 134, 0.3);
+  /* ── Dark ocean palette — drawn from EEG_logo.svg brand colors ── */
+  --bg:    #131e28;
+  --bg2:   #1a2e3a;
+  --bg3:   #223a4a;
+  --bg4:   #0d1720;
+
+  --teal:  #5cc4a8;   /* primary accent */
+  --cyan:  #52b8d8;
+  --green: #80c854;
+  --amber: #d8b84a;
+  --rose:  #dc7860;
+  --red:   #d07070;
+  --plum:  #9870b8;
+  --mauve: #bca8dc;
+  --dim:   #284050;
+
+  --cream: #c8e0d8;
+  --text:  #88b0a8;
+  --muted: #578888;
+  --faint: #305868;
+
+  --border:  rgba(72,186,166,0.15);
+  --border2: rgba(72,186,166,0.30);
+
+  /* backward-compat aliases */
+  --bg-primary:   var(--bg);
+  --bg-secondary: var(--bg2);
+  --bg-tertiary:  var(--bg3);
+  --text-primary: var(--cream);
+  --text-secondary: var(--muted);
+  --accent-green: var(--green);
+  --accent-red:   var(--red);
+  --accent-blue:  var(--teal);
+  --border-subtle: var(--border);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 16px; }
 
 body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  margin: 0;
-  padding: 0;
-  font-family: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0; padding: 0;
+  font-family: 'IBM Plex Mono', 'PingFang TC', 'Noto Sans TC', monospace;
+  font-weight: 400;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  max-width: none;
-  text-align: left;
-  display: block;
+  width: 100vw; height: 100vh;
+  margin: 0; padding: 0;
+  max-width: none; text-align: left; display: block;
 }
 
+/* ── App shell ── */
 .app-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  display: flex; flex-direction: column;
+  height: 100vh; width: 100vw;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: var(--bg);
 }
 
+/* 3-column single-device layout */
 .main-layout {
   display: flex;
   flex: 1;
   overflow: hidden;
+  gap: 1px;
+  background: var(--border);
 }
 
+/* Each column */
+.layout-col {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Column inner scroll area */
+.layout-col-inner {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Signal column — no padding, waveform fills it */
+.layout-col-signal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+}
+
+/* Backward-compat for views that use .content-area */
 .content-area {
   flex: 1;
-  background: var(--bg-primary);
+  background: var(--bg);
   overflow-y: auto;
-  padding: 20px 24px;
+  padding: 16px 18px;
 }
 
-/* Scrollbar styling */
-.content-area::-webkit-scrollbar {
-  width: 6px;
-}
-.content-area::-webkit-scrollbar-track {
-  background: rgba(15, 25, 40, 0.5);
-}
-.content-area::-webkit-scrollbar-thumb {
-  background: rgba(93, 109, 134, 0.4);
-  border-radius: 3px;
-}
+/* ── scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
 
-/* Pulse animation for status dots and recording indicator */
-@keyframes pulse {
-  0%   { opacity: 1; }
-  50%  { opacity: 0.35; }
-  100% { opacity: 1; }
-}
+/* ── animations ── */
+@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
 
-/* Generic number input — remove spinners in WebKit */
+/* ── inputs ── */
 input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+input[type='number'] { -moz-appearance:textfield; }
 
-input[type='number'] {
-  -moz-appearance: textfield;
-}
-
-/* Focus ring for accessibility */
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid rgba(88, 166, 255, 0.6);
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid rgba(72,186,166,0.5);
   outline-offset: 1px;
 }
 
-/* Dark select / input color fix (Firefox) */
 select option {
-  background: #0d1520;
-  color: #cdd6e8;
+  background: var(--bg2);
+  color: var(--cream);
 }
 
-/* ── Neural Dark card ── */
+/* ── section heading ── */
+.sh {
+  display: flex; align-items: center; gap: .28rem;
+  font-size: .72rem; color: var(--muted);
+  letter-spacing: .12em; text-transform: uppercase;
+  padding-bottom: .28rem; border-bottom: 1px solid var(--border);
+  margin-bottom: .55rem; flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.sh-g {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-size: 1rem;
+  color: var(--plum); line-height: 1;
+}
+
+/* ── card ── */
 .nd-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 14px;
-  padding: 20px 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
   position: relative;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 .nd-card::before {
   content: '';
-  position: absolute;
-  top: 0;
-  left: 20px;
-  right: 20px;
-  height: 1px;
+  position: absolute; top: 0; left: 16px; right: 16px; height: 1px;
   background: linear-gradient(
     90deg,
     transparent,
-    var(--card-accent, rgba(88,166,255,0.45)),
+    var(--card-accent, rgba(72,186,166,0.25)),
     transparent
   );
-  opacity: 0.65;
 }
 .nd-card-title {
-  font-size: 10px;
-  color: rgba(255,255,255,0.3);
-  letter-spacing: 0.09em;
+  font-size: .68rem;
+  color: var(--muted);
+  letter-spacing: .10em;
   text-transform: uppercase;
-  margin: 0 0 14px;
-  font-weight: 600;
+  margin: 0 0 8px;
+  font-weight: 500;
 }
+
+/* ── connection card (col 1) ── */
+.cc-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.cc-card::before {
+  content: '';
+  position: absolute; top: 0; left: 14px; right: 14px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cc-top, rgba(72,186,166,.3)), transparent);
+}
+.cc-row {
+  display: flex; justify-content: space-between;
+  padding: .28rem 0; border-bottom: 1px solid var(--border);
+  font-size: .75rem;
+}
+.cc-row:last-child { border-bottom: none; }
+.cc-lbl { color: var(--muted); }
+.cc-val { color: var(--cream); }
+
+/* ── impedance brain wrap (col 1) ── */
+.imp-brain-wrap {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.imp-brain-svg-wrap {
+  flex: 1; min-height: 0;
+  overflow: hidden; position: relative;
+}
+.imp-brain-svg-wrap svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+.imp-colorbar {
+  flex-shrink: 0;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--border);
+}
+.imp-colorbar-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #68cc8a 0%, #9ed070 30%, #d8c060 62%, #d07070 100%);
+  margin-bottom: 4px;
+}
+.imp-colorbar-labels {
+  display: flex; justify-content: space-between;
+  font-size: .6rem; line-height: 1.4;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ── record big button ── */
+.rec-btn {
+  width: 100%; padding: .65rem 1rem; border-radius: 4px; border: none;
+  font-size: .875rem; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: .45rem;
+  cursor: pointer; transition: all .2s; margin-bottom: .5rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.rec-btn.start { background: rgba(128,200,84,.15); border: 1px solid rgba(128,200,84,.45); color: var(--green); }
+.rec-btn.start:hover { background: rgba(128,200,84,.25); }
+.rec-btn.stop  { background: rgba(208,112,112,.15); border: 1px solid rgba(208,112,112,.45); color: var(--red); }
+.rec-btn.stop:hover  { background: rgba(208,112,112,.25); }
+.rec-btn:disabled { opacity: .4; cursor: not-allowed; }

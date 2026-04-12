@@ -368,10 +368,10 @@ export const RecordView: FC<RecordViewProps> = ({
   };
 
   const inputStyle: CSSProperties = {
-    background: 'rgba(10,20,35,0.85)',
-    border: '1px solid rgba(93,109,134,0.45)',
+    background: 'rgba(13,23,32,0.85)',
+    border: '1px solid rgba(40,64,80,0.45)',
     borderRadius: 7,
-    color: '#cdd6e8',
+    color: '#c8e0d8',
     fontSize: 14,
     padding: '9px 12px',
     width: '100%',
@@ -382,7 +382,7 @@ export const RecordView: FC<RecordViewProps> = ({
 
   const labelStyle: CSSProperties = {
     display: 'block',
-    color: 'rgba(160,180,210,0.8)',
+    color: 'rgba(136,176,168,0.8)',
     fontSize: 13,
     marginBottom: 5,
     fontWeight: 500,
@@ -396,8 +396,8 @@ export const RecordView: FC<RecordViewProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* Subject info form */}
-      <div className="nd-card" style={{ '--card-accent': 'rgba(88,166,255,0.4)', marginBottom: 0 } as React.CSSProperties}>
-        <h3 style={{ margin: '0 0 16px', fontSize: '0.95rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(72,186,166,0.4)', marginBottom: 0 } as React.CSSProperties}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '0.95rem', fontWeight: 600, color: 'rgba(200,224,216,0.85)' }}>
           {T(lang, 'recordTitle')}
         </h3>
 
@@ -476,17 +476,17 @@ export const RecordView: FC<RecordViewProps> = ({
       {/* Quality monitor card */}
       <div className="nd-card" style={{ '--card-accent': 'rgba(63,185,80,0.4)', marginBottom: 0 } as React.CSSProperties}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: qualityConfig.enabled ? 14 : 0 }}>
-          <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+          <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 600, color: 'rgba(200,224,216,0.85)' }}>
             {T(lang, 'recordQualityGrid')}
           </h3>
           {/* Toggle */}
           <button
             onClick={() => onQualityConfigChange({ ...qualityConfig, enabled: !qualityConfig.enabled })}
             style={{
-              background: qualityConfig.enabled ? 'rgba(63,185,80,0.15)' : 'rgba(30,50,80,0.4)',
-              border: `1px solid ${qualityConfig.enabled ? 'rgba(63,185,80,0.5)' : 'rgba(93,109,134,0.4)'}`,
+              background: qualityConfig.enabled ? 'rgba(63,185,80,0.15)' : 'rgba(13,40,56,0.4)',
+              border: `1px solid ${qualityConfig.enabled ? 'rgba(63,185,80,0.5)' : 'rgba(40,64,80,0.4)'}`,
               borderRadius: 6,
-              color: qualityConfig.enabled ? '#3fb950' : 'rgba(130,155,185,0.6)',
+              color: qualityConfig.enabled ? '#3fb950' : 'rgba(87,136,136,0.6)',
               fontSize: 12,
               fontWeight: 600,
               padding: '4px 12px',
@@ -504,7 +504,7 @@ export const RecordView: FC<RecordViewProps> = ({
         {/* Target duration + sensitivity row */}
         <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)' }}>
+            <label style={{ fontSize: 12, color: 'rgba(136,176,168,0.75)' }}>
               {T(lang, 'recordTargetDuration')}:
             </label>
             <select
@@ -516,10 +516,10 @@ export const RecordView: FC<RecordViewProps> = ({
               }}
               disabled={isRecording}
               style={{
-                background: 'rgba(10,20,35,0.85)',
-                border: '1px solid rgba(93,109,134,0.45)',
+                background: 'rgba(13,23,32,0.85)',
+                border: '1px solid rgba(40,64,80,0.45)',
                 borderRadius: 6,
-                color: '#cdd6e8',
+                color: '#c8e0d8',
                 fontSize: 12,
                 padding: '4px 8px',
                 cursor: isRecording ? 'not-allowed' : 'pointer',
@@ -532,11 +532,11 @@ export const RecordView: FC<RecordViewProps> = ({
                 </option>
               ))}
             </select>
-            <span style={{ fontSize: 12, color: 'rgba(160,180,210,0.6)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>(S)</span>
+            <span style={{ fontSize: 12, color: 'rgba(136,176,168,0.6)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>(S)</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)' }}>
+            <label style={{ fontSize: 12, color: 'rgba(136,176,168,0.75)' }}>
               {T(lang, 'recordSensitivity')}:
             </label>
             <div style={{ display: 'flex', gap: 4 }}>
@@ -547,9 +547,9 @@ export const RecordView: FC<RecordViewProps> = ({
                   style={{
                     width: 28, height: 28,
                     borderRadius: 5,
-                    border: `1px solid ${qualityConfig.sensitivity === level ? 'rgba(88,166,255,0.7)' : 'rgba(93,109,134,0.4)'}`,
-                    background: qualityConfig.sensitivity === level ? 'rgba(88,166,255,0.2)' : 'transparent',
-                    color: qualityConfig.sensitivity === level ? '#8ecfff' : 'rgba(160,180,210,0.6)',
+                    border: `1px solid ${qualityConfig.sensitivity === level ? 'rgba(72,186,166,0.7)' : 'rgba(40,64,80,0.4)'}`,
+                    background: qualityConfig.sensitivity === level ? 'rgba(72,186,166,0.2)' : 'transparent',
+                    color: qualityConfig.sensitivity === level ? '#7cd8c0' : 'rgba(136,176,168,0.6)',
                     fontSize: 12, fontWeight: 600,
                     cursor: 'pointer',
                   }}
@@ -558,7 +558,7 @@ export const RecordView: FC<RecordViewProps> = ({
                 </button>
               ))}
             </div>
-            <span style={{ fontSize: 11, color: 'rgba(130,155,185,0.55)' }}>
+            <span style={{ fontSize: 11, color: 'rgba(87,136,136,0.55)' }}>
               {T(lang, 'recordSensitivityLenient')} → {T(lang, 'recordSensitivityStrict')}
             </span>
           </div>
@@ -566,7 +566,7 @@ export const RecordView: FC<RecordViewProps> = ({
           {/* Auto-stop mode toggle — only shown when a finite target duration is set */}
           {isFinite(qualityConfig.targetDurationSec) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)', whiteSpace: 'nowrap' }}>
+              <label style={{ fontSize: 12, color: 'rgba(136,176,168,0.75)', whiteSpace: 'nowrap' }}>
                 {T(lang, 'recordAutoStopMode')}:
               </label>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -579,14 +579,14 @@ export const RecordView: FC<RecordViewProps> = ({
                       padding: '4px 10px',
                       borderRadius: 5,
                       border: `1px solid ${autoStopMode === mode
-                        ? (mode === 'report' ? 'rgba(88,166,255,0.6)' : 'rgba(248,81,73,0.5)')
-                        : 'rgba(93,109,134,0.4)'}`,
+                        ? (mode === 'report' ? 'rgba(72,186,166,0.6)' : 'rgba(248,81,73,0.5)')
+                        : 'rgba(40,64,80,0.4)'}`,
                       background: autoStopMode === mode
-                        ? (mode === 'report' ? 'rgba(88,166,255,0.18)' : 'rgba(248,81,73,0.12)')
+                        ? (mode === 'report' ? 'rgba(72,186,166,0.18)' : 'rgba(248,81,73,0.12)')
                         : 'transparent',
                       color: autoStopMode === mode
-                        ? (mode === 'report' ? '#8ecfff' : '#f85149')
-                        : 'rgba(160,180,210,0.5)',
+                        ? (mode === 'report' ? '#7cd8c0' : '#f85149')
+                        : 'rgba(136,176,168,0.5)',
                       fontSize: 12, fontWeight: 600,
                       cursor: isRecording ? 'not-allowed' : 'pointer',
                       opacity: isRecording ? 0.55 : 1,
@@ -627,8 +627,8 @@ export const RecordView: FC<RecordViewProps> = ({
               }}>
                 <div style={{
                   fontSize: 10, fontWeight: 700,
-                  color: 'rgba(160,180,210,0.7)',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  color: 'rgba(136,176,168,0.7)',
+                  fontFamily: "'IBM Plex Mono', monospace",
                   marginBottom: 2,
                 }}>
                   {CHANNEL_LABELS[ch]}
@@ -636,7 +636,7 @@ export const RecordView: FC<RecordViewProps> = ({
                 <div style={{
                   fontSize: 11, fontWeight: 700,
                   color,
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontFamily: "'IBM Plex Mono', monospace",
                 }}>
                   {isRecording ? `${std.toFixed(0)}` : '--'}
                 </div>
@@ -649,10 +649,10 @@ export const RecordView: FC<RecordViewProps> = ({
         {isRecording && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: 'rgba(160,180,210,0.75)' }}>
+              <span style={{ fontSize: 12, color: 'rgba(136,176,168,0.75)' }}>
                 {T(lang, 'recordGoodTime')}: <span style={{ color: '#3fb950', fontWeight: 700 }}>{formatGoodTime(goodTimeSec)}</span>
                 {isFinite(qualityConfig.targetDurationSec) && (
-                  <span style={{ color: 'rgba(130,155,185,0.6)' }}>
+                  <span style={{ color: 'rgba(87,136,136,0.6)' }}>
                     {' '}/ {formatGoodTime(qualityConfig.targetDurationSec)} ({T(lang, 'recordTargetDuration')})
                   </span>
                 )}
@@ -664,10 +664,10 @@ export const RecordView: FC<RecordViewProps> = ({
             {isFinite(qualityConfig.targetDurationSec) && (
               <div style={{
                 height: 6,
-                background: 'rgba(30,50,80,0.7)',
+                background: 'rgba(13,40,56,0.7)',
                 borderRadius: 3,
                 overflow: 'hidden',
-                border: '1px solid rgba(93,109,134,0.3)',
+                border: '1px solid rgba(40,64,80,0.3)',
               }}>
                 <div style={{
                   height: '100%',
@@ -687,7 +687,7 @@ export const RecordView: FC<RecordViewProps> = ({
       <div
         className="nd-card"
         style={{
-          '--card-accent': isRecording ? 'rgba(248,81,73,0.5)' : 'rgba(93,109,134,0.3)',
+          '--card-accent': isRecording ? 'rgba(248,81,73,0.5)' : 'rgba(40,64,80,0.3)',
           borderColor: isRecording ? 'rgba(248,81,73,0.25)' : undefined,
           transition: 'border-color 0.3s',
           marginBottom: 0,
@@ -708,7 +708,7 @@ export const RecordView: FC<RecordViewProps> = ({
                 {T(lang, 'signalRecording')}
               </span>
               <span style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                fontFamily: "'IBM Plex Mono', monospace",
                 fontSize: 18, fontWeight: 700, color: '#c5d8f0',
                 letterSpacing: '0.05em',
               }}>
@@ -716,7 +716,7 @@ export const RecordView: FC<RecordViewProps> = ({
               </span>
             </div>
           ) : (
-            <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+            <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'rgba(200,224,216,0.85)' }}>
               {T(lang, 'recordStart')}
             </span>
           )}
@@ -726,13 +726,13 @@ export const RecordView: FC<RecordViewProps> = ({
             <label style={{
               display: 'flex', alignItems: 'center', gap: 7,
               cursor: 'pointer', userSelect: 'none', fontSize: 13,
-              color: useArtifactRemoval ? '#58a6ff' : 'rgba(140,160,185,0.65)',
+              color: useArtifactRemoval ? 'var(--teal)' : 'rgba(140,160,185,0.65)',
             }}>
               <input
                 type="checkbox"
                 checked={useArtifactRemoval}
                 onChange={e => setUseArtifactRemoval(e.target.checked)}
-                style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#58a6ff' }}
+                style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--teal)' }}
               />
               {T(lang, 'recordArtifactRemoval')}
             </label>
@@ -802,7 +802,7 @@ export const RecordView: FC<RecordViewProps> = ({
                 background: 'rgba(100,110,130,0.15)',
                 border: '1px solid rgba(100,120,150,0.45)',
                 borderRadius: 8,
-                color: 'rgba(160,180,210,0.8)',
+                color: 'rgba(136,176,168,0.8)',
                 fontSize: 13, fontWeight: 600,
                 padding: '9px 16px',
                 cursor: 'pointer',
@@ -828,10 +828,10 @@ export const RecordView: FC<RecordViewProps> = ({
               onClick={handleStopAndReport}
               disabled={reportStatus === 'analyzing'}
               style={{
-                background: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.08)' : 'rgba(88,166,255,0.15)',
-                border: '1px solid rgba(88,166,255,0.5)',
+                background: reportStatus === 'analyzing' ? 'rgba(72,186,166,0.08)' : 'rgba(72,186,166,0.15)',
+                border: '1px solid rgba(72,186,166,0.5)',
                 borderRadius: 8,
-                color: reportStatus === 'analyzing' ? 'rgba(88,166,255,0.5)' : '#58a6ff',
+                color: reportStatus === 'analyzing' ? 'rgba(72,186,166,0.5)' : 'var(--teal)',
                 fontSize: 13, fontWeight: 700,
                 padding: '9px 18px',
                 cursor: reportStatus === 'analyzing' ? 'not-allowed' : 'pointer',
@@ -862,10 +862,10 @@ export const RecordView: FC<RecordViewProps> = ({
             <button
               onClick={() => setShowDisclaimerModal(true)}
               style={{
-                background: consentGiven ? 'rgba(63,185,80,0.1)' : 'rgba(88,166,255,0.1)',
-                border: `1px solid ${consentGiven ? 'rgba(63,185,80,0.4)' : 'rgba(88,166,255,0.35)'}`,
+                background: consentGiven ? 'rgba(63,185,80,0.1)' : 'rgba(72,186,166,0.1)',
+                border: `1px solid ${consentGiven ? 'rgba(63,185,80,0.4)' : 'rgba(72,186,166,0.35)'}`,
                 borderRadius: 8,
-                color: consentGiven ? '#3fb950' : '#58a6ff',
+                color: consentGiven ? '#3fb950' : 'var(--teal)',
                 fontSize: 12, fontWeight: 600,
                 padding: '9px 14px',
                 cursor: 'pointer',
@@ -903,7 +903,7 @@ export const RecordView: FC<RecordViewProps> = ({
 
       {/* File report card */}
       <div className="nd-card" style={{ '--card-accent': 'rgba(227,160,48,0.4)', marginBottom: 0 } as React.CSSProperties}>
-        <h3 style={{ margin: '0 0 14px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(180,200,230,0.85)' }}>
+        <h3 style={{ margin: '0 0 14px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(200,224,216,0.85)' }}>
           {T(lang, 'recordFromFile')}
         </h3>
 
@@ -990,13 +990,13 @@ export const RecordView: FC<RecordViewProps> = ({
           style={{
             width: '100%',
             background: (fileStatus === 'parsing' || fileStatus === 'analyzing')
-              ? 'rgba(88,166,255,0.12)'
-              : 'rgba(88,166,255,0.22)',
-            border: '1px solid rgba(88,166,255,0.55)',
+              ? 'rgba(72,186,166,0.12)'
+              : 'rgba(72,186,166,0.22)',
+            border: '1px solid rgba(72,186,166,0.55)',
             borderRadius: 8,
             color: (fileStatus === 'parsing' || fileStatus === 'analyzing')
-              ? 'rgba(88,166,255,0.5)'
-              : '#58a6ff',
+              ? 'rgba(72,186,166,0.5)'
+              : 'var(--teal)',
             fontSize: 14,
             fontWeight: 700,
             padding: '11px 0',
@@ -1019,8 +1019,8 @@ export const RecordView: FC<RecordViewProps> = ({
           <div style={{
             marginTop: 8,
             fontSize: 11,
-            color: fileStatus === 'done' ? '#3fb950' : fileStatus === 'error' ? '#f85149' : 'rgba(160,180,210,0.7)',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            color: fileStatus === 'done' ? '#3fb950' : fileStatus === 'error' ? '#f85149' : 'rgba(136,176,168,0.7)',
+            fontFamily: "'IBM Plex Mono', monospace",
           }}>
             {fileStatus === 'done'
               ? `✓ ${T(lang, 'recordFromFileSuccess')}  ${fileStatusMsg}`
@@ -1032,7 +1032,7 @@ export const RecordView: FC<RecordViewProps> = ({
       </div>
 
       {/* Event markers log */}
-      <div className="nd-card" style={{ '--card-accent': 'rgba(88,166,255,0.3)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', marginBottom: 0 } as React.CSSProperties}>
+      <div className="nd-card" style={{ '--card-accent': 'rgba(72,186,166,0.3)', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 0 } as React.CSSProperties}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 13, color: 'rgba(240,230,80,0.9)' }}>
             {T(lang, 'recordMarkerLog')}
@@ -1059,7 +1059,7 @@ export const RecordView: FC<RecordViewProps> = ({
           <div ref={markersScrollRef} style={{ maxHeight: 232, overflowY: 'auto' }}>
             <table style={{ width: '100%', fontSize: 12, textAlign: 'left', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(93,109,134,0.3)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(40,64,80,0.3)' }}>
                   <th style={{ padding: '4px 8px 8px 0', color: 'rgba(140,160,190,0.6)', fontWeight: 500 }}>ID</th>
                   <th style={{ padding: '4px 8px 8px', color: 'rgba(140,160,190,0.6)', fontWeight: 500 }}>Label</th>
                   <th style={{ padding: '4px 0 8px', color: 'rgba(140,160,190,0.6)', fontWeight: 500 }}>Time</th>
@@ -1098,7 +1098,7 @@ export const RecordView: FC<RecordViewProps> = ({
           onClick={e => e.stopPropagation()}
           style={{
             background: '#0e1825',
-            border: '1px solid rgba(88,166,255,0.25)',
+            border: '1px solid rgba(72,186,166,0.25)',
             borderRadius: 14,
             padding: '28px 32px',
             maxWidth: 540,
@@ -1114,7 +1114,7 @@ export const RecordView: FC<RecordViewProps> = ({
           <pre style={{
             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
             fontSize: 13, lineHeight: 1.75,
-            color: 'rgba(180,200,230,0.8)',
+            color: 'rgba(200,224,216,0.8)',
             fontFamily: 'inherit',
             margin: '0 0 20px',
           }}>
@@ -1124,8 +1124,8 @@ export const RecordView: FC<RecordViewProps> = ({
             display: 'flex', alignItems: 'flex-start', gap: 10,
             cursor: 'pointer', userSelect: 'none',
             padding: '14px 16px',
-            background: consentGiven ? 'rgba(63,185,80,0.08)' : 'rgba(88,166,255,0.06)',
-            border: `1px solid ${consentGiven ? 'rgba(63,185,80,0.3)' : 'rgba(88,166,255,0.2)'}`,
+            background: consentGiven ? 'rgba(63,185,80,0.08)' : 'rgba(72,186,166,0.06)',
+            border: `1px solid ${consentGiven ? 'rgba(63,185,80,0.3)' : 'rgba(72,186,166,0.2)'}`,
             borderRadius: 8,
             marginBottom: 16,
           }}>
@@ -1135,7 +1135,7 @@ export const RecordView: FC<RecordViewProps> = ({
               onChange={e => setConsentGiven(e.target.checked)}
               style={{ width: 16, height: 16, marginTop: 2, cursor: 'pointer', accentColor: '#3fb950', flexShrink: 0 }}
             />
-            <span style={{ fontSize: 13, color: consentGiven ? '#3fb950' : 'rgba(180,200,230,0.85)', fontWeight: 600, lineHeight: 1.5 }}>
+            <span style={{ fontSize: 13, color: consentGiven ? '#3fb950' : 'rgba(200,224,216,0.85)', fontWeight: 600, lineHeight: 1.5 }}>
               {T(lang, 'disclaimerConsentLabel')}
             </span>
           </label>
@@ -1143,10 +1143,10 @@ export const RecordView: FC<RecordViewProps> = ({
             <button
               onClick={() => setShowDisclaimerModal(false)}
               style={{
-                background: 'rgba(88,166,255,0.15)',
-                border: '1px solid rgba(88,166,255,0.4)',
+                background: 'rgba(72,186,166,0.15)',
+                border: '1px solid rgba(72,186,166,0.4)',
                 borderRadius: 8,
-                color: '#58a6ff',
+                color: 'var(--teal)',
                 fontSize: 13, fontWeight: 700,
                 padding: '9px 24px',
                 cursor: 'pointer',
