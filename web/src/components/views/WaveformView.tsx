@@ -30,17 +30,58 @@ export interface WaveformViewProps {
    * In single-device mode (undefined): fall back to offsetParent visibility check.
    */
   isFocused?: boolean;
+  /** 0-based device index — selects per-device color palette (0=teal, 1=green, 2=rose, 3=plum) */
+  devicePalette?: number;
 }
 
-const CHANNEL_COLORS: [number, number, number, number][] = [
-  [1, 0.2,  0.2,  1],
-  [0.2, 0.4,  1,    1],
-  [0.2, 1,    0.4,  1],
-  [1,   1,    0.2,  1],
-  [0.2, 1,    1,    1],
-  [1,   0.2,  1,    1],
-  [1,   0.6,  0.2,  1],
-  [0.7, 0.2,  1,    1],
+// Per-device palettes: 4 devices × 8 channels (RGBA float)
+// Theme anchors: --teal #5cc4a8, --cyan #52b8d8, --green #80c854,
+//                --amber #d8b84a, --rose #dc7860, --plum #9870b8, --mauve #bca8dc
+const DEVICE_PALETTES: [number, number, number, number][][] = [
+  // Palette 0 — teal/cyan (D1)
+  [
+    [0.32, 0.77, 0.66, 1],   // #52c4a8 teal
+    [0.32, 0.72, 0.85, 1],   // #52b8d8 cyan
+    [0.45, 0.88, 0.78, 1],   // #72e0c7 mint
+    [0.22, 0.60, 0.78, 1],   // #3899c8 steel-blue
+    [0.55, 0.95, 0.88, 1],   // #8cf2e0 seafoam
+    [0.20, 0.84, 0.90, 1],   // #32d6e6 sky-cyan
+    [0.38, 0.65, 0.96, 1],   // #60a6f5 periwinkle
+    [0.68, 0.95, 0.95, 1],   // #adf2f2 ice
+  ],
+  // Palette 1 — green/lime (D2)
+  [
+    [0.50, 0.78, 0.33, 1],   // #80c854 green
+    [0.70, 0.92, 0.28, 1],   // #b2eb47 lime
+    [0.38, 0.88, 0.50, 1],   // #60e080 jade
+    [0.80, 0.70, 0.18, 1],   // #ccb32e olive-gold
+    [0.55, 0.95, 0.40, 1],   // #8cf266 yellow-green
+    [0.30, 0.75, 0.42, 1],   // #4dbf6b forest
+    [0.85, 0.88, 0.22, 1],   // #d9e038 chartreuse
+    [0.42, 0.95, 0.70, 1],   // #6bf2b3 spring-green
+  ],
+  // Palette 2 — rose/amber (D3)
+  [
+    [0.86, 0.47, 0.38, 1],   // #dc7860 rose
+    [0.85, 0.72, 0.29, 1],   // #d8b84a amber
+    [0.95, 0.55, 0.28, 1],   // #f28c47 orange
+    [0.92, 0.30, 0.38, 1],   // #eb4d60 coral-red
+    [0.95, 0.80, 0.45, 1],   // #f2cc72 warm-yellow
+    [0.75, 0.38, 0.30, 1],   // #bf614d terracotta
+    [0.98, 0.65, 0.52, 1],   // #faa685 peach
+    [0.88, 0.55, 0.70, 1],   // #e08cb3 rose-pink
+  ],
+  // Palette 3 — plum/mauve (D4)
+  [
+    [0.60, 0.44, 0.72, 1],   // #9870b8 plum
+    [0.74, 0.66, 0.86, 1],   // #bca8dc mauve
+    [0.72, 0.30, 0.85, 1],   // #b84dd9 violet
+    [0.45, 0.32, 0.78, 1],   // #7252c8 indigo
+    [0.88, 0.55, 0.92, 1],   // #e08ceb lavender
+    [0.52, 0.52, 0.95, 1],   // #8585f2 blue-violet
+    [0.80, 0.40, 0.60, 1],   // #cc6699 dusty-rose
+    [0.65, 0.72, 0.98, 1],   // #a6b8fa cornflower
+  ],
 ];
 
 const SCALE_OPTIONS = [
@@ -196,6 +237,7 @@ export const WaveformView = ({
   externalMarkerSignal = 0,
   syncMarkerMode = false,
   isFocused,
+  devicePalette = 0,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -226,6 +268,12 @@ export const WaveformView = ({
   const lappedMarkersRef = useRef<Set<string>>(new Set());
   const timeLabelDivsRef = useRef<HTMLDivElement[]>([]);
   const timeGridDivsRef = useRef<HTMLDivElement[]>([]);
+
+  // Per-device channel colors
+  const channelColors = useMemo(
+    () => DEVICE_PALETTES[devicePalette % DEVICE_PALETTES.length] ?? DEVICE_PALETTES[0]!,
+    [devicePalette],
+  );
 
   // Precompute filter coefficients from filterParams
   const filterCoeffs = useMemo(() => {
@@ -357,7 +405,7 @@ export const WaveformView = ({
     const aux = new WebglAux(wglp.gl);
 
     const lines: WebglLine[] = Array.from({ length: CHANNEL_COUNT }, (_, ch) => {
-      const [r, g, b, a] = CHANNEL_COLORS[ch]!;
+      const [r, g, b, a] = channelColors[ch]!;
       // Construct with default empty xy, then use lineSpaceX to allocate + set x values
       const line = new WebglLine(undefined, new ColorRGBA(r, g, b, a));
       line.lineSpaceX(windowPoints); // allocates xy[windowPoints*2], spaces x from -1 to +1
@@ -502,7 +550,7 @@ export const WaveformView = ({
       totalSweepRef.current = 0;
       lappedMarkersRef.current = new Set();
     };
-  }, [windowSeconds, filterBiquadRef]);
+  }, [windowSeconds, filterBiquadRef, channelColors]);
 
   const hasData = packets && packets.length > 0;
 
@@ -566,9 +614,9 @@ export const WaveformView = ({
               onClick={() => toggleChannel(i)}
               style={{
                 ...btnStyle(visibleChannels[i] ?? true),
-                color: (visibleChannels[i] ?? true) ? toCssColor(CHANNEL_COLORS[i]!) : 'rgba(120,130,150,0.4)',
-                borderColor: (visibleChannels[i] ?? true) ? toCssColor(CHANNEL_COLORS[i]!, 0.5) : 'rgba(93,109,134,0.3)',
-                background: (visibleChannels[i] ?? true) ? toCssColor(CHANNEL_COLORS[i]!, 0.1) : 'transparent',
+                color: (visibleChannels[i] ?? true) ? toCssColor(channelColors[i]!) : 'rgba(120,130,150,0.4)',
+                borderColor: (visibleChannels[i] ?? true) ? toCssColor(channelColors[i]!, 0.5) : 'rgba(93,109,134,0.3)',
+                background: (visibleChannels[i] ?? true) ? toCssColor(channelColors[i]!, 0.1) : 'transparent',
               }}
             >
               {label}
@@ -780,7 +828,7 @@ export const WaveformView = ({
                 top: `${((i + 0.5) / CHANNEL_COUNT) * 100}%`,
                 transform: 'translateY(-50%)',
                 color: (visibleChannels[i] ?? true)
-                  ? toCssColor(CHANNEL_COLORS[i]!)
+                  ? toCssColor(channelColors[i]!)
                   : 'rgba(100,110,130,0.3)',
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 fontSize: 11,

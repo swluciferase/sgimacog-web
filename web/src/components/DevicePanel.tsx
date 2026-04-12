@@ -198,6 +198,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             externalMarkerSignal={eventSignal}
             syncMarkerMode={syncMarkerOn}
             isFocused={isFocused}
+            devicePalette={deviceIndex}
           />
         </div>
 
