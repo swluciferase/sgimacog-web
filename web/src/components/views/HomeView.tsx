@@ -82,7 +82,7 @@ export const HomeView: FC<HomeViewProps> = ({
   })();
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '8px 0' }}>
+    <div style={{ padding: '8px 0' }}>
 
       {/* Status card */}
       <div
