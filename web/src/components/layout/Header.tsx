@@ -4,6 +4,9 @@ import type { Lang } from '../../i18n';
 export interface HeaderProps {
   lang: Lang;
   onLangToggle: () => void;
+  deviceCount: number;
+  onAddDevice: () => void;
+  onRemoveDevice: () => void;
 }
 
 // EEG_logo.svg inline — brand colors preserved from logo file
@@ -31,7 +34,7 @@ const EEG_LOGO_SVG = (
   </svg>
 );
 
-export const Header: FC<HeaderProps> = ({ lang, onLangToggle }) => {
+export const Header: FC<HeaderProps> = ({ lang, onLangToggle, deviceCount, onAddDevice, onRemoveDevice }) => {
   return (
     <header style={{
       flexShrink: 0,
@@ -56,8 +59,26 @@ export const Header: FC<HeaderProps> = ({ lang, onLangToggle }) => {
         </div>
       </div>
 
+      {/* Device count controls */}
+      <div className="dev-count-ctrl" style={{ marginLeft: 'auto' }}>
+        <span style={{ marginRight: 2 }}>{lang === 'zh' ? '裝置數' : 'Devices'}</span>
+        <button
+          className="dev-count-btn"
+          onClick={onRemoveDevice}
+          disabled={deviceCount <= 1}
+          title={lang === 'zh' ? '移除裝置' : 'Remove device'}
+        >−</button>
+        <span style={{ minWidth: 14, textAlign: 'center', color: 'var(--cream)' }}>{deviceCount}</span>
+        <button
+          className="dev-count-btn"
+          onClick={onAddDevice}
+          disabled={deviceCount >= 4}
+          title={lang === 'zh' ? '新增裝置' : 'Add device'}
+        >+</button>
+      </div>
+
       {/* Right: lang toggle */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '.6rem' }}>
         <div style={{ display: 'flex', gap: '1px', background: 'var(--border)' }}>
           <button
             onClick={() => lang !== 'zh' && onLangToggle()}

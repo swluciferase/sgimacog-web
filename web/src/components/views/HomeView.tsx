@@ -11,6 +11,8 @@ export interface HomeViewProps {
   lang: Lang;
   onConnect: () => void;
   onDisconnect: () => void;
+  /** Hide instructions + notes; show only the status card */
+  compact?: boolean;
 }
 
 const BatteryBar: FC<{ level: number | null }> = ({ level }) => {
@@ -60,7 +62,7 @@ const InfoRow: FC<{ label: string; value: ReactNode }> = ({ label, value }) => (
 );
 
 export const HomeView: FC<HomeViewProps> = ({
-  status, stats, deviceId, lang, onConnect, onDisconnect,
+  status, stats, deviceId, lang, onConnect, onDisconnect, compact = false,
 }) => {
   const isConnected = status === 'connected';
   const isConnecting = status === 'connecting';
@@ -205,6 +207,7 @@ export const HomeView: FC<HomeViewProps> = ({
         )}
       </div>
 
+      {!compact && <>
       {/* Instructions card */}
       <div className="nd-card" style={{ '--card-accent': 'rgba(72,186,166,0.3)', marginBottom: 16 } as React.CSSProperties}>
         <h3 className="nd-card-title">{T(lang, 'homeInstructions')}</h3>
@@ -261,6 +264,7 @@ export const HomeView: FC<HomeViewProps> = ({
         <span style={{ fontSize: 15 }}>⊕</span>
         {T(lang, 'homeMultiDevice')}
       </div>
+      </>}
     </div>
   );
 };

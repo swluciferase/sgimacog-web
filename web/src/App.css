@@ -248,3 +248,147 @@ select option {
 .rec-btn.stop  { background: rgba(208,112,112,.15); border: 1px solid rgba(208,112,112,.45); color: var(--red); }
 .rec-btn.stop:hover  { background: rgba(208,112,112,.25); }
 .rec-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Multi-device layout ── */
+.multi-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 1px;
+  background: var(--border);
+}
+.multi-layout.n4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+/* ── Device panel ── */
+.dev-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  --dp-color: var(--teal);
+}
+.dev-panel.conn { --dp-status-bg: rgba(63,185,80,.06); }
+.dev-panel.rec  { --dp-status-bg: rgba(208,112,112,.06); }
+
+/* Panel header */
+.dp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 10px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 34px;
+}
+.dp-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--dp-color);
+  flex-shrink: 0;
+  box-shadow: 0 0 5px var(--dp-color);
+}
+.dp-id {
+  font-size: .72rem; font-weight: 600;
+  color: var(--dp-color);
+  letter-spacing: .08em;
+  flex-shrink: 0;
+}
+.dp-name {
+  font-size: .7rem; color: var(--cream);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 90px; flex-shrink: 1;
+}
+.dp-status {
+  font-size: .65rem; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex-shrink: 1; margin-right: auto;
+}
+.dp-head-btns {
+  display: flex; gap: 4px; flex-shrink: 0; margin-left: auto;
+}
+.dp-btn {
+  padding: .2rem .42rem;
+  border-radius: 3px;
+  border: 1px solid rgba(72,186,166,.35);
+  background: transparent;
+  color: var(--teal);
+  font-size: .65rem;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s;
+}
+.dp-btn:hover { background: rgba(72,186,166,.1); }
+.dp-btn-teal  { border-color: rgba(72,186,166,.5); color: var(--teal); }
+.dp-btn-green { border-color: rgba(128,200,84,.5); color: var(--green); }
+.dp-btn-red   { border-color: rgba(208,112,112,.5); color: var(--red); }
+.dp-btn-dim   { border-color: rgba(40,64,80,.7); color: var(--muted); }
+.dp-btn-dim:hover { background: rgba(40,64,80,.4); }
+
+/* Tabs */
+.dp-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.dp-tab {
+  flex: 1;
+  padding: .32rem .3rem;
+  border: none; border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: .65rem;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: all .12s;
+}
+.dp-tab:last-child { border-right: none; }
+.dp-tab:hover:not(.active) { color: var(--text); background: rgba(72,186,166,.07); }
+.dp-tab.active { background: var(--bg); color: var(--cream); font-weight: 500; }
+
+/* Content area */
+.dp-content {
+  flex: 1; min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.dp-pane {
+  display: none;
+  flex-direction: column;
+  position: absolute; inset: 0;
+  overflow: hidden;
+}
+.dp-pane.active { display: flex; }
+.dp-pane[style*="overflow-y: auto"] { overflow-y: auto; position: relative; height: 100%; }
+
+/* Device count controls in header */
+.dev-count-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .65rem;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+}
+.dev-count-btn {
+  width: 22px; height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--teal);
+  font-size: .8rem; font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s;
+}
+.dev-count-btn:hover { background: var(--bg3); }
+.dev-count-btn:disabled { opacity: .3; cursor: not-allowed; }

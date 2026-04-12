@@ -6,9 +6,8 @@ import { ImpedanceView } from './components/views/ImpedanceView';
 import { WaveformView } from './components/views/WaveformView';
 import { RecordView } from './components/views/RecordView';
 import { ConnectModal } from './components/modals/ConnectModal';
-import { useEegStream } from './hooks/useEegStream';
-import { useQualityMonitor } from './hooks/useQualityMonitor';
-import type { QualityConfig } from './hooks/useQualityMonitor';
+import { DevicePanel } from './components/DevicePanel';
+import { useDevice } from './hooks/useDevice';
 import { serialService } from './services/serial';
 import type { ConnectionStatus } from './services/serial';
 import { ftdiUsbService, type UsbDeviceLike } from './services/ftdiUsb';
@@ -33,8 +32,10 @@ import {
 } from './types/eeg';
 import type { RecordedSample } from './services/csvWriter';
 import type { Lang } from './i18n';
-import { T } from './i18n';
 import { getSessionTokenFromUrl, fetchSessionInfo, type SessionInfo } from './services/sessionApi';
+import { useEegStream } from './hooks/useEegStream';
+import { useQualityMonitor } from './hooks/useQualityMonitor';
+import type { QualityConfig } from './hooks/useQualityMonitor';
 
 // ── WASM interface types ──
 
@@ -56,8 +57,6 @@ interface WasmCommands {
   cmd_machine_info(): Uint8Array;
 }
 
-// ── App-level filter param helpers ──
-
 function computeFilterDesc(fp: FilterParams): string {
   if (!fp.bandpassEnabled) return 'None';
   return `${fp.hpFreq}–${fp.lpFreq} Hz`;
@@ -68,106 +67,46 @@ function computeNotchDesc(fp: FilterParams): string {
   return `${fp.notchFreq} Hz`;
 }
 
-function App() {
+// ─────────────────────────────────────────────────────────────────────────────
+// Single-device view — uses the existing singleton services (device slot 0)
+// ─────────────────────────────────────────────────────────────────────────────
+function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: SessionInfo | null }) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-  const [lang, setLang] = useState<Lang>('zh');
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  // Active data source (SerialService or FtdiUsbService) — drives useEegStream
   type AnyService = typeof serialService | typeof ftdiUsbService;
   const [serial, setSerial] = useState<AnyService | null>(null);
   const activeServiceRef = useRef<AnyService>(serialService);
   const [parser, setParser] = useState<SteegParser | null>(null);
 
   const [config] = useState<DeviceConfig>(DEFAULT_CONFIG);
-
-  // Device ID extracted from first serial number packet
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const deviceIdSeenRef = useRef(false);
-  /** USB serialNumber of the device selected in ConnectModal (e.g. "AV0KHCQP").
-   *  Compared with machineInfo from firmware to verify the correct COM port was picked. */
   const expectedSerialRef = useRef<string>('');
-
-  // Impedance mode tracking
   const impedanceModeActiveRef = useRef(false);
   const [isImpedanceActive, setIsImpedanceActive] = useState(false);
 
-  // ── Shared filter state ──
-  // filterParams is React state (drives UI re-renders)
-  // filterBiquadRef is a ref (not React state) — internal IIR delay values
-  // Both live in App so they survive tab switching
   const [filterParams, setFilterParams] = useState<FilterParams>(DEFAULT_FILTER_PARAMS);
   const filterBiquadRef = useRef<FilterBiquadState>(makeFilterBiquadState());
 
-  // When filter params change, reset the appropriate biquad states
-  const handleFilterChange = useCallback((
-    updated: Partial<FilterParams>,
-    resetStates?: string[],
-  ) => {
-    setFilterParams(prev => ({ ...prev, ...updated }));
-    if (resetStates) {
-      const biquad = filterBiquadRef.current;
-      if (resetStates.includes('hp')) {
-        biquad.hpState1.fill(0);
-        biquad.hpState2.fill(0);
-        biquad.dcState.fill(0);
-      }
-      if (resetStates.includes('lp')) {
-        biquad.lpState1.fill(0);
-        biquad.lpState2.fill(0);
-      }
-      if (resetStates.includes('notch')) {
-        biquad.notchState.fill(0);
-      }
-    }
-  }, []);
-
-  // ── Project session (from URL session_token) ──
-  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
-  const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
-
-  useEffect(() => {
-    const token = sessionTokenRef.current;
-    if (!token) return;
-    fetchSessionInfo(token).then(info => {
-      if (!info) return;
-      setSessionInfo(info);
-      setSubjectInfo(prev => ({
-        id:    prev.id    || info.subject_id || '',
-        name:  prev.name  || info.name       || '',
-        dob:   prev.dob   || info.birth_date || '',
-        sex:   prev.sex   || (info.gender === 'M' ? 'M' : info.gender === 'F' ? 'F' : info.gender === 'O' ? 'Other' : '') as SubjectInfo['sex'],
-        notes: prev.notes || info.notes || '',
-      }));
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Subject info ──
   const [subjectInfo, setSubjectInfo] = useState<SubjectInfo>({
     id: '', name: '', dob: '', sex: '', notes: '',
   });
 
-  // ── Recording state ──
   const [isRecording, setIsRecording] = useState(false);
   const [recordedSamples, setRecordedSamples] = useState<RecordedSample[]>([]);
   const [recordStartTime, setRecordStartTime] = useState<Date | null>(null);
   const recordSamplesRef = useRef<RecordedSample[]>([]);
-  const recordTimestampRef = useRef<number>(0); // seconds from start
+  const recordTimestampRef = useRef<number>(0);
 
-  // ── Quality monitor config ──
   const [qualityConfig, setQualityConfig] = useState<QualityConfig>({
-    enabled: true,
-    sensitivity: 3,
-    targetDurationSec: 60,
-    windowSec: 2,
+    enabled: true, sensitivity: 3, targetDurationSec: 60, windowSec: 2,
   });
 
-  // ── Event markers (shared between signal + record views) ──
   const [eventMarkers, setEventMarkers] = useState<{ id: string; time: number; label: string }[]>([]);
   const pendingMarkerRef = useRef<{ id: string; time: number; label: string } | null>(null);
 
-  // ── Initialize WASM and wire serial callbacks ──
+  // Init WASM + wire serial callbacks
   useEffect(() => {
     wasmService.init().then(() => {
       const api = wasmService.api as Record<string, unknown>;
@@ -175,20 +114,19 @@ function App() {
       setParser(new P(config.channels, config.sampleRate));
     }).catch(console.error);
 
-    const onStatusChange = (svc: typeof serialService | typeof ftdiUsbService) =>
-      (s: ConnectionStatus) => {
-        setStatus(s);
-        if (s === 'connected') {
-          setSerial(svc);
-          registerConnected(null);
-        } else if (s === 'disconnected' || s === 'error') {
-          setSerial(null);
-          setDeviceId(null);
-          deviceIdSeenRef.current = false;
-          expectedSerialRef.current = '';
-          registerDisconnected();
-        }
-      };
+    const onStatusChange = (svc: AnyService) => (s: ConnectionStatus) => {
+      setStatus(s);
+      if (s === 'connected') {
+        setSerial(svc);
+        registerConnected(null);
+      } else if (s === 'disconnected' || s === 'error') {
+        setSerial(null);
+        setDeviceId(null);
+        deviceIdSeenRef.current = false;
+        expectedSerialRef.current = '';
+        registerDisconnected();
+      }
+    };
 
     serialService.onStatusChange = onStatusChange(serialService);
     ftdiUsbService.onStatusChange = onStatusChange(ftdiUsbService);
@@ -197,15 +135,13 @@ function App() {
       serialService.onStatusChange = () => {};
       ftdiUsbService.onStatusChange = () => {};
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Recreate parser after WASM trap (poisoned WasmRefCell)
   const handleParserError = useCallback(() => {
     if (!wasmService.isInitialized) return;
     const api = wasmService.api as Record<string, unknown>;
     const P = api.SteegParser as new (ch: number, sr: number) => SteegParser;
-    console.warn('[App] Recreating SteegParser after crash');
     setParser(new P(config.channels, config.sampleRate));
   }, [config.channels, config.sampleRate]);
 
@@ -213,19 +149,27 @@ function App() {
     serial, parser, handleParserError,
   );
 
-  const {
-    currentWindowStds,
-    goodTimeSec,
-    goodPercent,
-    shouldAutoStop,
-  } = useQualityMonitor(latestPackets, isRecording, qualityConfig);
+  const { currentWindowStds, goodTimeSec, goodPercent, shouldAutoStop } =
+    useQualityMonitor(latestPackets, isRecording, qualityConfig);
 
-  // After connection: set device ID from WebUSB productName (only if not already set by modal)
+  // Session info pre-fill
+  useEffect(() => {
+    if (!sessionInfo) return;
+    setSubjectInfo(prev => ({
+      id:    prev.id    || sessionInfo.subject_id || '',
+      name:  prev.name  || sessionInfo.name       || '',
+      dob:   prev.dob   || sessionInfo.birth_date || '',
+      sex:   prev.sex   || (sessionInfo.gender === 'M' ? 'M' : sessionInfo.gender === 'F' ? 'F' : sessionInfo.gender === 'O' ? 'Other' : '') as SubjectInfo['sex'],
+      notes: prev.notes || sessionInfo.notes || '',
+    }));
+  }, [sessionInfo]);
+
+  // WebUSB fallback device ID
   useEffect(() => {
     if (status !== 'connected') return;
-    if (deviceIdSeenRef.current) return;   // handleModalConnect already set it
+    if (deviceIdSeenRef.current) return;
     getAuthorizedFtdiDevices().then(devices => {
-      if (deviceIdSeenRef.current) return; // double-check after async gap
+      if (deviceIdSeenRef.current) return;
       const dev = devices.find(d => d.serialNumber) ?? devices[0];
       if (!dev) return;
       const GENERIC = ['USB Serial', 'USB Serial Port', 'FT232R USB UART', ''];
@@ -238,20 +182,14 @@ function App() {
     }).catch(() => {});
   }, [status]);
 
-  // Process machineInfo: validate COM port selection and extract device ID
+  // Process machineInfo
   useEffect(() => {
     for (const pkt of latestPackets) {
       if (!pkt.machineInfo) continue;
-
-      // Normalize: strip STEEG_ prefix to get the raw USB serial (e.g. "AV0KHCQP")
       const rawSerial = pkt.machineInfo.startsWith('STEEG_')
-        ? pkt.machineInfo.slice(6)
-        : pkt.machineInfo;
-
-      // Validate: if we have an expected serial, confirm the COM port is correct
+        ? pkt.machineInfo.slice(6) : pkt.machineInfo;
       if (expectedSerialRef.current) {
         if (rawSerial !== expectedSerialRef.current) {
-          // Wrong COM port selected — disconnect immediately
           const badSerial = rawSerial;
           const expectedSerial = expectedSerialRef.current;
           expectedSerialRef.current = '';
@@ -259,16 +197,12 @@ function App() {
           setDeviceId(null);
           void serialService.disconnect();
           setTimeout(() => {
-            window.alert(
-              `⚠️ Wrong COM port!\n\nExpected device serial: ${expectedSerial}\nConnected port serial:  ${badSerial}\n\nPlease disconnect and select the correct COM port.`
-            );
+            window.alert(`⚠️ Wrong COM port!\n\nExpected: ${expectedSerial}\nConnected: ${badSerial}\n\nPlease select the correct COM port.`);
           }, 200);
           return;
         }
-        expectedSerialRef.current = ''; // validation passed
+        expectedSerialRef.current = '';
       }
-
-      // Set device ID from productName (already set by modal), or fallback to machineInfo
       if (!deviceIdSeenRef.current) {
         const id = pkt.machineInfo.startsWith('STEEG_') ? pkt.machineInfo : `STEEG_${pkt.machineInfo}`;
         setDeviceId(id);
@@ -279,14 +213,12 @@ function App() {
     }
   }, [latestPackets]);
 
-  // Recording: collect raw samples each frame
+  // Recording: collect raw samples
   useEffect(() => {
     if (!isRecording) return;
     for (const pkt of latestPackets) {
       if (!pkt.eegChannels || pkt.eegChannels.length < 8) continue;
       recordTimestampRef.current += 1 / SAMPLE_RATE_HZ;
-
-      // Check for pending event marker (set during this recording session)
       let eventId: string | undefined;
       let eventName: string | undefined;
       if (pendingMarkerRef.current) {
@@ -294,21 +226,16 @@ function App() {
         eventName = pendingMarkerRef.current.label;
         pendingMarkerRef.current = null;
       }
-
-      const sample: RecordedSample = {
+      recordSamplesRef.current.push({
         timestamp: recordTimestampRef.current,
         serialNumber: pkt.serialNumber,
         channels: new Float32Array(pkt.eegChannels),
         eventId,
         eventName,
-      };
-      recordSamplesRef.current.push(sample);
+      });
     }
-    // Update UI count every batch (don't setRecordedSamples on every packet — too slow)
-    // Use length for display only
   }, [latestPackets, isRecording]);
 
-  // WASM commands helper
   const getCommands = useCallback((): WasmCommands | null => {
     if (!wasmService.isInitialized) return null;
     return wasmService.api as unknown as WasmCommands;
@@ -330,15 +257,19 @@ function App() {
     return () => clearTimeout(t);
   }, [status, getCommands]);
 
-  // ── Connection handlers ──
-  const handleConnect = useCallback(() => {
-    setShowConnectModal(true);
-  }, []);
+  // Sync recordedSamples every 2s
+  useEffect(() => {
+    if (!isRecording) return;
+    const id = setInterval(() => {
+      setRecordedSamples([...recordSamplesRef.current]);
+    }, 2000);
+    return () => clearInterval(id);
+  }, [isRecording]);
+
+  const handleConnect = useCallback(() => setShowConnectModal(true), []);
 
   const handleModalConnect = useCallback(async (
-    port: SerialPort | null,
-    displayId?: string,
-    usbSerial?: string,
+    port: SerialPort | null, displayId?: string, usbSerial?: string,
   ) => {
     setShowConnectModal(false);
     if (!port) return;
@@ -348,9 +279,7 @@ function App() {
       deviceIdSeenRef.current = true;
       updateRegistrySteegId(displayId);
     }
-    if (usbSerial) {
-      expectedSerialRef.current = usbSerial;
-    }
+    if (usbSerial) expectedSerialRef.current = usbSerial;
     try {
       await serialService.connectToPort(port, { baudRate: config.baudRate });
     } catch (e) {
@@ -358,10 +287,8 @@ function App() {
     }
   }, [config.baudRate]);
 
-  /** Android / WebUSB path: connect directly via raw FTDI USB driver */
   const handleModalConnectUsb = useCallback(async (
-    device: UsbDeviceLike,
-    displayId: string,
+    device: UsbDeviceLike, displayId: string,
   ) => {
     setShowConnectModal(false);
     activeServiceRef.current = ftdiUsbService;
@@ -389,7 +316,6 @@ function App() {
     } catch { /* ignore */ }
   }, [getCommands]);
 
-  // ── Impedance handlers ──
   const handleEnterImpedance = useCallback(async () => {
     if (isRecording) return;
     const cmds = getCommands();
@@ -414,12 +340,10 @@ function App() {
     }, 100);
   }, [serial, getCommands, parser]);
 
-  // ── Recording handlers ──
   const handleStartRecording = useCallback(() => {
     recordSamplesRef.current = [];
     recordTimestampRef.current = 0;
-    const now = new Date();
-    setRecordStartTime(now);
+    setRecordStartTime(new Date());
     setRecordedSamples([]);
     setIsRecording(true);
   }, []);
@@ -429,38 +353,21 @@ function App() {
     setRecordedSamples([...recordSamplesRef.current]);
   }, []);
 
-  // Periodically sync recordedSamples length for display (every 2s)
-  useEffect(() => {
-    if (!isRecording) return;
-    const id = setInterval(() => {
-      setRecordedSamples([...recordSamplesRef.current]);
-    }, 2000);
-    return () => clearInterval(id);
-  }, [isRecording]);
-
-  // Auto-stop recording when quality monitor signals target reached
-  // (RecordView also calls onStopRecording, but we guard here too)
   const autoStopFiredRef = useRef(false);
   useEffect(() => {
-    if (!isRecording) {
-      autoStopFiredRef.current = false;
-      return;
-    }
+    if (!isRecording) { autoStopFiredRef.current = false; return; }
     if (shouldAutoStop && !autoStopFiredRef.current) {
       autoStopFiredRef.current = true;
       handleStopRecording();
     }
   }, [shouldAutoStop, isRecording, handleStopRecording]);
 
-  // ── Event marker handler (from waveform OR record views) ──
   const handleEventMarker = useCallback((marker: { id: string; time: number; label: string }) => {
     setEventMarkers(prev => [...prev, marker]);
-    if (isRecording) {
-      pendingMarkerRef.current = marker;
-    }
+    if (isRecording) pendingMarkerRef.current = marker;
   }, [isRecording]);
 
-  // Keyboard M key for event markers (global, when recording)
+  // Keyboard M key for event markers
   useEffect(() => {
     if (!isRecording) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -478,16 +385,25 @@ function App() {
 
   const isConnected = status === 'connected';
 
+  const handleFilterChange = useCallback((
+    updated: Partial<FilterParams>, resetStates?: string[],
+  ) => {
+    setFilterParams(prev => ({ ...prev, ...updated }));
+    if (resetStates) {
+      const biquad = filterBiquadRef.current;
+      if (resetStates.includes('hp')) {
+        biquad.hpState1.fill(0); biquad.hpState2.fill(0); biquad.dcState.fill(0);
+      }
+      if (resetStates.includes('lp')) {
+        biquad.lpState1.fill(0); biquad.lpState2.fill(0);
+      }
+      if (resetStates.includes('notch')) { biquad.notchState.fill(0); }
+    }
+  }, []);
+
   return (
-    <div className="app-container">
-      <Header
-        lang={lang}
-        onLangToggle={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
-      />
-
-      {/* 3-column layout — always visible */}
+    <>
       <div className="main-layout">
-
         {/* Col 1: Connect + Impedance */}
         <div className="layout-col" style={{ maxWidth: 300 }}>
           <div className="layout-col-inner">
@@ -556,10 +472,8 @@ function App() {
             />
           </div>
         </div>
-
       </div>
 
-      {/* Connect Modal */}
       {showConnectModal && (
         <ConnectModal
           lang={lang}
@@ -568,6 +482,66 @@ function App() {
           onClose={() => setShowConnectModal(false)}
         />
       )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-device layout — renders DevicePanel × n
+// ─────────────────────────────────────────────────────────────────────────────
+function MultiDeviceLayout({ deviceCount, lang, sessionInfo }: {
+  deviceCount: number;
+  lang: Lang;
+  sessionInfo: SessionInfo | null;
+}) {
+  const layoutClass = `multi-layout n${deviceCount}`;
+  return (
+    <div className={layoutClass}>
+      {Array.from({ length: deviceCount }, (_, i) => (
+        <DevicePanel
+          key={i}
+          deviceIndex={i}
+          lang={lang}
+          sessionInfo={sessionInfo}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App root
+// ─────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [lang, setLang] = useState<Lang>('zh');
+  const [deviceCount, setDeviceCount] = useState(1);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
+
+  useEffect(() => {
+    const token = sessionTokenRef.current;
+    if (!token) return;
+    fetchSessionInfo(token).then(info => {
+      if (!info) return;
+      setSessionInfo(info);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="app-container">
+      <Header
+        lang={lang}
+        onLangToggle={() => setLang(l => l === 'zh' ? 'en' : 'zh')}
+        deviceCount={deviceCount}
+        onAddDevice={() => setDeviceCount(n => Math.min(n + 1, 4))}
+        onRemoveDevice={() => setDeviceCount(n => Math.max(n - 1, 1))}
+      />
+
+      {deviceCount === 1
+        ? <SingleDeviceLayout key="single" lang={lang} sessionInfo={sessionInfo} />
+        : <MultiDeviceLayout deviceCount={deviceCount} lang={lang} sessionInfo={sessionInfo} />
+      }
     </div>
   );
 }
