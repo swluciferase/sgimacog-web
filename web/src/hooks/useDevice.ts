@@ -16,6 +16,7 @@ import {
   makeFilterBiquadState,
   DEFAULT_CONFIG,
   SAMPLE_RATE_HZ,
+  CHANNEL_LABELS,
 } from '../types/eeg';
 import type { RecordedSample } from '../services/csvWriter';
 import {
@@ -68,6 +69,9 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
   const [filterParams, setFilterParams] = useState<FilterParams>(DEFAULT_FILTER_PARAMS);
   const filterBiquadRef = useRef<FilterBiquadState>(makeFilterBiquadState());
 
+  // ── Electrode labels (flexible mode) ──
+  const [channelLabels, setChannelLabels] = useState<string[]>([...CHANNEL_LABELS]);
+
   // ── Subject ──
   const [subjectInfo, setSubjectInfo] = useState<SubjectInfo>({
     id: '', name: '', dob: '', sex: '', notes: '',
@@ -110,6 +114,7 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
         setDeviceId(null);
         deviceIdSeenRef.current = false;
         expectedSerialRef.current = '';
+        setChannelLabels([...CHANNEL_LABELS]);
         registerDisconnected();
       }
     };
@@ -377,6 +382,9 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     if (isRecording) pendingMarkerRef.current = marker;
   }, [isRecording]);
 
+  // Derived: STEEG_DB819### → flexible electrode mode
+  const deviceMode = deviceId?.startsWith('STEEG_DB819') ? 'flexible' as const : 'standard' as const;
+
   return {
     // connection
     status,
@@ -420,6 +428,10 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     eventMarkers,
     setEventMarkers,
     handleEventMarker,
+    // electrode config
+    channelLabels,
+    setChannelLabels,
+    deviceMode,
   } as const;
 }
 

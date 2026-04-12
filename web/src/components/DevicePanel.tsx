@@ -171,6 +171,9 @@ export const DevicePanel: FC<DevicePanelProps> = ({
               lang={lang}
               onEnterImpedanceMode={d.handleEnterImpedance}
               onExitImpedanceMode={d.handleExitImpedance}
+              deviceMode={d.deviceMode}
+              channelLabels={d.channelLabels}
+              onChannelLabelsChange={d.setChannelLabels}
             />
           </>)}
           {!d.isConnected && (
@@ -199,6 +202,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             syncMarkerMode={syncMarkerOn}
             isFocused={isFocused}
             devicePalette={deviceIndex}
+            channelLabels={d.channelLabels}
           />
         </div>
 
@@ -228,6 +232,8 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             shouldAutoStop={d.shouldAutoStop}
             sessionInfo={sessionInfo ?? null}
             stopAndSaveSignal={stopSignal}
+            channelLabels={d.channelLabels}
+            isFlexibleElectrode={d.deviceMode === 'flexible'}
             compact
           />
         </div>

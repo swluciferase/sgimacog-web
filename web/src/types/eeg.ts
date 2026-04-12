@@ -63,6 +63,20 @@ export interface FilterBiquadState {
 
 export const CHANNEL_LABELS = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'] as const;
 export const CHANNEL_COUNT = 8;
+
+/** All 19 standard 10-20 electrode positions */
+export const EEG_10_20_LABELS = [
+  'Fp1', 'Fp2',
+  'F7', 'F3', 'Fz', 'F4', 'F8',
+  'T7', 'C3', 'Cz', 'C4', 'T8',
+  'P7', 'P3', 'Pz', 'P4', 'P8',
+  'O1', 'O2',
+] as const;
+
+export type Eeg1020Label = typeof EEG_10_20_LABELS[number];
+
+/** Mutable copy of default channel labels (for comparison / reset) */
+export const DEFAULT_CHANNEL_LABELS: string[] = [...CHANNEL_LABELS];
 export const SAMPLE_RATE_HZ = 1001;
 
 export const DEFAULT_FILTER_PARAMS: FilterParams = {

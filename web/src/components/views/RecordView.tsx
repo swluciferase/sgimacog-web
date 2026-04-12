@@ -43,6 +43,10 @@ export interface RecordViewProps {
   compact?: boolean;
   /** Increment to trigger simultaneous stop+save from outside */
   stopAndSaveSignal?: number;
+  /** Custom channel labels (flexible electrode mode) */
+  channelLabels?: string[];
+  /** True when device is in flexible electrode mode */
+  isFlexibleElectrode?: boolean;
 }
 
 function formatDuration(ms: number): string {
@@ -103,7 +107,14 @@ export const RecordView: FC<RecordViewProps> = ({
   sessionInfo,
   compact = false,
   stopAndSaveSignal = 0,
+  channelLabels,
+  isFlexibleElectrode = false,
 }) => {
+  // Report generation allowed only if electrode layout matches default (for flexible mode)
+  const defaultLabels = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'];
+  const canGenerateReport = !isFlexibleElectrode ||
+    (channelLabels ?? defaultLabels).every((l, i) => l === defaultLabels[i]);
+
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [autoStopMode, setAutoStopMode] = useState<'csv' | 'report'>('csv');
@@ -181,6 +192,7 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
+        channelLabels,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
@@ -201,7 +213,7 @@ export const RecordView: FC<RecordViewProps> = ({
     broadcastEegDone();
     onStopRecording();
     if (recordedSamples.length === 0 || !startTime) return;
-    const content = generateCsv(recordedSamples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc);
+    const content = generateCsv(recordedSamples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels);
     const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
     downloadCsv(content, filename);
     if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
@@ -249,6 +261,7 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
         notchDesc,
+        channelLabels,
       );
       csvFilename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(csvContent, csvFilename);
@@ -577,32 +590,36 @@ export const RecordView: FC<RecordViewProps> = ({
                 {T(lang, 'recordAutoStopMode')}:
               </label>
               <div style={{ display: 'flex', gap: 4 }}>
-                {(['csv', 'report'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    onClick={() => setAutoStopMode(mode)}
-                    disabled={isRecording}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: 5,
-                      border: `1px solid ${autoStopMode === mode
-                        ? (mode === 'report' ? 'rgba(72,186,166,0.6)' : 'rgba(248,81,73,0.5)')
-                        : 'rgba(40,64,80,0.4)'}`,
-                      background: autoStopMode === mode
-                        ? (mode === 'report' ? 'rgba(72,186,166,0.18)' : 'rgba(248,81,73,0.12)')
-                        : 'transparent',
-                      color: autoStopMode === mode
-                        ? (mode === 'report' ? '#7cd8c0' : '#f85149')
-                        : 'rgba(136,176,168,0.5)',
-                      fontSize: 12, fontWeight: 600,
-                      cursor: isRecording ? 'not-allowed' : 'pointer',
-                      opacity: isRecording ? 0.55 : 1,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {mode === 'csv' ? T(lang, 'recordAutoStopCsv') : T(lang, 'recordAutoStopReport')}
-                  </button>
-                ))}
+                {(['csv', 'report'] as const).map(mode => {
+                  const isReportBlocked = mode === 'report' && !canGenerateReport;
+                  return (
+                    <button
+                      key={mode}
+                      onClick={() => !isReportBlocked && setAutoStopMode(mode)}
+                      disabled={isRecording || isReportBlocked}
+                      title={isReportBlocked ? T(lang, 'electrodeReportBlocked') : undefined}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 5,
+                        border: `1px solid ${autoStopMode === mode
+                          ? (mode === 'report' ? 'rgba(72,186,166,0.6)' : 'rgba(248,81,73,0.5)')
+                          : 'rgba(40,64,80,0.4)'}`,
+                        background: autoStopMode === mode
+                          ? (mode === 'report' ? 'rgba(72,186,166,0.18)' : 'rgba(248,81,73,0.12)')
+                          : 'transparent',
+                        color: autoStopMode === mode
+                          ? (mode === 'report' ? '#7cd8c0' : '#f85149')
+                          : 'rgba(136,176,168,0.5)',
+                        fontSize: 12, fontWeight: 600,
+                        cursor: (isRecording || isReportBlocked) ? 'not-allowed' : 'pointer',
+                        opacity: (isRecording || isReportBlocked) ? 0.35 : 1,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {mode === 'csv' ? T(lang, 'recordAutoStopCsv') : T(lang, 'recordAutoStopReport')}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -638,7 +655,7 @@ export const RecordView: FC<RecordViewProps> = ({
                   fontFamily: "'IBM Plex Mono', monospace",
                   marginBottom: 2,
                 }}>
-                  {CHANNEL_LABELS[ch]}
+                  {(channelLabels ?? CHANNEL_LABELS)[ch]}
                 </div>
                 <div style={{
                   fontSize: 11, fontWeight: 700,
@@ -831,24 +848,37 @@ export const RecordView: FC<RecordViewProps> = ({
             >
               {T(lang, 'recordStop')}
             </button>
-            <button
-              onClick={handleStopAndReport}
-              disabled={reportStatus === 'analyzing'}
-              style={{
-                background: reportStatus === 'analyzing' ? 'rgba(72,186,166,0.08)' : 'rgba(72,186,166,0.15)',
-                border: '1px solid rgba(72,186,166,0.5)',
-                borderRadius: 8,
-                color: reportStatus === 'analyzing' ? 'rgba(72,186,166,0.5)' : 'var(--teal)',
-                fontSize: 13, fontWeight: 700,
-                padding: '9px 18px',
-                cursor: reportStatus === 'analyzing' ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {reportStatus === 'analyzing'
-                ? T(lang, 'recordGeneratingReport')
-                : T(lang, 'recordStopReport')}
-            </button>
+            {canGenerateReport ? (
+              <button
+                onClick={handleStopAndReport}
+                disabled={reportStatus === 'analyzing'}
+                style={{
+                  background: reportStatus === 'analyzing' ? 'rgba(72,186,166,0.08)' : 'rgba(72,186,166,0.15)',
+                  border: '1px solid rgba(72,186,166,0.5)',
+                  borderRadius: 8,
+                  color: reportStatus === 'analyzing' ? 'rgba(72,186,166,0.5)' : 'var(--teal)',
+                  fontSize: 13, fontWeight: 700,
+                  padding: '9px 18px',
+                  cursor: reportStatus === 'analyzing' ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {reportStatus === 'analyzing'
+                  ? T(lang, 'recordGeneratingReport')
+                  : T(lang, 'recordStopReport')}
+              </button>
+            ) : (
+              <div style={{
+                fontSize: 11, color: 'rgba(216,184,74,.75)',
+                fontFamily: "'IBM Plex Mono', monospace",
+                border: '1px solid rgba(216,184,74,.25)',
+                borderRadius: 6, padding: '6px 10px',
+                background: 'rgba(216,184,74,.06)',
+                maxWidth: 220, lineHeight: 1.4,
+              }}>
+                {T(lang, 'electrodeReportBlocked')}
+              </div>
+            )}
           </>) : (<>
             <button
               onClick={onStartRecording}

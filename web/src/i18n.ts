@@ -196,6 +196,17 @@ const translations: Record<string, Record<Lang, string>> = {
     zh: '請先完成知情同意程序再開始錄製',
     en: 'Please complete the informed consent process before recording',
   },
+
+  // Flexible electrode mode (STEEG_DB819)
+  electrodeMode:         { zh: '可選電極模式 (DB819)', en: 'Flexible Electrode Mode (DB819)' },
+  electrodeEditBtn:      { zh: '⚙ 設定電極', en: '⚙ Electrodes' },
+  electrodeEditTitle:    { zh: 'CH 1–8 電極位置指定', en: 'CH 1–8 Electrode Assignment' },
+  electrodeEditApply:    { zh: '套用', en: 'Apply' },
+  electrodeEditCancel:   { zh: '取消', en: 'Cancel' },
+  electrodeReportBlocked: {
+    zh: '電極配置非標準排列，無法生成報告（需 Fp1→Fp2→T7→T8→O1→O2→Fz→Pz）',
+    en: 'Non-default electrode layout — report unavailable (requires Fp1→Fp2→T7→T8→O1→O2→Fz→Pz)',
+  },
 };
 
 export const T = (lang: Lang, key: string): string =>

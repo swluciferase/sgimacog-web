@@ -32,6 +32,8 @@ export interface WaveformViewProps {
   isFocused?: boolean;
   /** 0-based device index — selects per-device color palette (0=teal, 1=green, 2=rose, 3=plum) */
   devicePalette?: number;
+  /** Custom channel labels (flexible electrode mode); falls back to CHANNEL_LABELS */
+  channelLabels?: readonly string[];
 }
 
 // Per-device palettes: 4 devices × 8 channels (RGBA float)
@@ -238,6 +240,7 @@ export const WaveformView = ({
   syncMarkerMode = false,
   isFocused,
   devicePalette = 0,
+  channelLabels,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -299,7 +302,10 @@ export const WaveformView = ({
     setLpInput(filterParams.lpFreq.toString());
   }, [filterParams.hpFreq, filterParams.lpFreq]);
 
-  const labels = useMemo(() => Array.from(CHANNEL_LABELS), []);
+  const labels = useMemo(
+    () => channelLabels ? Array.from(channelLabels) : Array.from(CHANNEL_LABELS),
+    [channelLabels],
+  );
 
   const handleAutoScale = useCallback(() => {
     const latest = latestUvRef.current;

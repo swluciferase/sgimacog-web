@@ -22,8 +22,10 @@ export function generateCsv(
   deviceId: string,
   filterDesc: string,
   notchDesc: string,
+  channelLabels?: string[],
 ): string {
   const lines: string[] = [];
+  const chHeaders = (channelLabels ?? ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz']).join(',');
 
   // Header block — exactly 10 lines matching Cygnus CSV format
   lines.push('Cygnus version: 0.28.0.7,File version: 2021.11');
@@ -39,7 +41,7 @@ export function generateCsv(
 
   // Column headers (line 11 — must not be shifted by extra rows)
   lines.push(
-    'Timestamp,Serial Number,Fp1,Fp2,T7,T8,O1,O2,Fz,Pz,Event Id,Event Date,Event Duration,Software Marker,Software Marker Name',
+    `Timestamp,Serial Number,${chHeaders},Event Id,Event Date,Event Duration,Software Marker,Software Marker Name`,
   );
 
   // Data rows

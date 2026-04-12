@@ -1,5 +1,6 @@
 import { useState, type FC } from 'react';
 import type { ImpedanceResult } from '../../types/eeg';
+import { EEG_10_20_LABELS } from '../../types/eeg';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
 
@@ -10,19 +11,38 @@ export interface ImpedanceViewProps {
   lang: Lang;
   onEnterImpedanceMode: () => void;
   onExitImpedanceMode: () => void;
+  deviceMode?: 'standard' | 'flexible';
+  channelLabels?: string[];
+  onChannelLabelsChange?: (labels: string[]) => void;
 }
 
-// 10-20 channel positions in a 200×240 viewBox
-const ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
+// Full 10-20 skull coordinates in a 200×240 viewBox
+const ALL_ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
   { label: 'Fp1', cx: 72,  cy: 52  },
   { label: 'Fp2', cx: 128, cy: 52  },
+  { label: 'F7',  cx: 40,  cy: 76  },
+  { label: 'F3',  cx: 69,  cy: 72  },
+  { label: 'Fz',  cx: 100, cy: 72  },
+  { label: 'F4',  cx: 131, cy: 72  },
+  { label: 'F8',  cx: 160, cy: 76  },
   { label: 'T7',  cx: 30,  cy: 112 },
+  { label: 'C3',  cx: 65,  cy: 112 },
+  { label: 'Cz',  cx: 100, cy: 112 },
+  { label: 'C4',  cx: 135, cy: 112 },
   { label: 'T8',  cx: 170, cy: 112 },
+  { label: 'P7',  cx: 40,  cy: 148 },
+  { label: 'P3',  cx: 69,  cy: 148 },
+  { label: 'Pz',  cx: 100, cy: 148 },
+  { label: 'P4',  cx: 131, cy: 148 },
+  { label: 'P8',  cx: 160, cy: 148 },
   { label: 'O1',  cx: 72,  cy: 182 },
   { label: 'O2',  cx: 128, cy: 182 },
-  { label: 'Fz',  cx: 100, cy: 72  },
-  { label: 'Pz',  cx: 100, cy: 148 },
 ];
+
+// Default 8-electrode layout (standard mode)
+const DEFAULT_ELECTRODE_POSITIONS = ALL_ELECTRODE_POSITIONS.filter(p =>
+  ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'].includes(p.label)
+);
 
 const NO_SIGNAL_AMPLITUDE_UV = 0.5;
 const LOW_IMPEDANCE_NA_KOHM = 10;
@@ -62,8 +82,15 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
   lang,
   onEnterImpedanceMode,
   onExitImpedanceMode,
+  deviceMode = 'standard',
+  channelLabels,
+  onChannelLabelsChange,
 }) => {
   const [isActive, setIsActive] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftLabels, setDraftLabels] = useState<string[]>([]);
+
+  const isFlexible = deviceMode === 'flexible';
 
   const resultByIndex = new Map<number, ImpedanceResult>();
   if (impedanceResults) {
@@ -83,6 +110,23 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
     }
   };
 
+  const openEditor = () => {
+    setDraftLabels(channelLabels ? [...channelLabels] : Array.from({ length: 8 }, (_, i) => EEG_10_20_LABELS[i] ?? ''));
+    setIsEditing(true);
+  };
+
+  const applyEdit = () => {
+    onChannelLabelsChange?.(draftLabels);
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => setIsEditing(false);
+
+  // Compute electrode positions for the skull map based on current channelLabels
+  const activePositions = isFlexible && channelLabels
+    ? channelLabels.map(label => ALL_ELECTRODE_POSITIONS.find(p => p.label === label) ?? null)
+    : DEFAULT_ELECTRODE_POSITIONS.map(p => p as (typeof ALL_ELECTRODE_POSITIONS)[0] | null);
+
   if (!isConnected) {
     return (
       <div style={{
@@ -99,7 +143,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-      {/* Measure / Stop buttons row */}
+      {/* Measure / Stop + Electrode config buttons row */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexShrink: 0 }}>
         <button
           onClick={handleToggle}
@@ -121,7 +165,145 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
         >
           {isActive ? T(lang, 'impedanceStop') : T(lang, 'impedanceStart')}
         </button>
+
+        {isFlexible && (
+          <button
+            onClick={openEditor}
+            disabled={isRecording}
+            style={{
+              padding: '.3rem .55rem',
+              borderRadius: 3,
+              border: 'rgba(92,196,168,.4) 1px solid',
+              background: 'rgba(92,196,168,.08)',
+              color: 'var(--teal)',
+              fontSize: '.7rem',
+              fontFamily: "'IBM Plex Mono', monospace",
+              cursor: isRecording ? 'not-allowed' : 'pointer',
+              opacity: isRecording ? .4 : 1,
+              transition: 'all .15s',
+              letterSpacing: '.04em',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {T(lang, 'electrodeEditBtn')}
+          </button>
+        )}
       </div>
+
+      {/* Flexible mode badge */}
+      {isFlexible && (
+        <div style={{
+          fontSize: '.64rem',
+          color: 'rgba(92,196,168,.6)',
+          fontFamily: "'IBM Plex Mono', monospace",
+          marginBottom: 6,
+          letterSpacing: '.05em',
+          flexShrink: 0,
+        }}>
+          ◈ {T(lang, 'electrodeMode')}
+        </div>
+      )}
+
+      {/* Inline electrode editor */}
+      {isFlexible && isEditing && (
+        <div style={{
+          flexShrink: 0,
+          background: 'rgba(8,18,28,.85)',
+          border: '1px solid rgba(92,196,168,.25)',
+          borderRadius: 5,
+          padding: '8px 10px',
+          marginBottom: 8,
+        }}>
+          <div style={{
+            fontSize: '.68rem',
+            color: 'var(--teal)',
+            fontFamily: "'IBM Plex Mono', monospace",
+            letterSpacing: '.06em',
+            marginBottom: 7,
+          }}>
+            {T(lang, 'electrodeEditTitle')}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 10px', marginBottom: 8 }}>
+            {Array.from({ length: 8 }, (_, ch) => (
+              <div key={ch} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{
+                  fontSize: '.63rem',
+                  color: 'var(--muted)',
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  minWidth: 28,
+                }}>
+                  CH{ch + 1}
+                </span>
+                <select
+                  value={draftLabels[ch] ?? ''}
+                  onChange={e => {
+                    const next = [...draftLabels];
+                    next[ch] = e.target.value;
+                    setDraftLabels(next);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '2px 4px',
+                    borderRadius: 3,
+                    border: '1px solid rgba(92,196,168,.3)',
+                    background: 'rgba(8,20,32,.9)',
+                    color: 'var(--fg)',
+                    fontSize: '.68rem',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    outline: 'none',
+                  }}
+                >
+                  {EEG_10_20_LABELS.map(label => (
+                    <option
+                      key={label}
+                      value={label}
+                      disabled={draftLabels.some((l, j) => l === label && j !== ch)}
+                    >
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={applyEdit}
+              style={{
+                flex: 1,
+                padding: '.25rem .5rem',
+                borderRadius: 3,
+                border: '1px solid rgba(92,196,168,.5)',
+                background: 'rgba(92,196,168,.15)',
+                color: 'var(--teal)',
+                fontSize: '.68rem',
+                fontFamily: "'IBM Plex Mono', monospace",
+                cursor: 'pointer',
+              }}
+            >
+              {T(lang, 'electrodeEditApply')}
+            </button>
+            <button
+              onClick={cancelEdit}
+              style={{
+                flex: 1,
+                padding: '.25rem .5rem',
+                borderRadius: 3,
+                border: '1px solid rgba(120,130,150,.3)',
+                background: 'transparent',
+                color: 'var(--muted)',
+                fontSize: '.68rem',
+                fontFamily: "'IBM Plex Mono', monospace",
+                cursor: 'pointer',
+              }}
+            >
+              {T(lang, 'electrodeEditCancel')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Brain SVG — fills available space */}
       <div className="imp-brain-wrap">
@@ -157,8 +339,34 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
               stroke="rgba(72,186,166,0.1)" strokeWidth="1" strokeDasharray="3 4"
             />
 
-            {/* Electrode nodes */}
-            {ELECTRODE_POSITIONS.map((pos, idx) => {
+            {/* In flexible mode: show all 19 positions; unselected ones are dim */}
+            {isFlexible && ALL_ELECTRODE_POSITIONS.map(pos => {
+              const chIdx = channelLabels ? channelLabels.indexOf(pos.label) : -1;
+              const isSelected = chIdx >= 0;
+              if (isSelected) return null; // rendered below with impedance data
+              return (
+                <g key={`bg-${pos.label}`} opacity={0.18}>
+                  <circle cx={pos.cx} cy={pos.cy} r={8}
+                    fill="rgba(40,64,80,.4)"
+                    stroke="rgba(72,186,166,0.5)"
+                    strokeWidth={0.8}
+                  />
+                  <text
+                    x={pos.cx} y={pos.cy + 1}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(92,186,168,.9)"
+                    fontSize="5"
+                    fontFamily="'IBM Plex Mono', monospace"
+                  >
+                    {pos.label}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Active electrode nodes */}
+            {activePositions.map((pos, idx) => {
+              if (!pos) return null;
               const result = resultByIndex.get(idx);
               const kohm = result?.impedanceKohm;
               const isNoSignal = result !== undefined && (
@@ -174,7 +382,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
               const isDim = quality === 'unknown' || quality === 'noSignal';
 
               return (
-                <g key={pos.label}>
+                <g key={`${pos.label}-${idx}`}>
                   {!isDim && (
                     <circle cx={pos.cx} cy={pos.cy} r={15}
                       fill="none" stroke={color} strokeWidth="1" opacity=".25"
