@@ -19,13 +19,13 @@ export interface QualityConfig {
 // STD thresholds per sensitivity level (µV): index 0 = level 1, index 4 = level 5
 const STD_THRESHOLDS = [200, 150, 100, 60, 30] as const;
 
-/** A window is "good" if >= 6/8 channels have STD < threshold. */
-function evaluateWindow(stds: Float32Array, threshold: number): boolean {
+/** A window is "good" if >= 75% of channels have STD < threshold (e.g. 6/8, 24/32). */
+function evaluateWindow(stds: Float32Array, threshold: number, channelCount: number): boolean {
   let goodCount = 0;
-  for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+  for (let ch = 0; ch < channelCount; ch++) {
     if ((stds[ch] ?? Infinity) < threshold) goodCount++;
   }
-  return goodCount >= 6;
+  return goodCount >= Math.ceil(channelCount * 0.75);
 }
 
 function computeStd(samples: number[]): number {
@@ -43,6 +43,7 @@ export function useQualityMonitor(
   packets: EegPacket[],
   isRecording: boolean,
   config: QualityConfig,
+  channelCount: number = CHANNEL_COUNT,
 ): {
   currentWindowStds: Float32Array;
   goodWindowCount: number;
@@ -57,28 +58,38 @@ export function useQualityMonitor(
 
   // Accumulate raw samples per channel across windows
   const channelBuffersRef = useRef<number[][]>(
-    Array.from({ length: CHANNEL_COUNT }, () => []),
+    Array.from({ length: channelCount }, () => []),
   );
   const goodWindowCountRef = useRef(0);
   const totalWindowCountRef = useRef(0);
   const qualityHistoryRef = useRef<QualityWindow[]>([]);
-  const currentWindowStdsRef = useRef<Float32Array>(new Float32Array(CHANNEL_COUNT));
+  const currentWindowStdsRef = useRef<Float32Array>(new Float32Array(channelCount));
   const recordingTimeRef = useRef(0); // seconds from recording start
 
-  // Reset when recording starts or stops
+  // Reset when recording starts, stops, or channel count changes
   const prevIsRecordingRef = useRef(false);
   useEffect(() => {
-    if (isRecording && !prevIsRecordingRef.current) {
+    const recordingStarted = isRecording && !prevIsRecordingRef.current;
+    if (recordingStarted) {
       // Reset all tracking state on new recording
-      channelBuffersRef.current = Array.from({ length: CHANNEL_COUNT }, () => []);
+      channelBuffersRef.current = Array.from({ length: channelCount }, () => []);
       goodWindowCountRef.current = 0;
       totalWindowCountRef.current = 0;
       qualityHistoryRef.current = [];
-      currentWindowStdsRef.current = new Float32Array(CHANNEL_COUNT);
+      currentWindowStdsRef.current = new Float32Array(channelCount);
       recordingTimeRef.current = 0;
     }
     prevIsRecordingRef.current = isRecording;
-  }, [isRecording]);
+  }, [isRecording, channelCount]);
+
+  // Reset buffers when channel count changes outside of recording
+  useEffect(() => {
+    if (!isRecording) {
+      channelBuffersRef.current = Array.from({ length: channelCount }, () => []);
+      currentWindowStdsRef.current = new Float32Array(channelCount);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelCount]);
 
   // Process new packets
   useEffect(() => {
@@ -87,23 +98,23 @@ export function useQualityMonitor(
     const buffers = channelBuffersRef.current;
 
     for (const pkt of packets) {
-      if (!pkt.eegChannels || pkt.eegChannels.length < CHANNEL_COUNT) continue;
+      if (!pkt.eegChannels || pkt.eegChannels.length < channelCount) continue;
       recordingTimeRef.current += 1 / SAMPLE_RATE_HZ;
-      for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+      for (let ch = 0; ch < channelCount; ch++) {
         buffers[ch]!.push(pkt.eegChannels[ch] ?? 0);
       }
 
       // Check if we've accumulated a full window
       if (buffers[0]!.length >= windowSamples) {
-        const stds = new Float32Array(CHANNEL_COUNT);
-        for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+        const stds = new Float32Array(channelCount);
+        for (let ch = 0; ch < channelCount; ch++) {
           stds[ch] = computeStd(buffers[ch]!.slice(0, windowSamples));
         }
         currentWindowStdsRef.current = stds;
 
         const windowEndTime = recordingTimeRef.current;
         const windowStartTime = windowEndTime - config.windowSec;
-        const isGood = evaluateWindow(stds, threshold);
+        const isGood = evaluateWindow(stds, threshold, channelCount);
 
         totalWindowCountRef.current++;
         if (isGood) goodWindowCountRef.current++;
@@ -114,7 +125,7 @@ export function useQualityMonitor(
         ];
 
         // Consume the window's samples (no overlap)
-        for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+        for (let ch = 0; ch < channelCount; ch++) {
           buffers[ch]!.splice(0, windowSamples);
         }
       }

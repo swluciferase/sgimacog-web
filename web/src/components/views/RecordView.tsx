@@ -49,6 +49,8 @@ export interface RecordViewProps {
   isFlexibleElectrode?: boolean;
   /** True when impedance measurement is active — blocks starting recording */
   isImpedanceActive?: boolean;
+  /** Device sample rate — used for CSV header (default 1000) */
+  deviceSampleRate?: number;
 }
 
 function formatDuration(ms: number): string {
@@ -112,11 +114,15 @@ export const RecordView: FC<RecordViewProps> = ({
   channelLabels,
   isFlexibleElectrode = false,
   isImpedanceActive = false,
+  deviceSampleRate,
 }) => {
-  // Report generation allowed only if electrode layout matches default (for flexible mode)
+  // Report generation blocked for: flexible electrode with non-default layout, or 32ch device
+  const isCh32 = (channelLabels?.length ?? 8) > 8;
   const defaultLabels = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'];
-  const canGenerateReport = !isFlexibleElectrode ||
-    (channelLabels ?? defaultLabels).every((l, i) => l === defaultLabels[i]);
+  const canGenerateReport = !isCh32 && (
+    !isFlexibleElectrode ||
+    (channelLabels ?? defaultLabels).every((l, i) => l === defaultLabels[i])
+  );
 
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
@@ -196,6 +202,7 @@ export const RecordView: FC<RecordViewProps> = ({
         filterDesc,
         notchDesc,
         channelLabels,
+        deviceSampleRate,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(content, filename);
@@ -216,7 +223,7 @@ export const RecordView: FC<RecordViewProps> = ({
     broadcastEegDone();
     onStopRecording();
     if (recordedSamples.length === 0 || !startTime) return;
-    const content = generateCsv(recordedSamples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels);
+    const content = generateCsv(recordedSamples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels, deviceSampleRate);
     const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
     downloadCsv(content, filename);
     if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
@@ -265,6 +272,7 @@ export const RecordView: FC<RecordViewProps> = ({
         filterDesc,
         notchDesc,
         channelLabels,
+        deviceSampleRate,
       );
       csvFilename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
       downloadCsv(csvContent, csvFilename);
@@ -628,49 +636,56 @@ export const RecordView: FC<RecordViewProps> = ({
           )}
         </div>
 
-        {/* 8-channel STD grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(8, 1fr)',
-          gap: 6,
-          marginBottom: 14,
-        }}>
-          {Array.from({ length: CHANNEL_COUNT }, (_, ch) => {
-            const std = currentWindowStds[ch] ?? 0;
-            const thresholds = [200, 150, 100, 60, 30];
-            const threshold = thresholds[(qualityConfig.sensitivity - 1)] ?? 100;
-            const color = std < threshold
-              ? '#3fb950'
-              : std < threshold * 1.5
-                ? '#e3a030'
-                : '#f85149';
-            return (
-              <div key={ch} style={{
-                padding: '6px 4px',
-                background: `${color}12`,
-                border: `1px solid ${color}44`,
-                borderRadius: 6,
-                textAlign: 'center',
-              }}>
-                <div style={{
-                  fontSize: 10, fontWeight: 700,
-                  color: 'rgba(136,176,168,0.7)',
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  marginBottom: 2,
-                }}>
-                  {(channelLabels ?? CHANNEL_LABELS)[ch]}
-                </div>
-                <div style={{
-                  fontSize: 11, fontWeight: 700,
-                  color,
-                  fontFamily: "'IBM Plex Mono', monospace",
-                }}>
-                  {isRecording ? `${std.toFixed(0)}` : '--'}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Channel STD quality grid (8 or 32 channels) */}
+        {(() => {
+          const nch = channelLabels?.length ?? CHANNEL_COUNT;
+          const cols = nch > 8 ? 8 : nch;
+          const cellPad = nch > 8 ? '3px 2px' : '6px 4px';
+          return (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${cols}, 1fr)`,
+              gap: nch > 8 ? 3 : 6,
+              marginBottom: 14,
+            }}>
+              {Array.from({ length: nch }, (_, ch) => {
+                const std = currentWindowStds[ch] ?? 0;
+                const thresholds = [200, 150, 100, 60, 30];
+                const threshold = thresholds[(qualityConfig.sensitivity - 1)] ?? 100;
+                const color = std < threshold
+                  ? '#3fb950'
+                  : std < threshold * 1.5
+                    ? '#e3a030'
+                    : '#f85149';
+                return (
+                  <div key={ch} style={{
+                    padding: cellPad,
+                    background: `${color}12`,
+                    border: `1px solid ${color}44`,
+                    borderRadius: nch > 8 ? 4 : 6,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      fontSize: nch > 8 ? 8 : 10, fontWeight: 700,
+                      color: 'rgba(136,176,168,0.7)',
+                      fontFamily: "'IBM Plex Mono', monospace",
+                      marginBottom: 1,
+                    }}>
+                      {(channelLabels ?? CHANNEL_LABELS)[ch]}
+                    </div>
+                    <div style={{
+                      fontSize: nch > 8 ? 9 : 11, fontWeight: 700,
+                      color,
+                      fontFamily: "'IBM Plex Mono', monospace",
+                    }}>
+                      {isRecording ? `${std.toFixed(0)}` : '--'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Progress bar (only during recording) */}
         {isRecording && (

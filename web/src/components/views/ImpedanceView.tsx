@@ -11,7 +11,7 @@ export interface ImpedanceViewProps {
   lang: Lang;
   onEnterImpedanceMode: () => void;
   onExitImpedanceMode: () => void;
-  deviceMode?: 'standard' | 'flexible';
+  deviceMode?: 'standard' | 'flexible' | 'ch32';
   channelLabels?: string[];
   onChannelLabelsChange?: (labels: string[]) => void;
 }
@@ -43,6 +43,42 @@ const ALL_ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
 const DEFAULT_ELECTRODE_POSITIONS = ALL_ELECTRODE_POSITIONS.filter(p =>
   ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'].includes(p.label)
 );
+
+// All 32 electrode positions for STEEG_DG32 devices (in CH32_LABELS order)
+const CH32_ELECTRODE_POSITIONS: { label: string; cx: number; cy: number }[] = [
+  { label: 'Fp1', cx: 72,  cy: 52  },
+  { label: 'Fp2', cx: 128, cy: 52  },
+  { label: 'AF3', cx: 82,  cy: 63  },
+  { label: 'AF4', cx: 118, cy: 63  },
+  { label: 'F7',  cx: 40,  cy: 76  },
+  { label: 'F3',  cx: 69,  cy: 72  },
+  { label: 'Fz',  cx: 100, cy: 72  },
+  { label: 'F4',  cx: 131, cy: 72  },
+  { label: 'F8',  cx: 160, cy: 76  },
+  { label: 'FT7', cx: 35,  cy: 94  },
+  { label: 'FC3', cx: 67,  cy: 92  },
+  { label: 'FCz', cx: 100, cy: 92  },
+  { label: 'FC4', cx: 133, cy: 92  },
+  { label: 'FT8', cx: 165, cy: 94  },
+  { label: 'T7',  cx: 30,  cy: 112 },
+  { label: 'C3',  cx: 65,  cy: 112 },
+  { label: 'Cz',  cx: 100, cy: 112 },
+  { label: 'C4',  cx: 135, cy: 112 },
+  { label: 'T8',  cx: 170, cy: 112 },
+  { label: 'TP7', cx: 35,  cy: 130 },
+  { label: 'CP3', cx: 67,  cy: 130 },
+  { label: 'CPz', cx: 100, cy: 130 },
+  { label: 'CP4', cx: 133, cy: 130 },
+  { label: 'TP8', cx: 165, cy: 130 },
+  { label: 'P7',  cx: 40,  cy: 148 },
+  { label: 'P3',  cx: 69,  cy: 148 },
+  { label: 'Pz',  cx: 100, cy: 148 },
+  { label: 'P4',  cx: 131, cy: 148 },
+  { label: 'P8',  cx: 160, cy: 148 },
+  { label: 'O1',  cx: 72,  cy: 182 },
+  { label: 'Oz',  cx: 100, cy: 192 },
+  { label: 'O2',  cx: 128, cy: 182 },
+];
 
 const NO_SIGNAL_AMPLITUDE_UV = 0.5;
 const LOW_IMPEDANCE_NA_KOHM = 10;
@@ -91,6 +127,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
   const [draftLabels, setDraftLabels] = useState<string[]>([]);
 
   const isFlexible = deviceMode === 'flexible';
+  const isCh32 = deviceMode === 'ch32';
 
   const resultByIndex = new Map<number, ImpedanceResult>();
   if (impedanceResults) {
@@ -122,10 +159,12 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
 
   const cancelEdit = () => setIsEditing(false);
 
-  // Compute electrode positions for the skull map based on current channelLabels
-  const activePositions = isFlexible && channelLabels
-    ? channelLabels.map(label => ALL_ELECTRODE_POSITIONS.find(p => p.label === label) ?? null)
-    : DEFAULT_ELECTRODE_POSITIONS.map(p => p as (typeof ALL_ELECTRODE_POSITIONS)[0] | null);
+  // Compute electrode positions for the skull map based on device mode
+  const activePositions = isCh32
+    ? CH32_ELECTRODE_POSITIONS as (typeof CH32_ELECTRODE_POSITIONS[0] | null)[]
+    : isFlexible && channelLabels
+      ? channelLabels.map(label => ALL_ELECTRODE_POSITIONS.find(p => p.label === label) ?? null)
+      : DEFAULT_ELECTRODE_POSITIONS.map(p => p as (typeof ALL_ELECTRODE_POSITIONS)[0] | null);
 
   if (!isConnected) {
     return (
@@ -166,7 +205,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
           {isActive ? T(lang, 'impedanceStop') : T(lang, 'impedanceStart')}
         </button>
 
-        {isFlexible && (
+        {isFlexible && !isCh32 && (
           <button
             onClick={openEditor}
             disabled={isRecording}
@@ -190,22 +229,24 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
         )}
       </div>
 
-      {/* Flexible mode badge */}
-      {isFlexible && (
+      {/* Mode badge */}
+      {(isFlexible || isCh32) && (
         <div style={{
           fontSize: '.64rem',
-          color: 'rgba(92,196,168,.6)',
+          color: isCh32 ? 'rgba(160,120,220,.65)' : 'rgba(92,196,168,.6)',
           fontFamily: "'IBM Plex Mono', monospace",
           marginBottom: 6,
           letterSpacing: '.05em',
           flexShrink: 0,
         }}>
-          ◈ {T(lang, 'electrodeMode')}
+          ◈ {isCh32
+            ? (lang === 'zh' ? '32通道固定電極模式' : '32-ch fixed electrode mode')
+            : T(lang, 'electrodeMode')}
         </div>
       )}
 
-      {/* Inline electrode editor */}
-      {isFlexible && isEditing && (
+      {/* Inline electrode editor (flexible mode only) */}
+      {isFlexible && !isCh32 && isEditing && (
         <div style={{
           flexShrink: 0,
           background: 'rgba(8,18,28,.85)',
@@ -364,7 +405,7 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
               );
             })}
 
-            {/* Active electrode nodes */}
+            {/* Active electrode nodes — smaller radius for ch32 dense layout */}
             {activePositions.map((pos, idx) => {
               if (!pos) return null;
               const result = resultByIndex.get(idx);
@@ -381,25 +422,32 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
               const fill  = qualityFill(quality);
               const isDim = quality === 'unknown' || quality === 'noSignal';
 
+              // Use smaller nodes for ch32 (32 electrodes are densely packed)
+              const r = isCh32 ? 6.5 : 11;
+              const rGlow = isCh32 ? 10 : 15;
+              const fontSize = isCh32 ? '5' : '7';
+              const valueOffset = isCh32 ? 14 : 20;
+              const valueFontSize = isCh32 ? '4.5' : '5.5';
+
               return (
                 <g key={`${pos.label}-${idx}`}>
                   {!isDim && (
-                    <circle cx={pos.cx} cy={pos.cy} r={15}
+                    <circle cx={pos.cx} cy={pos.cy} r={rGlow}
                       fill="none" stroke={color} strokeWidth="1" opacity=".25"
                     />
                   )}
                   <circle
-                    cx={pos.cx} cy={pos.cy} r={11}
+                    cx={pos.cx} cy={pos.cy} r={r}
                     fill={fill}
                     stroke={color}
-                    strokeWidth={isDim ? 1 : 1.5}
+                    strokeWidth={isDim ? 0.8 : 1.5}
                     opacity={isDim ? .45 : 1}
                   />
                   <text
                     x={pos.cx} y={pos.cy + 1}
                     textAnchor="middle" dominantBaseline="middle"
                     fill={isDim ? 'rgba(88,136,136,.5)' : color}
-                    fontSize="7"
+                    fontSize={fontSize}
                     fontFamily="'IBM Plex Mono', monospace"
                     fontWeight="500"
                   >
@@ -407,10 +455,10 @@ export const ImpedanceView: FC<ImpedanceViewProps> = ({
                   </text>
                   {result !== undefined && !isNoSignal && (
                     <text
-                      x={pos.cx} y={pos.cy + 20}
+                      x={pos.cx} y={pos.cy + valueOffset}
                       textAnchor="middle"
                       fill="rgba(200,224,216,.65)"
-                      fontSize="5.5"
+                      fontSize={valueFontSize}
                       fontFamily="'IBM Plex Mono', monospace"
                     >
                       {kohm!.toFixed(0)}k

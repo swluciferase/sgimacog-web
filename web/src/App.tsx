@@ -30,6 +30,9 @@ import {
   DEFAULT_CONFIG,
   SAMPLE_RATE_HZ,
   CHANNEL_LABELS,
+  CH32_LABELS,
+  CH32_COUNT,
+  CH32_SAMPLE_RATE,
 } from './types/eeg';
 import type { RecordedSample } from './services/csvWriter';
 import type { Lang } from './i18n';
@@ -88,6 +91,9 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
   const impedanceModeActiveRef = useRef(false);
   const [isImpedanceActive, setIsImpedanceActive] = useState(false);
 
+  // Effective device config — updated when device ID is known (ch32 vs standard)
+  const deviceConfigRef = useRef({ channels: DEFAULT_CONFIG.channels, sampleRate: DEFAULT_CONFIG.sampleRate });
+
   const [filterParams, setFilterParams] = useState<FilterParams>(DEFAULT_FILTER_PARAMS);
   const filterBiquadRef = useRef<FilterBiquadState>(makeFilterBiquadState());
 
@@ -141,19 +147,41 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-create parser when device ID is detected (ch32 vs standard)
+  useEffect(() => {
+    if (!deviceId || !wasmService.isInitialized) return;
+    const api = wasmService.api as Record<string, unknown>;
+    const P = api.SteegParser as new (ch: number, sr: number) => SteegParser;
+    if (deviceId.startsWith('STEEG_DG32')) {
+      deviceConfigRef.current = { channels: CH32_COUNT, sampleRate: CH32_SAMPLE_RATE };
+      setParser(new P(CH32_COUNT, CH32_SAMPLE_RATE));
+      filterBiquadRef.current = makeFilterBiquadState(CH32_COUNT);
+      setChannelLabels([...CH32_LABELS]);
+    } else {
+      deviceConfigRef.current = { channels: DEFAULT_CONFIG.channels, sampleRate: DEFAULT_CONFIG.sampleRate };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId]);
+
   const handleParserError = useCallback(() => {
     if (!wasmService.isInitialized) return;
     const api = wasmService.api as Record<string, unknown>;
     const P = api.SteegParser as new (ch: number, sr: number) => SteegParser;
-    setParser(new P(config.channels, config.sampleRate));
-  }, [config.channels, config.sampleRate]);
+    setParser(new P(deviceConfigRef.current.channels, deviceConfigRef.current.sampleRate));
+  }, []);
 
   const { stats: deviceStats, latestPackets, latestImpedance } = useEegStream(
     serial, parser, handleParserError,
   );
 
+  const effectiveSampleRate = deviceId?.startsWith('STEEG_DG32') ? CH32_SAMPLE_RATE : SAMPLE_RATE_HZ;
+  const effectiveChannelCount = deviceId?.startsWith('STEEG_DG32') ? CH32_COUNT : DEFAULT_CONFIG.channels;
+  const deviceMode = deviceId?.startsWith('STEEG_DG32') ? 'ch32' as const
+    : deviceId?.startsWith('STEEG_DG819') ? 'flexible' as const
+    : 'standard' as const;
+
   const { currentWindowStds, goodTimeSec, goodPercent, shouldAutoStop } =
-    useQualityMonitor(latestPackets, isRecording, qualityConfig);
+    useQualityMonitor(latestPackets, isRecording, qualityConfig, effectiveChannelCount);
 
   // Session info pre-fill
   useEffect(() => {
@@ -220,8 +248,8 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
   useEffect(() => {
     if (!isRecording) return;
     for (const pkt of latestPackets) {
-      if (!pkt.eegChannels || pkt.eegChannels.length < 8) continue;
-      recordTimestampRef.current += 1 / SAMPLE_RATE_HZ;
+      if (!pkt.eegChannels || pkt.eegChannels.length < deviceConfigRef.current.channels) continue;
+      recordTimestampRef.current += 1 / deviceConfigRef.current.sampleRate;
       let eventId: string | undefined;
       let eventName: string | undefined;
       if (pendingMarkerRef.current) {
@@ -326,7 +354,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
     impedanceModeActiveRef.current = true;
     setIsImpedanceActive(true);
     await serial.write(cmds.cmd_impedance_ac_on('reference'));
-    parser?.enable_impedance(config.impedanceWindow, config.sampleRate);
+    parser?.enable_impedance(config.impedanceWindow, deviceConfigRef.current.sampleRate);
   }, [isRecording, serial, getCommands, parser, config.impedanceWindow, config.sampleRate]);
 
   const handleExitImpedance = useCallback(async () => {
@@ -430,7 +458,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               lang={lang}
               onEnterImpedanceMode={handleEnterImpedance}
               onExitImpedanceMode={handleExitImpedance}
-              deviceMode={deviceId?.startsWith('STEEG_DG819') ? 'flexible' : 'standard'}
+              deviceMode={deviceMode}
               channelLabels={channelLabels}
               onChannelLabelsChange={setChannelLabels}
             />
@@ -448,6 +476,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
             isRecording={isRecording}
             onEventMarker={handleEventMarker}
             channelLabels={channelLabels}
+            sampleRate={effectiveSampleRate}
           />
         </div>
 
@@ -478,8 +507,9 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               shouldAutoStop={shouldAutoStop}
               sessionInfo={sessionInfo}
               channelLabels={channelLabels}
-              isFlexibleElectrode={deviceId?.startsWith('STEEG_DG819') ?? false}
+              isFlexibleElectrode={deviceMode === 'flexible'}
               isImpedanceActive={isImpedanceActive}
+              deviceSampleRate={effectiveSampleRate}
             />
           </div>
         </div>

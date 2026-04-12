@@ -23,9 +23,11 @@ export function generateCsv(
   filterDesc: string,
   notchDesc: string,
   channelLabels?: string[],
+  sampleRate?: number,
 ): string {
   const lines: string[] = [];
   const chHeaders = (channelLabels ?? ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz']).join(',');
+  const nch = channelLabels?.length ?? (samples[0]?.channels.length ?? 8);
 
   // Header block — exactly 10 lines matching Cygnus CSV format
   lines.push('Cygnus version: 0.28.0.7,File version: 2021.11');
@@ -34,7 +36,7 @@ export function generateCsv(
   lines.push(`Device ID: ${deviceId || 'STEEG_UNKNOWN'}`);
   lines.push('Device version: ');
   lines.push('Device bandwidth: DC to 131 Hz');
-  lines.push('Device sampling rate: 1000 samples/second');
+  lines.push(`Device sampling rate: ${sampleRate ?? 1000} samples/second`);
   lines.push('Data type / unit: EEG / micro-volt (uV)');
   lines.push(`Bandpass filter: ${filterDesc}`);
   lines.push(`Notch filter: ${notchDesc}`);
@@ -48,7 +50,7 @@ export function generateCsv(
   for (const sample of samples) {
     const ts = sample.timestamp.toFixed(3);
     const sn = sample.serialNumber !== null ? sample.serialNumber.toString() : '';
-    const ch = Array.from({ length: 8 }, (_, i) =>
+    const ch = Array.from({ length: nch }, (_, i) =>
       sample.channels[i] !== undefined ? sample.channels[i]!.toFixed(4) : '0.0000',
     ).join(',');
 

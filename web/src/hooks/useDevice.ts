@@ -17,6 +17,9 @@ import {
   DEFAULT_CONFIG,
   SAMPLE_RATE_HZ,
   CHANNEL_LABELS,
+  CH32_LABELS,
+  CH32_COUNT,
+  CH32_SAMPLE_RATE,
 } from '../types/eeg';
 import type { RecordedSample } from '../services/csvWriter';
 import {
@@ -58,8 +61,13 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
   const [serial,   setSerial]   = useState<AnyService | null>(null);
   const [parser,   setParser]   = useState<SteegParserIface | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const deviceIdRef       = useRef<string | null>(null);
   const deviceIdSeenRef   = useRef(false);
   const expectedSerialRef = useRef('');
+
+  // ── Effective device config (updated when device ID is known) ──
+  const effectiveChannelCountRef = useRef(DEFAULT_CONFIG.channels);
+  const effectiveSampleRateRef   = useRef(DEFAULT_CONFIG.sampleRate);
 
   // ── Impedance ──
   const impedanceModeActiveRef = useRef(false);
@@ -129,20 +137,54 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep deviceIdRef in sync for use in stable callbacks
+  useEffect(() => { deviceIdRef.current = deviceId; }, [deviceId]);
+
+  // ── Re-create parser when device ID is detected (ch32 vs standard) ──
+  useEffect(() => {
+    if (!deviceId || !wasmService.isInitialized) return;
+    const api = wasmService.api as Record<string, unknown>;
+    const P = api.SteegParser as new (ch: number, sr: number) => SteegParserIface;
+    if (deviceId.startsWith('STEEG_DG32')) {
+      effectiveChannelCountRef.current = CH32_COUNT;
+      effectiveSampleRateRef.current   = CH32_SAMPLE_RATE;
+      setParser(new P(CH32_COUNT, CH32_SAMPLE_RATE));
+      filterBiquadRef.current = makeFilterBiquadState(CH32_COUNT);
+      setChannelLabels([...CH32_LABELS]);
+    } else {
+      effectiveChannelCountRef.current = DEFAULT_CONFIG.channels;
+      effectiveSampleRateRef.current   = DEFAULT_CONFIG.sampleRate;
+      // Only reset parser if it's coming from a previous ch32 session
+      const prev = deviceIdRef.current;
+      if (prev?.startsWith('STEEG_DG32')) {
+        setParser(new P(DEFAULT_CONFIG.channels, DEFAULT_CONFIG.sampleRate));
+        filterBiquadRef.current = makeFilterBiquadState();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId]);
+
   // ── Re-create parser after WASM trap ──
   const handleParserError = useCallback(() => {
     if (!wasmService.isInitialized) return;
     const api = wasmService.api as Record<string, unknown>;
     const P = api.SteegParser as new (ch: number, sr: number) => SteegParserIface;
-    setParser(new P(DEFAULT_CONFIG.channels, DEFAULT_CONFIG.sampleRate));
+    setParser(new P(effectiveChannelCountRef.current, effectiveSampleRateRef.current));
   }, []);
 
   const { stats: deviceStats, latestPackets, latestImpedance } = useEegStream(
     serial, parser, handleParserError,
   );
 
+  // Derived: effective channel count for quality monitor
+  const [effectiveChannelCount, setEffectiveChannelCount] = useState(DEFAULT_CONFIG.channels);
+  useEffect(() => {
+    const n = deviceId?.startsWith('STEEG_DG32') ? CH32_COUNT : DEFAULT_CONFIG.channels;
+    setEffectiveChannelCount(n);
+  }, [deviceId]);
+
   const { currentWindowStds, goodTimeSec, goodPercent, shouldAutoStop } =
-    useQualityMonitor(latestPackets, isRecording, qualityConfig);
+    useQualityMonitor(latestPackets, isRecording, qualityConfig, effectiveChannelCount);
 
   // ── On connect: send machine_info + adc_on ──
   useEffect(() => {
@@ -198,8 +240,8 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
   useEffect(() => {
     if (!isRecording) return;
     for (const pkt of latestPackets) {
-      if (!pkt.eegChannels || pkt.eegChannels.length < 8) continue;
-      recordTimestampRef.current += 1 / SAMPLE_RATE_HZ;
+      if (!pkt.eegChannels || pkt.eegChannels.length < effectiveChannelCountRef.current) continue;
+      recordTimestampRef.current += 1 / effectiveSampleRateRef.current;
       let eventId: string | undefined;
       let eventName: string | undefined;
       if (pendingMarkerRef.current) {
@@ -383,8 +425,12 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     if (isRecording) pendingMarkerRef.current = marker;
   }, [isRecording]);
 
-  // Derived: STEEG_DG819### → flexible electrode mode
-  const deviceMode = deviceId?.startsWith('STEEG_DG819') ? 'flexible' as const : 'standard' as const;
+  // Derived: device mode from device ID
+  const deviceMode = deviceId?.startsWith('STEEG_DG32') ? 'ch32' as const
+    : deviceId?.startsWith('STEEG_DG819') ? 'flexible' as const
+    : 'standard' as const;
+
+  const effectiveSampleRate = deviceId?.startsWith('STEEG_DG32') ? CH32_SAMPLE_RATE : SAMPLE_RATE_HZ;
 
   return {
     // connection
@@ -433,6 +479,7 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     channelLabels,
     setChannelLabels,
     deviceMode,
+    effectiveSampleRate,
   } as const;
 }
 

@@ -75,6 +75,19 @@ export const EEG_10_20_LABELS = [
 
 export type Eeg1020Label = typeof EEG_10_20_LABELS[number];
 
+/** 32-channel fixed electrode labels (STEEG_DG32 device) */
+export const CH32_LABELS = [
+  'Fp1', 'Fp2', 'AF3', 'AF4',
+  'F7', 'F3', 'Fz', 'F4', 'F8',
+  'FT7', 'FC3', 'FCz', 'FC4', 'FT8',
+  'T7', 'C3', 'Cz', 'C4', 'T8',
+  'TP7', 'CP3', 'CPz', 'CP4', 'TP8',
+  'P7', 'P3', 'Pz', 'P4', 'P8',
+  'O1', 'Oz', 'O2',
+] as const;
+export const CH32_COUNT = 32;
+export const CH32_SAMPLE_RATE = 500;
+
 /** Mutable copy of default channel labels (for comparison / reset) */
 export const DEFAULT_CHANNEL_LABELS: string[] = [...CHANNEL_LABELS];
 export const SAMPLE_RATE_HZ = 1001;
@@ -86,14 +99,14 @@ export const DEFAULT_FILTER_PARAMS: FilterParams = {
   notchFreq: 60,
 };
 
-export const makeFilterBiquadState = (): FilterBiquadState => ({
-  hpState1:      new Float64Array(CHANNEL_COUNT * 2),
-  hpState2:      new Float64Array(CHANNEL_COUNT * 2),
-  lpState1:      new Float64Array(CHANNEL_COUNT * 2),
-  lpState2:      new Float64Array(CHANNEL_COUNT * 2),
-  notchState:    new Float64Array(CHANNEL_COUNT * 6),
-  dcState:       new Float64Array(CHANNEL_COUNT),
-  dcInitialized: new Uint8Array(CHANNEL_COUNT),
+export const makeFilterBiquadState = (channelCount: number = CHANNEL_COUNT): FilterBiquadState => ({
+  hpState1:      new Float64Array(channelCount * 2),
+  hpState2:      new Float64Array(channelCount * 2),
+  lpState1:      new Float64Array(channelCount * 2),
+  lpState2:      new Float64Array(channelCount * 2),
+  notchState:    new Float64Array(channelCount * 6),
+  dcState:       new Float64Array(channelCount),
+  dcInitialized: new Uint8Array(channelCount),
 });
 
 export interface DeviceConfig {

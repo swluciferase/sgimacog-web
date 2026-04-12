@@ -34,6 +34,8 @@ export interface WaveformViewProps {
   devicePalette?: number;
   /** Custom channel labels (flexible electrode mode); falls back to CHANNEL_LABELS */
   channelLabels?: readonly string[];
+  /** Device sample rate — used for filter coefficients and window size (default 1001) */
+  sampleRate?: number;
 }
 
 // Per-device palettes: 4 devices × 8 channels (RGBA float)
@@ -104,9 +106,9 @@ const TIME_OPTIONS = [
   { value: 20, label: '20 s' },
 ];
 
-const toClipY = (rawUv: number, ch: number, scale: number): number => {
-  const yOffset = 1 - (2 * ch + 1) / CHANNEL_COUNT;
-  const yScale = 1 / (CHANNEL_COUNT * scale);
+const toClipY = (rawUv: number, ch: number, scale: number, chCount: number): number => {
+  const yOffset = 1 - (2 * ch + 1) / chCount;
+  const yScale = 1 / (chCount * scale);
   return rawUv * yScale + yOffset;
 };
 
@@ -114,6 +116,20 @@ const toCssColor = (rgba: [number, number, number, number], alpha?: number): str
   const [r, g, b, a] = rgba;
   return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${alpha ?? a})`;
 };
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 1/6)      { r = c; g = x; }
+  else if (h < 2/6) { r = x; g = c; }
+  else if (h < 3/6) { g = c; b = x; }
+  else if (h < 4/6) { g = x; b = c; }
+  else if (h < 5/6) { r = x; b = c; }
+  else              { r = c; b = x; }
+  return [r + m, g + m, b + m];
+}
 
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
@@ -241,6 +257,7 @@ export const WaveformView = ({
   isFocused,
   devicePalette = 0,
   channelLabels,
+  sampleRate,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -253,7 +270,7 @@ export const WaveformView = ({
 
   const [windowSeconds, setWindowSeconds] = useState(5);
   const [fullScaleUv, setFullScaleUv] = useState(100);
-  const [visibleChannels, setVisibleChannels] = useState<boolean[]>(Array(CHANNEL_COUNT).fill(true));
+  const [visibleChannels, setVisibleChannels] = useState<boolean[]>(() => Array(channelLabels?.length ?? CHANNEL_COUNT).fill(true));
 
   // Local HP/LP freq input state (for text inputs)
   const [hpInput, setHpInput] = useState(filterParams.hpFreq.toString());
@@ -272,21 +289,44 @@ export const WaveformView = ({
   const timeLabelDivsRef = useRef<HTMLDivElement[]>([]);
   const timeGridDivsRef = useRef<HTMLDivElement[]>([]);
 
-  // Per-device channel colors
-  const channelColors = useMemo(
-    () => DEVICE_PALETTES[devicePalette % DEVICE_PALETTES.length] ?? DEVICE_PALETTES[0]!,
-    [devicePalette],
+  const labels = useMemo(
+    () => channelLabels ? Array.from(channelLabels) : Array.from(CHANNEL_LABELS),
+    [channelLabels],
   );
+  const chCount = labels.length;
+  const effectiveSampleRate = sampleRate ?? SAMPLE_RATE_HZ;
+  const chCountRef = useRef(chCount);
+  const effectiveSampleRateRef = useRef(effectiveSampleRate);
+  useEffect(() => { chCountRef.current = chCount; }, [chCount]);
+  useEffect(() => { effectiveSampleRateRef.current = effectiveSampleRate; }, [effectiveSampleRate]);
+
+  // Reset visible channels when channel count changes
+  useEffect(() => {
+    setVisibleChannels(Array(chCount).fill(true));
+  }, [chCount]);
+
+  // Per-device channel colors — extended rainbow palette for >8 channels
+  const channelColors = useMemo(() => {
+    const palette = DEVICE_PALETTES[devicePalette % DEVICE_PALETTES.length] ?? DEVICE_PALETTES[0]!;
+    if (chCount <= palette.length) return palette as [number, number, number, number][];
+    // For >8 channels: generate a spectral rainbow (hue 160°→340°, 200° span)
+    return Array.from({ length: chCount }, (_, i) => {
+      const h = ((160 + (i * 200 / chCount)) % 360) / 360;
+      const [r, g, b] = hslToRgb(h, 0.72, 0.55);
+      return [r, g, b, 1.0] as [number, number, number, number];
+    });
+  }, [devicePalette, chCount]);
 
   // Precompute filter coefficients from filterParams
   const filterCoeffs = useMemo(() => {
-    const hp = BW_Q.map(q => computeButterHP(filterParams.hpFreq, SAMPLE_RATE_HZ, q));
-    const lp = BW_Q.map(q => computeButterLP(filterParams.lpFreq, SAMPLE_RATE_HZ, q));
+    const hp = BW_Q.map(q => computeButterHP(filterParams.hpFreq, effectiveSampleRate, q));
+    const lp = BW_Q.map(q => computeButterLP(filterParams.lpFreq, effectiveSampleRate, q));
     const notch = filterParams.notchFreq !== 0
-      ? computeNotchStages(filterParams.notchFreq, SAMPLE_RATE_HZ)
-      : computeNotchStages(50, SAMPLE_RATE_HZ); // placeholder, won't be used when notchFreq=0
+      ? computeNotchStages(filterParams.notchFreq, effectiveSampleRate)
+      : computeNotchStages(50, effectiveSampleRate); // placeholder, won't be used when notchFreq=0
     return { hp, lp, notch };
-  }, [filterParams.hpFreq, filterParams.lpFreq, filterParams.notchFreq]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterParams.hpFreq, filterParams.lpFreq, filterParams.notchFreq, effectiveSampleRate]);
 
   const filterCoeffsRef = useRef(filterCoeffs);
   useEffect(() => { filterCoeffsRef.current = filterCoeffs; }, [filterCoeffs]);
@@ -301,11 +341,6 @@ export const WaveformView = ({
     setHpInput(filterParams.hpFreq.toString());
     setLpInput(filterParams.lpFreq.toString());
   }, [filterParams.hpFreq, filterParams.lpFreq]);
-
-  const labels = useMemo(
-    () => channelLabels ? Array.from(channelLabels) : Array.from(CHANNEL_LABELS),
-    [channelLabels],
-  );
 
   const handleAutoScale = useCallback(() => {
     const latest = latestUvRef.current;
@@ -380,12 +415,14 @@ export const WaveformView = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalMarkerSignal]);
 
-  // WebGL setup — recreated when windowSeconds changes
+  // WebGL setup — recreated when windowSeconds, channel count, or palette changes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const windowPoints = windowSeconds * SAMPLE_RATE_HZ;
+    const nCh = chCountRef.current;
+    const sr = effectiveSampleRateRef.current;
+    const windowPoints = windowSeconds * sr;
 
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -405,18 +442,14 @@ export const WaveformView = ({
     });
 
     // Sweep (scan) mode: pre-allocate full window for each channel.
-    // WebglLine.xy is a flat array: [x0,y0, x1,y1, ... xN,yN]
-    // lineSpaceX(N) fills x values evenly from -1 to +1 and resets y to 0.
-    // We write y directly via line.xy[i*2+1].
     const aux = new WebglAux(wglp.gl);
 
-    const lines: WebglLine[] = Array.from({ length: CHANNEL_COUNT }, (_, ch) => {
-      const [r, g, b, a] = channelColors[ch]!;
-      // Construct with default empty xy, then use lineSpaceX to allocate + set x values
+    const lines: WebglLine[] = Array.from({ length: nCh }, (_, ch) => {
+      const color = channelColors[ch] ?? channelColors[ch % channelColors.length] ?? [0.5, 0.8, 0.7, 1] as [number,number,number,number];
+      const [r, g, b, a] = color;
       const line = new WebglLine(undefined, new ColorRGBA(r, g, b, a));
-      line.lineSpaceX(windowPoints); // allocates xy[windowPoints*2], spaces x from -1 to +1
-      // Initialise all y to channel baseline (y is at odd indices)
-      const baseline = toClipY(0, ch, fullScaleUvRef.current);
+      line.lineSpaceX(windowPoints);
+      const baseline = toClipY(0, ch, fullScaleUvRef.current, nCh);
       for (let i = 0; i < windowPoints; i++) {
         line.xy[i * 2 + 1] = baseline;
       }
@@ -431,14 +464,12 @@ export const WaveformView = ({
 
     const ro = new ResizeObserver(() => {
       resizeCanvas();
-      // After canvas physical dimensions change, the GL viewport must be updated
-      // explicitly — WebglPlot.clear() does not do this automatically.
       const gl = wglp.gl as WebGL2RenderingContext;
       gl.viewport(0, 0, canvas.width, canvas.height);
     });
     ro.observe(canvas);
 
-    const CURSOR_GAP = 20; // number of points blanked ahead of sweep pen
+    const CURSOR_GAP = 20;
 
     const renderFrame = () => {
       const plot = wglpRef.current;
@@ -454,86 +485,82 @@ export const WaveformView = ({
       const fp = filterParamsRef.current;
       const biquad = filterBiquadRef.current;
       const { hp, lp, notch } = filterCoeffsRef.current;
+      const numCh = chCountRef.current;
+      const effSr = effectiveSampleRateRef.current;
+      const wPts = windowSeconds * effSr;
 
       const pendingPackets = packetQueueRef.current.splice(0, packetQueueRef.current.length);
       let sweepPos = sweepPosRef.current;
 
       for (const packet of pendingPackets) {
         const channels = packet.eegChannels;
-        if (!channels || channels.length < CHANNEL_COUNT) continue;
+        if (!channels || channels.length < numCh) continue;
 
-        for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
+        for (let ch = 0; ch < numCh; ch++) {
           let uv = 0;
           if (visible[ch]) {
             uv = channels[ch] ?? 0;
             uv = applyFilterChain(uv, ch, biquad, fp, hp, lp, notch);
           }
-          // Write y value directly into the flat xy array at this sweep position
-          lines[ch]!.xy[sweepPos * 2 + 1] = toClipY(uv, ch, scale);
+          lines[ch]!.xy[sweepPos * 2 + 1] = toClipY(uv, ch, scale, numCh);
         }
 
-        // Cursor gap: blank points ahead of the pen (creates visible scan cursor)
+        // Cursor gap: blank points ahead of the pen
         for (let k = 0; k < CURSOR_GAP; k++) {
-          const gapPos = (sweepPos + 1 + k) % windowPoints;
-          for (let ch = 0; ch < CHANNEL_COUNT; ch++) {
-            lines[ch]!.xy[gapPos * 2 + 1] = toClipY(0, ch, scale);
+          const gapPos = (sweepPos + 1 + k) % wPts;
+          for (let ch = 0; ch < numCh; ch++) {
+            lines[ch]!.xy[gapPos * 2 + 1] = toClipY(0, ch, scale, numCh);
           }
         }
 
-        sweepPos = (sweepPos + 1) % windowPoints;
+        sweepPos = (sweepPos + 1) % wPts;
         totalSweepRef.current++;
       }
 
       sweepPosRef.current = sweepPos;
 
-      // Update scan cursor line position
       if (sweepCursorRef.current) {
-        sweepCursorRef.current.style.left = `${(sweepPos / windowPoints) * 100}%`;
+        sweepCursorRef.current.style.left = `${(sweepPos / wPts) * 100}%`;
       }
 
-      // Mark markers as lapped once the sweep cursor has gone past them (full revolution)
       const nowTotal = totalSweepRef.current;
       markersRef.current.forEach(marker => {
         if (!lappedMarkersRef.current.has(marker.id) &&
-            nowTotal - marker.totalSweep >= windowPoints) {
+            nowTotal - marker.totalSweep >= wPts) {
           lappedMarkersRef.current.add(marker.id);
         }
       });
 
-      // Update marker positions (fixed in scan mode, fade/hide when lapped)
       markersRef.current.forEach(marker => {
         const div = markerDivsRef.current.get(marker.id);
         if (!div) return;
-        const leftPct = (marker.sweepPos / windowPoints) * 100;
+        const leftPct = (marker.sweepPos / wPts) * 100;
         div.style.left = `${leftPct}%`;
         if (lappedMarkersRef.current.has(marker.id)) {
           div.style.opacity = '0';
         } else {
-          const dist = (sweepPos - marker.sweepPos + windowPoints) % windowPoints;
+          const dist = (sweepPos - marker.sweepPos + wPts) % wPts;
           div.style.opacity = dist < CURSOR_GAP + 4 ? '0' : '1';
         }
       });
 
-      // Update time axis: fixed grid positions, update time labels each frame
-      const numTicks = windowSeconds; // one tick per second
+      const numTicks = windowSeconds;
       const p2 = (n: number) => n.toString().padStart(2, '0');
       for (let k = 0; k < MAX_TIME_TICKS; k++) {
         const labelDiv = timeLabelDivsRef.current[k];
         const gridDiv = timeGridDivsRef.current[k];
-        const visible = k < numTicks;
-        if (labelDiv) labelDiv.style.display = visible ? 'block' : 'none';
-        if (gridDiv) gridDiv.style.display = visible ? 'block' : 'none';
-        if (!visible) continue;
+        const vis = k < numTicks;
+        if (labelDiv) labelDiv.style.display = vis ? 'block' : 'none';
+        if (gridDiv) gridDiv.style.display = vis ? 'block' : 'none';
+        if (!vis) continue;
 
-        // Fixed canvas position for tick k (divides canvas into equal second intervals)
-        const canvasPos = Math.round((k / numTicks) * windowPoints);
+        const canvasPos = Math.round((k / numTicks) * wPts);
         const leftPct = `${(k / numTicks) * 100}%`;
         if (labelDiv) labelDiv.style.left = leftPct;
         if (gridDiv) gridDiv.style.left = leftPct;
 
-        // Time at this canvas position = now minus how many samples ago it was written
-        const samplesAgo = (sweepPos - canvasPos + windowPoints) % windowPoints;
-        const t = new Date(Date.now() - (samplesAgo / SAMPLE_RATE_HZ) * 1000);
+        const samplesAgo = (sweepPos - canvasPos + wPts) % wPts;
+        const t = new Date(Date.now() - (samplesAgo / effSr) * 1000);
         if (labelDiv) labelDiv.textContent = `${p2(t.getHours())}:${p2(t.getMinutes())}:${p2(t.getSeconds())}`;
       }
 
@@ -556,7 +583,8 @@ export const WaveformView = ({
       totalSweepRef.current = 0;
       lappedMarkersRef.current = new Set();
     };
-  }, [windowSeconds, filterBiquadRef, channelColors]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowSeconds, filterBiquadRef, channelColors, chCount, effectiveSampleRate]);
 
   const hasData = packets && packets.length > 0;
 
@@ -712,7 +740,7 @@ export const WaveformView = ({
                 onChange={e => setLpInput(e.target.value)}
                 onBlur={() => {
                   const v = parseFloat(lpInput);
-                  if (!isNaN(v) && v > filterParams.hpFreq && v < SAMPLE_RATE_HZ / 2) {
+                  if (!isNaN(v) && v > filterParams.hpFreq && v < effectiveSampleRate / 2) {
                     onFilterChange({ lpFreq: v }, ['lp']);
                   } else {
                     setLpInput(filterParams.lpFreq.toString());
@@ -831,7 +859,7 @@ export const WaveformView = ({
               style={{
                 position: 'absolute',
                 left: 6,
-                top: `${((i + 0.5) / CHANNEL_COUNT) * 100}%`,
+                top: `${((i + 0.5) / chCount) * 100}%`,
                 transform: 'translateY(-50%)',
                 color: (visibleChannels[i] ?? true)
                   ? toCssColor(channelColors[i]!)
@@ -863,7 +891,7 @@ export const WaveformView = ({
               <div key={`amp-${label}`} style={{
                 position: 'absolute',
                 right: 2,
-                top: `${((i + 0.5) / CHANNEL_COUNT) * 100}%`,
+                top: `${((i + 0.5) / chCount) * 100}%`,
                 transform: 'translateY(-50%)',
                 color: 'rgba(140,160,185,0.5)',
                 fontSize: 8,

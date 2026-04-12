@@ -1,10 +1,13 @@
+Resolving dependencies
+Resolved, downloaded and extracted [2]
+Saved lockfile
 
- ⛅️ wrangler 4.81.0
+ ⛅️ wrangler 4.81.1
 ───────────────────
-[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNo compatibility_date was specified. Using today's date: 2026-04-08.[0m
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNo compatibility_date was specified. Using today's date: 2026-04-11.[0m
 
-  ❯❯ Add one to your Wrangler configuration file: compatibility_date = "2026-04-08", or
-  ❯❯ Pass it in your terminal: wrangler pages dev [<DIRECTORY>] --compatibility-date=2026-04-08
+  ❯❯ Add one to your Wrangler configuration file: compatibility_date = "2026-04-11", or
+  ❯❯ Pass it in your terminal: wrangler pages dev [<DIRECTORY>] --compatibility-date=2026-04-11
   
   See [4mhttps://developers.cloudflare.com/workers/platform/compatibility-dates/[0m for more information.
 
@@ -14,11 +17,13 @@ Your Worker has access to the following bindings:
 Binding                                                                   Resource                  Mode
 env.CF_PAGES ("1")                                                        Environment Variable      local
 env.CF_PAGES_BRANCH ("main")                                              Environment Variable      local
-env.CF_PAGES_COMMIT_SHA ("abedce2340684f89e41a4d79402ac05447288...")      Environment Variable      local
-env.CF_PAGES_URL ("https://abedce2.sgimacog-web.pages.dev")               Environment Variable      local
+env.CF_PAGES_COMMIT_SHA ("3055584e4529684f2db84d0b16a3f36bb7314...")      Environment Variable      local
+env.CF_PAGES_URL ("https://3055584.sgimacog-web.pages.dev")               Environment Variable      local
 
 ⎔ Starting local server...
-[wrangler:info] Ready on http://localhost:8788
-✨ Compiled Worker successfully
-⎔ Reloading local server...
-⎔ Local server updated and ready
+*** Fatal uncaught kj::Exception: kj/async-io-unix.c++:945: failed: ::bind(sockfd, &addr.generic, addrlen): Address already in use; toString() = 127.0.0.1:8788
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mAddress already in use (127.0.0.1:8788). Please check that you are not already running a server on this address or specify a different port with --port.[0m
+
+
+🪵  Logs were written to "/Users/swryociao/.wrangler/logs/wrangler-2026-04-11_16-29-03_323.log"

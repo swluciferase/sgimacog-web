@@ -218,6 +218,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             isFocused={isFocused}
             devicePalette={deviceIndex}
             channelLabels={d.channelLabels}
+            sampleRate={d.effectiveSampleRate}
           />
         </div>
 
@@ -250,6 +251,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             channelLabels={d.channelLabels}
             isFlexibleElectrode={d.deviceMode === 'flexible'}
             isImpedanceActive={d.isImpedanceActive}
+            deviceSampleRate={d.effectiveSampleRate}
             compact
           />
         </div>
