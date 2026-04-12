@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, type FC, type CSSProperties } from 
 import type { SubjectInfo } from '../../types/eeg';
 import { CHANNEL_LABELS, CHANNEL_COUNT } from '../../types/eeg';
 import type { RecordedSample } from '../../services/csvWriter';
-import { generateCsv, downloadCsv, buildCsvFilename } from '../../services/csvWriter';
+import { generateCsv, downloadCsv, buildCsvFilename, generateCsvBlob, downloadCsvBlob } from '../../services/csvWriter';
 import { uploadSessionCsv, saveSessionResult, type SessionInfo } from '../../services/sessionApi';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
@@ -24,6 +24,8 @@ export interface RecordViewProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   recordedSamples: RecordedSample[];
+  recordSamplesRef?: React.RefObject<RecordedSample[]>;
+  sampleCount?: number;
   deviceId: string | null;
   filterDesc: string;
   notchDesc: string;
@@ -95,6 +97,8 @@ export const RecordView: FC<RecordViewProps> = ({
   onStartRecording,
   onStopRecording,
   recordedSamples,
+  recordSamplesRef,
+  sampleCount: sampleCountProp,
   deviceId,
   filterDesc,
   notchDesc,
@@ -116,6 +120,9 @@ export const RecordView: FC<RecordViewProps> = ({
   isImpedanceActive = false,
   deviceSampleRate,
 }) => {
+  // Use ref-based access when available (avoids full-array copy); fall back to prop
+  const getSamples = (): RecordedSample[] => recordSamplesRef?.current ?? recordedSamples;
+  const sampleCount = sampleCountProp ?? recordedSamples.length;
   // Report generation blocked for: flexible electrode with non-default layout, or 32ch device
   const isCh32 = (channelLabels?.length ?? 8) > 8;
   const defaultLabels = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'];
@@ -194,9 +201,10 @@ export const RecordView: FC<RecordViewProps> = ({
   const handleStop = () => {
     broadcastEegDone();
     onStopRecording();
-    if (recordedSamples.length > 0 && startTime) {
-      const content = generateCsv(
-        recordedSamples,
+    const samples = getSamples();
+    if (samples.length > 0 && startTime) {
+      const blob = generateCsvBlob(
+        samples,
         startTime,
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
@@ -205,9 +213,10 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceSampleRate,
       );
       const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
-      downloadCsv(content, filename);
+      downloadCsvBlob(blob, filename);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
-        uploadSessionCsv(sessionInfo.sessionId, sessionInfo.sessionToken, content, filename);
+        blob.text().then(content =>
+          uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, filename));
       }
     }
   };
@@ -222,18 +231,20 @@ export const RecordView: FC<RecordViewProps> = ({
   const handleAutoStopReport = async () => {
     broadcastEegDone();
     onStopRecording();
-    if (recordedSamples.length === 0 || !startTime) return;
-    const content = generateCsv(recordedSamples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels, deviceSampleRate);
+    const samples = getSamples();
+    if (samples.length === 0 || !startTime) return;
+    const blob = generateCsvBlob(samples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels, deviceSampleRate);
     const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
-    downloadCsv(content, filename);
+    downloadCsvBlob(blob, filename);
     if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
-      uploadSessionCsv(sessionInfo.sessionId, sessionInfo.sessionToken, content, filename);
+      blob.text().then(content =>
+        uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, filename));
     }
-    const durationSec = recordedSamples.length / SAMPLE_RATE;
+    const durationSec = samples.length / SAMPLE_RATE;
     if (durationSec < 90) return; // too short for report; CSV already saved
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '', useArtifactRemoval);
+      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval);
       if (result.error) { setReportStatus('error'); return; }
       await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined, fileReportLang);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
@@ -255,18 +266,18 @@ export const RecordView: FC<RecordViewProps> = ({
   };
 
   const handleStopAndReport = async () => {
-    const durationSec = recordedSamples.length / SAMPLE_RATE;
+    const samples = getSamples();
+    const durationSec = samples.length / SAMPLE_RATE;
     if (durationSec < 90) {
       alert(T(lang, 'recordReportTooShort'));
       return;
     }
     // Stop recording and download CSV first
     onStopRecording();
-    let csvContent = '';
     let csvFilename = '';
-    if (recordedSamples.length > 0 && startTime) {
-      csvContent = generateCsv(
-        recordedSamples,
+    if (samples.length > 0 && startTime) {
+      const blob = generateCsvBlob(
+        samples,
         startTime,
         deviceId ?? 'STEEG_UNKNOWN',
         filterDesc,
@@ -275,16 +286,17 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceSampleRate,
       );
       csvFilename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
-      downloadCsv(csvContent, csvFilename);
+      downloadCsvBlob(blob, csvFilename);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
-        uploadSessionCsv(sessionInfo.sessionId, sessionInfo.sessionToken, csvContent, csvFilename);
+        blob.text().then(content =>
+          uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, csvFilename));
       }
     }
     // Run EEG analysis asynchronously
     broadcastEegDone();
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '', useArtifactRemoval);
+      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval);
       if (result.error) {
         alert(`${T(lang, 'recordReportError')}: ${result.error}`);
         setReportStatus('error');

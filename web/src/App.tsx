@@ -102,7 +102,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
   });
 
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedSamples, setRecordedSamples] = useState<RecordedSample[]>([]);
+  const [sampleCount, setSampleCount] = useState(0);
   const [recordStartTime, setRecordStartTime] = useState<Date | null>(null);
   const recordSamplesRef = useRef<RecordedSample[]>([]);
   const recordTimestampRef = useRef<number>(0);
@@ -288,11 +288,11 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
     return () => clearTimeout(t);
   }, [status, getCommands]);
 
-  // Sync recordedSamples every 2s
+  // Sync sample count every 2s (no full-array copy — prevents OOM on long recordings)
   useEffect(() => {
     if (!isRecording) return;
     const id = setInterval(() => {
-      setRecordedSamples([...recordSamplesRef.current]);
+      setSampleCount(recordSamplesRef.current.length);
     }, 2000);
     return () => clearInterval(id);
   }, [isRecording]);
@@ -375,13 +375,13 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
     recordSamplesRef.current = [];
     recordTimestampRef.current = 0;
     setRecordStartTime(new Date());
-    setRecordedSamples([]);
+    setSampleCount(0);
     setIsRecording(true);
   }, []);
 
   const handleStopRecording = useCallback(() => {
     setIsRecording(false);
-    setRecordedSamples([...recordSamplesRef.current]);
+    setSampleCount(recordSamplesRef.current.length);
   }, []);
 
   const autoStopFiredRef = useRef(false);
@@ -491,7 +491,9 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               onSubjectInfoChange={setSubjectInfo}
               onStartRecording={handleStartRecording}
               onStopRecording={handleStopRecording}
-              recordedSamples={recordedSamples}
+              recordedSamples={[]}
+              recordSamplesRef={recordSamplesRef}
+              sampleCount={sampleCount}
               deviceId={deviceId}
               filterDesc={computeFilterDesc(filterParams)}
               notchDesc={computeNotchDesc(filterParams)}

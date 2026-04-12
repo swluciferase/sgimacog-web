@@ -87,7 +87,7 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
 
   // ── Recording ──
   const [isRecording, setIsRecording]         = useState(false);
-  const [recordedSamples, setRecordedSamples] = useState<RecordedSample[]>([]);
+  const [sampleCount, setSampleCount]         = useState(0);
   const [recordStartTime, setRecordStartTime] = useState<Date | null>(null);
   const recordSamplesRef    = useRef<RecordedSample[]>([]);
   const recordTimestampRef  = useRef(0);
@@ -259,11 +259,11 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     }
   }, [latestPackets, isRecording]);
 
-  // ── Sync recordedSamples for display ──
+  // ── Sync sample count for display (no full-array copy — prevents OOM on long recordings) ──
   useEffect(() => {
     if (!isRecording) return;
     const id = setInterval(() => {
-      setRecordedSamples([...recordSamplesRef.current]);
+      setSampleCount(recordSamplesRef.current.length);
     }, 2000);
     return () => clearInterval(id);
   }, [isRecording]);
@@ -395,14 +395,14 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     recordSamplesRef.current = [];
     recordTimestampRef.current = 0;
     setRecordStartTime(new Date());
-    setRecordedSamples([]);
+    setSampleCount(0);
     setIsRecording(true);
     autoStopFiredRef.current = false;
   }, [isImpedanceActive]);
 
   const handleStopRecording = useCallback(() => {
     setIsRecording(false);
-    setRecordedSamples([...recordSamplesRef.current]);
+    setSampleCount(recordSamplesRef.current.length);
   }, []);
 
   // Wire auto-stop here (stable ref approach)
@@ -457,7 +457,8 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     handleFilterChange,
     // recording
     isRecording,
-    recordedSamples,
+    recordSamplesRef,
+    sampleCount,
     recordStartTime,
     handleStartRecording,
     handleStopRecording,

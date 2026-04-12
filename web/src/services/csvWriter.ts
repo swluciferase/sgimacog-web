@@ -25,11 +25,20 @@ export function generateCsv(
   channelLabels?: string[],
   sampleRate?: number,
 ): string {
-  const lines: string[] = [];
-  const chHeaders = (channelLabels ?? ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz']).join(',');
-  const nch = channelLabels?.length ?? (samples[0]?.channels.length ?? 8);
+  return generateCsvHeader(startTime, deviceId, filterDesc, notchDesc, channelLabels, sampleRate)
+    + generateCsvRows(samples, startTime, channelLabels);
+}
 
-  // Header block — exactly 10 lines matching Cygnus CSV format
+function generateCsvHeader(
+  startTime: Date,
+  deviceId: string,
+  filterDesc: string,
+  notchDesc: string,
+  channelLabels?: string[],
+  sampleRate?: number,
+): string {
+  const chHeaders = (channelLabels ?? ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz']).join(',');
+  const lines: string[] = [];
   lines.push('Cygnus version: 0.28.0.7,File version: 2021.11');
   lines.push('Operative system: Browser');
   lines.push(`Record datetime: ${formatDatetime(startTime)}`);
@@ -40,34 +49,58 @@ export function generateCsv(
   lines.push('Data type / unit: EEG / micro-volt (uV)');
   lines.push(`Bandpass filter: ${filterDesc}`);
   lines.push(`Notch filter: ${notchDesc}`);
-
-  // Column headers (line 11 — must not be shifted by extra rows)
   lines.push(
     `Timestamp,Serial Number,${chHeaders},Event Id,Event Date,Event Duration,Software Marker,Software Marker Name`,
   );
+  return lines.join('\r\n') + '\r\n';
+}
 
-  // Data rows
+function generateCsvRows(
+  samples: RecordedSample[],
+  startTime: Date,
+  channelLabels?: string[],
+): string {
+  const nch = channelLabels?.length ?? (samples[0]?.channels.length ?? 8);
+  const lines: string[] = [];
   for (const sample of samples) {
     const ts = sample.timestamp.toFixed(3);
     const sn = sample.serialNumber !== null ? sample.serialNumber.toString() : '';
     const ch = Array.from({ length: nch }, (_, i) =>
       sample.channels[i] !== undefined ? sample.channels[i]!.toFixed(4) : '0.0000',
     ).join(',');
-
     const eventId = sample.eventId ?? '';
     const eventDate = sample.eventId ? formatDatetime(new Date(startTime.getTime() + sample.timestamp * 1000)) : '';
-    const eventDuration = '';
     const softwareMarker = sample.eventId ? '1' : '';
     const softwareMarkerName = sample.eventName ?? '';
-
-    lines.push(`${ts},${sn},${ch},${eventId},${eventDate},${eventDuration},${softwareMarker},${softwareMarkerName}`);
+    lines.push(`${ts},${sn},${ch},${eventId},${eventDate},,${softwareMarker},${softwareMarkerName}`);
   }
-
   return lines.join('\r\n') + '\r\n';
 }
 
-export function downloadCsv(content: string, filename: string): void {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+/**
+ * Build CSV as a Blob in chunks to avoid allocating one massive string.
+ * Peak memory ≈ CHUNK_SIZE rows worth of string (~5 MB) instead of the full file.
+ */
+export function generateCsvBlob(
+  samples: RecordedSample[],
+  startTime: Date,
+  deviceId: string,
+  filterDesc: string,
+  notchDesc: string,
+  channelLabels?: string[],
+  sampleRate?: number,
+): Blob {
+  const CHUNK_SIZE = 50_000;
+  const parts: BlobPart[] = [];
+  parts.push(generateCsvHeader(startTime, deviceId, filterDesc, notchDesc, channelLabels, sampleRate));
+  for (let i = 0; i < samples.length; i += CHUNK_SIZE) {
+    const slice = samples.slice(i, i + CHUNK_SIZE);
+    parts.push(generateCsvRows(slice, startTime, channelLabels));
+  }
+  return new Blob(parts, { type: 'text/csv;charset=utf-8;' });
+}
+
+export function downloadCsvBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -76,6 +109,11 @@ export function downloadCsv(content: string, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function downloadCsv(content: string, filename: string): void {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  downloadCsvBlob(blob, filename);
 }
 
 export function buildCsvFilename(subjectId: string, startTime: Date): string {
