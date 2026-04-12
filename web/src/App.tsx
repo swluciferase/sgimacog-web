@@ -415,6 +415,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               lang={lang}
               onConnect={handleConnect}
               onDisconnect={handleDisconnect}
+              compact
             />
             <div className="sh" style={{ marginTop: 10 }}>
               <span className="sh-g">~</span>{lang === 'zh' ? '電極阻抗' : 'Impedance'}
