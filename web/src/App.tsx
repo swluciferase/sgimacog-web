@@ -490,7 +490,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-device layout — renders DevicePanel × n
 // ─────────────────────────────────────────────────────────────────────────────
-function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal }: {
+function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal, syncMarkerOn }: {
   deviceCount: number;
   lang: Lang;
   sessionInfo: SessionInfo | null;
@@ -498,6 +498,7 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
   stopSignal: number;
   disconnectSignal: number;
   eventSignal: number;
+  syncMarkerOn: boolean;
 }) {
   const layoutClass = `multi-layout n${deviceCount}`;
   return (
@@ -512,6 +513,7 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
           stopSignal={stopSignal}
           disconnectSignal={disconnectSignal}
           eventSignal={eventSignal}
+          syncMarkerOn={syncMarkerOn}
         />
       ))}
     </div>
@@ -529,6 +531,7 @@ function App() {
   const [stopSignal, setStopSignal] = useState(0);
   const [disconnectSignal, setDisconnectSignal] = useState(0);
   const [eventSignal, setEventSignal] = useState(0);
+  const [syncMarkerOn, setSyncMarkerOn] = useState(false);
   const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
 
   useEffect(() => {
@@ -540,6 +543,19 @@ function App() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Global sync-marker keyboard handler: when sync mode is ON, Space/M triggers all devices
+  useEffect(() => {
+    if (!syncMarkerOn || deviceCount <= 1) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        setEventSignal(n => n + 1);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [syncMarkerOn, deviceCount]);
 
   return (
     <div className="app-container">
@@ -553,7 +569,8 @@ function App() {
         onSimultaneousRecord={() => setRecordSignal(n => n + 1)}
         onSimultaneousStop={() => setStopSignal(n => n + 1)}
         onSimultaneousDisconnect={() => setDisconnectSignal(n => n + 1)}
-        onSimultaneousEvent={() => setEventSignal(n => n + 1)}
+        syncMarkerOn={syncMarkerOn}
+        onToggleSyncMarker={() => setSyncMarkerOn(v => !v)}
       />
 
       {deviceCount === 1
@@ -566,6 +583,7 @@ function App() {
             stopSignal={stopSignal}
             disconnectSignal={disconnectSignal}
             eventSignal={eventSignal}
+            syncMarkerOn={syncMarkerOn}
           />
       }
     </div>

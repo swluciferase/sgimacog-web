@@ -11,7 +11,8 @@ export interface HeaderProps {
   onSimultaneousRecord: () => void;
   onSimultaneousStop: () => void;
   onSimultaneousDisconnect: () => void;
-  onSimultaneousEvent: () => void;
+  syncMarkerOn: boolean;
+  onToggleSyncMarker: () => void;
 }
 
 // EEG_logo.svg inline — brand colors preserved from logo file
@@ -41,7 +42,8 @@ const EEG_LOGO_SVG = (
 
 export const Header: FC<HeaderProps> = ({
   lang, onLangToggle, deviceCount, onAddDevice, onRemoveDevice,
-  showMultiControls, onSimultaneousRecord, onSimultaneousStop, onSimultaneousDisconnect, onSimultaneousEvent,
+  showMultiControls, onSimultaneousRecord, onSimultaneousStop, onSimultaneousDisconnect,
+  syncMarkerOn, onToggleSyncMarker,
 }) => {
   return (
     <header style={{
@@ -106,11 +108,20 @@ export const Header: FC<HeaderProps> = ({
           </button>
           <button
             className="dev-count-btn"
-            onClick={onSimultaneousEvent}
-            title={lang === 'zh' ? '同時標記所有錄製中裝置' : 'Event marker on all recording devices'}
-            style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'rgba(240,230,80,.9)', borderColor: 'rgba(220,210,60,.4)' }}
+            onClick={onToggleSyncMarker}
+            title={lang === 'zh'
+              ? (syncMarkerOn ? '同步標記已開啟 — Space/M 同時標記所有錄製中裝置（再按關閉）' : '開啟同步標記 — 開啟後 Space/M 同時標記所有錄製中裝置')
+              : (syncMarkerOn ? 'Sync marker ON — Space/M marks all recording devices (click to turn off)' : 'Turn on sync marker — Space/M marks all recording devices')
+            }
+            style={{
+              width: 'auto', padding: '0 8px', fontSize: '.6rem',
+              color: syncMarkerOn ? '#f0e650' : 'var(--muted)',
+              borderColor: syncMarkerOn ? 'rgba(240,230,80,.6)' : 'rgba(72,186,166,.25)',
+              background: syncMarkerOn ? 'rgba(240,230,80,.12)' : 'transparent',
+              fontWeight: syncMarkerOn ? 700 : 400,
+            }}
           >
-            {lang === 'zh' ? '同時標記' : 'Mark All'}
+            {syncMarkerOn ? '● ' : ''}{lang === 'zh' ? '同步標記' : 'Sync Mark'}
           </button>
           <button
             className="dev-count-btn"

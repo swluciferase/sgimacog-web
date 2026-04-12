@@ -41,6 +41,8 @@ export interface RecordViewProps {
   sessionInfo?: SessionInfo | null;
   /** Hide CSV file-report controls (used in multi-device panel) */
   compact?: boolean;
+  /** Increment to trigger simultaneous stop+save from outside */
+  stopAndSaveSignal?: number;
 }
 
 function formatDuration(ms: number): string {
@@ -100,6 +102,7 @@ export const RecordView: FC<RecordViewProps> = ({
   shouldAutoStop,
   sessionInfo,
   compact = false,
+  stopAndSaveSignal = 0,
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
@@ -334,6 +337,14 @@ export const RecordView: FC<RecordViewProps> = ({
       setFileStatusMsg(`${T(lang, 'recordFromFileErrAnalysis')}: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+
+  // Simultaneous stop+save from broadcast (同時停止 button)
+  // Uses handleAutoStopReport: stops recording, downloads CSV, generates report if ≥ 90s (no alert)
+  useEffect(() => {
+    if (stopAndSaveSignal === 0) return;
+    if (isRecording) void handleAutoStopReport();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stopAndSaveSignal]);
 
   // Auto-stop when quality target is reached
   const handleAutoStopRef = useRef<() => void | Promise<void>>(handleStop);

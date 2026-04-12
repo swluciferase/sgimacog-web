@@ -23,6 +23,8 @@ export interface WaveformViewProps {
   onEventMarker: (marker: { id: string; time: number; label: string }) => void;
   /** Increment to trigger an event marker from outside (broadcast) */
   externalMarkerSignal?: number;
+  /** When true, suppress local Space/M key handler (App handles it globally in sync mode) */
+  syncMarkerMode?: boolean;
 }
 
 const CHANNEL_COLORS: [number, number, number, number][] = [
@@ -187,6 +189,7 @@ export const WaveformView = ({
   isRecording,
   onEventMarker,
   externalMarkerSignal = 0,
+  syncMarkerMode = false,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -285,8 +288,10 @@ export const WaveformView = ({
     if (last?.eegChannels) latestUvRef.current = last.eegChannels;
   }, [packets]);
 
-  // Keyboard markers — only when canvas is visible
+  // Keyboard markers — only when canvas is visible AND sync mode is OFF
+  // (when syncMarkerMode is ON, the App-level global handler fires eventSignal instead)
   useEffect(() => {
+    if (syncMarkerMode) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.key === 'm' || e.key === 'M') {
         if (canvasRef.current && canvasRef.current.offsetParent !== null) {
@@ -297,7 +302,7 @@ export const WaveformView = ({
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [addMarker]);
+  }, [addMarker, syncMarkerMode]);
 
   // External broadcast marker (from simultaneous-event button)
   useEffect(() => {

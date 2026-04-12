@@ -33,12 +33,14 @@ export interface DevicePanelProps {
   disconnectSignal?: number;
   /** Increment to broadcast a simultaneous-event-marker command */
   eventSignal?: number;
-  /** Increment to broadcast a simultaneous-stop-recording command */
+  /** Increment to broadcast a simultaneous-stop-recording command (also triggers save) */
   stopSignal?: number;
+  /** When true, Space/M key in WaveformView is suppressed (handled globally by App) */
+  syncMarkerOn?: boolean;
 }
 
 export const DevicePanel: FC<DevicePanelProps> = ({
-  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0,
+  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false,
 }) => {
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
@@ -57,12 +59,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disconnectSignal]);
 
-  // Broadcast: simultaneous stop recording
-  useEffect(() => {
-    if (stopSignal === 0) return;
-    if (d.isRecording) d.handleStopRecording();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stopSignal]);
+  // stopSignal is forwarded to RecordView as stopAndSaveSignal so it handles stop+save together
 
   const deviceColor = DEVICE_COLORS[deviceIndex % DEVICE_COLORS.length];
   const deviceLabel = `D${deviceIndex + 1}`;
@@ -194,6 +191,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             isRecording={d.isRecording}
             onEventMarker={d.handleEventMarker}
             externalMarkerSignal={eventSignal}
+            syncMarkerMode={syncMarkerOn}
           />
         </div>
 
@@ -222,6 +220,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             goodPercent={d.goodPercent}
             shouldAutoStop={d.shouldAutoStop}
             sessionInfo={sessionInfo ?? null}
+            stopAndSaveSignal={stopSignal}
             compact
           />
         </div>
