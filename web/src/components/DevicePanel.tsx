@@ -187,6 +187,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({ deviceIndex, lang, sessionIn
             goodPercent={d.goodPercent}
             shouldAutoStop={d.shouldAutoStop}
             sessionInfo={sessionInfo ?? null}
+            compact
           />
         </div>
 

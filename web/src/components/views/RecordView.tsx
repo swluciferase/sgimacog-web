@@ -39,6 +39,8 @@ export interface RecordViewProps {
   goodPercent: number;
   shouldAutoStop: boolean;
   sessionInfo?: SessionInfo | null;
+  /** Hide CSV file-report controls (used in multi-device panel) */
+  compact?: boolean;
 }
 
 function formatDuration(ms: number): string {
@@ -97,6 +99,7 @@ export const RecordView: FC<RecordViewProps> = ({
   goodPercent,
   shouldAutoStop,
   sessionInfo,
+  compact = false,
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
@@ -207,7 +210,7 @@ export const RecordView: FC<RecordViewProps> = ({
     try {
       const result = await analyzeEeg(recordedSamples, subjectInfo.dob ?? '', useArtifactRemoval);
       if (result.error) { setReportStatus('error'); return; }
-      await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
+      await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined, fileReportLang);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         saveSessionResult(sessionInfo.sessionId, sessionInfo.sessionToken, {
           age:          result.age,
@@ -260,7 +263,7 @@ export const RecordView: FC<RecordViewProps> = ({
         setReportStatus('error');
         return;
       }
-      await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined);
+      await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined, fileReportLang);
       // Save EEG metrics to project session
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         saveSessionResult(sessionInfo.sessionId, sessionInfo.sessionToken, {
@@ -301,7 +304,7 @@ export const RecordView: FC<RecordViewProps> = ({
       setFileStatus('analyzing');
       let result;
       try {
-        result = await analyzeEeg(parsed.samples, fileDob, useArtifactRemoval);
+        result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', useArtifactRemoval);
       } catch (wasmErr) {
         console.error('analyzeEeg threw:', wasmErr);
         setFileStatus('error');
@@ -313,15 +316,8 @@ export const RecordView: FC<RecordViewProps> = ({
         setFileStatusMsg(T(lang, 'recordFromFileErrAnalysis') + `: ${result.error}`);
         return;
       }
-      // Build SubjectInfo using the file-section UI fields
-      const fileSubject = {
-        ...subjectInfo,
-        ...(fileId   ? { id: fileId }     : {}),
-        ...(fileName ? { name: fileName } : {}),
-        ...(fileSex  ? { sex: fileSex }   : {}),
-      };
       try {
-        await openHtmlReport(result, fileSubject, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId, undefined, fileReportLang);
+        await openHtmlReport(result, subjectInfo, parsed.recordDatetime ? new Date(parsed.recordDatetime) : null, parsed.deviceId || deviceId, undefined, fileReportLang);
       } catch (reportErr) {
         console.error('openHtmlReport threw:', reportErr);
         setFileStatus('error');
@@ -894,142 +890,87 @@ export const RecordView: FC<RecordViewProps> = ({
             </button>
           )}
         </div>
+
+        {/* Report language + CSV file report — single device only */}
+        {!compact && (<>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: 12, color: 'rgba(136,176,168,0.75)', flexShrink: 0 }}>
+              {lang === 'zh' ? '報告語言' : 'Report lang'}:
+            </label>
+            <select
+              value={fileReportLang}
+              onChange={e => setFileReportLang(e.target.value as ReportLang)}
+              disabled={isRecording}
+              style={{
+                background: 'rgba(13,23,32,0.85)',
+                border: '1px solid rgba(40,64,80,0.45)',
+                borderRadius: 5,
+                color: '#c8e0d8',
+                fontSize: 12,
+                padding: '4px 8px',
+                cursor: isRecording ? 'not-allowed' : 'pointer',
+                outline: 'none',
+                colorScheme: 'dark',
+              }}
+            >
+              <option value="zh-TW">繁體中文</option>
+              <option value="zh-CN">简体中文</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+            </select>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) handleFileReport(file);
+                e.target.value = '';
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={fileStatus === 'parsing' || fileStatus === 'analyzing'}
+              style={{
+                background: (fileStatus === 'parsing' || fileStatus === 'analyzing')
+                  ? 'rgba(72,186,166,0.08)' : 'rgba(72,186,166,0.12)',
+                border: '1px solid rgba(72,186,166,0.4)',
+                borderRadius: 5,
+                color: (fileStatus === 'parsing' || fileStatus === 'analyzing')
+                  ? 'rgba(72,186,166,0.45)' : 'var(--teal)',
+                fontSize: 12, fontWeight: 600,
+                padding: '5px 12px',
+                cursor: (fileStatus === 'parsing' || fileStatus === 'analyzing') ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {fileStatus === 'parsing'
+                ? T(lang, 'recordFromFileParsing')
+                : fileStatus === 'analyzing'
+                  ? T(lang, 'recordFromFileAnalyzing')
+                  : T(lang, 'recordFromFile')}
+            </button>
+          </div>
+          {fileStatus !== 'idle' && (
+            <div style={{
+              fontSize: 11,
+              color: fileStatus === 'done' ? '#3fb950' : fileStatus === 'error' ? '#f85149' : 'rgba(136,176,168,0.7)',
+              fontFamily: "'IBM Plex Mono', monospace",
+              marginTop: 2,
+            }}>
+              {fileStatus === 'done'
+                ? `✓ ${T(lang, 'recordFromFileSuccess')}  ${fileStatusMsg}`
+                : fileStatus === 'error'
+                  ? `✗ ${fileStatusMsg}`
+                  : '…'}
+            </div>
+          )}
+        </>)}
       </div>
 
       </div>{/* end left column */}
-
-      {/* ── Right column ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-      {/* File report card */}
-      <div className="nd-card" style={{ '--card-accent': 'rgba(227,160,48,0.4)', marginBottom: 0 } as React.CSSProperties}>
-        <h3 style={{ margin: '0 0 14px', fontSize: '0.92rem', fontWeight: 600, color: 'rgba(200,224,216,0.85)' }}>
-          {T(lang, 'recordFromFile')}
-        </h3>
-
-        {/* Subject ID */}
-        <div style={{ marginBottom: 10 }}>
-          <label style={labelStyle}>{T(lang, 'recordSubjectId')}</label>
-          <input
-            type="text"
-            value={fileId}
-            onChange={e => setFileId(e.target.value)}
-            placeholder={T(lang, 'recordSubjectId')}
-            style={inputStyle}
-          />
-        </div>
-
-        {/* Name */}
-        <div style={{ marginBottom: 10 }}>
-          <label style={labelStyle}>姓名</label>
-          <input
-            type="text"
-            value={fileName}
-            onChange={e => setFileName(e.target.value)}
-            placeholder="受測者姓名"
-            style={inputStyle}
-          />
-        </div>
-
-        {/* Sex + DOB row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <div>
-            <label style={labelStyle}>性別</label>
-            <select
-              value={fileSex}
-              onChange={e => setFileSex(e.target.value as 'M' | 'F' | 'Other' | '')}
-              style={{ ...inputStyle, cursor: 'pointer', colorScheme: 'dark' }}
-            >
-              <option value="">—</option>
-              <option value="M">男 (M)</option>
-              <option value="F">女 (F)</option>
-              <option value="Other">第三性</option>
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>{T(lang, 'recordDob')}</label>
-            <input
-              type="date"
-              value={fileDob}
-              onChange={e => setFileDob(e.target.value)}
-              style={{ ...inputStyle, colorScheme: 'dark' }}
-            />
-          </div>
-        </div>
-
-        {/* Report language */}
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>報告語言</label>
-          <select
-            value={fileReportLang}
-            onChange={e => setFileReportLang(e.target.value as ReportLang)}
-            style={{ ...inputStyle, cursor: 'pointer', colorScheme: 'dark' }}
-          >
-            <option value="zh-TW">繁體中文</option>
-            <option value="zh-CN">简体中文</option>
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-          </select>
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv"
-          style={{ display: 'none' }}
-          onChange={e => {
-            const file = e.target.files?.[0];
-            if (file) handleFileReport(file);
-            e.target.value = '';
-          }}
-        />
-
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={fileStatus === 'parsing' || fileStatus === 'analyzing'}
-          style={{
-            width: '100%',
-            background: (fileStatus === 'parsing' || fileStatus === 'analyzing')
-              ? 'rgba(72,186,166,0.12)'
-              : 'rgba(72,186,166,0.22)',
-            border: '1px solid rgba(72,186,166,0.55)',
-            borderRadius: 8,
-            color: (fileStatus === 'parsing' || fileStatus === 'analyzing')
-              ? 'rgba(72,186,166,0.5)'
-              : 'var(--teal)',
-            fontSize: 14,
-            fontWeight: 700,
-            padding: '11px 0',
-            cursor: (fileStatus === 'parsing' || fileStatus === 'analyzing') ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {fileStatus === 'parsing'
-            ? T(lang, 'recordFromFileParsing')
-            : fileStatus === 'analyzing'
-              ? T(lang, 'recordFromFileAnalyzing')
-              : T(lang, 'recordFromFile')}
-        </button>
-
-        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'rgba(120,140,165,0.55)', textAlign: 'center' }}>
-          {T(lang, 'recordFromFileHint')} · {T(lang, 'recordArtifactRemoval')}: {useArtifactRemoval ? '✓' : '✗'}
-        </p>
-
-        {/* Status message */}
-        {fileStatus !== 'idle' && (
-          <div style={{
-            marginTop: 8,
-            fontSize: 11,
-            color: fileStatus === 'done' ? '#3fb950' : fileStatus === 'error' ? '#f85149' : 'rgba(136,176,168,0.7)',
-            fontFamily: "'IBM Plex Mono', monospace",
-          }}>
-            {fileStatus === 'done'
-              ? `✓ ${T(lang, 'recordFromFileSuccess')}  ${fileStatusMsg}`
-              : fileStatus === 'error'
-                ? `✗ ${fileStatusMsg}`
-                : fileStatusMsg || '…'}
-          </div>
-        )}
-      </div>
 
       {/* Event markers log */}
       <div className="nd-card" style={{ '--card-accent': 'rgba(72,186,166,0.3)', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 0 } as React.CSSProperties}>
@@ -1078,8 +1019,6 @@ export const RecordView: FC<RecordViewProps> = ({
           </div>
         )}
       </div>
-
-      </div>{/* end right column */}
     </div>
 
     {/* ── Disclaimer / Consent Modal ── */}
