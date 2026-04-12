@@ -254,7 +254,7 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     if (resetStates) {
       const bq = filterBiquadRef.current;
       if (resetStates.includes('hp')) {
-        bq.hpState1.fill(0); bq.hpState2.fill(0); bq.dcState.fill(0);
+        bq.hpState1.fill(0); bq.hpState2.fill(0); bq.dcState.fill(0); bq.dcInitialized.fill(0);
       }
       if (resetStates.includes('lp')) {
         bq.lpState1.fill(0); bq.lpState2.fill(0);

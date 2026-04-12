@@ -490,11 +490,12 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-device layout — renders DevicePanel × n
 // ─────────────────────────────────────────────────────────────────────────────
-function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, disconnectSignal, eventSignal }: {
+function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal }: {
   deviceCount: number;
   lang: Lang;
   sessionInfo: SessionInfo | null;
   recordSignal: number;
+  stopSignal: number;
   disconnectSignal: number;
   eventSignal: number;
 }) {
@@ -508,6 +509,7 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, disco
           lang={lang}
           sessionInfo={sessionInfo}
           recordSignal={recordSignal}
+          stopSignal={stopSignal}
           disconnectSignal={disconnectSignal}
           eventSignal={eventSignal}
         />
@@ -524,6 +526,7 @@ function App() {
   const [deviceCount, setDeviceCount] = useState(1);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [recordSignal, setRecordSignal] = useState(0);
+  const [stopSignal, setStopSignal] = useState(0);
   const [disconnectSignal, setDisconnectSignal] = useState(0);
   const [eventSignal, setEventSignal] = useState(0);
   const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
@@ -548,6 +551,7 @@ function App() {
         onRemoveDevice={() => setDeviceCount(n => Math.max(n - 1, 1))}
         showMultiControls={deviceCount > 1}
         onSimultaneousRecord={() => setRecordSignal(n => n + 1)}
+        onSimultaneousStop={() => setStopSignal(n => n + 1)}
         onSimultaneousDisconnect={() => setDisconnectSignal(n => n + 1)}
         onSimultaneousEvent={() => setEventSignal(n => n + 1)}
       />
@@ -559,6 +563,7 @@ function App() {
             lang={lang}
             sessionInfo={sessionInfo}
             recordSignal={recordSignal}
+            stopSignal={stopSignal}
             disconnectSignal={disconnectSignal}
             eventSignal={eventSignal}
           />

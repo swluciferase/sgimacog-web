@@ -57,6 +57,8 @@ export interface FilterBiquadState {
   notchState: Float64Array; // stage offset: ch * 6 + stageIndex * 2 + [0,1]
   // DC removal: 1 value per channel = 8
   dcState: Float64Array;
+  // DC init flag: 0 = uninitialized, 1 = initialized (prevents startup transient)
+  dcInitialized: Uint8Array;
 }
 
 export const CHANNEL_LABELS = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'] as const;
@@ -71,12 +73,13 @@ export const DEFAULT_FILTER_PARAMS: FilterParams = {
 };
 
 export const makeFilterBiquadState = (): FilterBiquadState => ({
-  hpState1:   new Float64Array(CHANNEL_COUNT * 2),
-  hpState2:   new Float64Array(CHANNEL_COUNT * 2),
-  lpState1:   new Float64Array(CHANNEL_COUNT * 2),
-  lpState2:   new Float64Array(CHANNEL_COUNT * 2),
-  notchState: new Float64Array(CHANNEL_COUNT * 6),
-  dcState:    new Float64Array(CHANNEL_COUNT),
+  hpState1:      new Float64Array(CHANNEL_COUNT * 2),
+  hpState2:      new Float64Array(CHANNEL_COUNT * 2),
+  lpState1:      new Float64Array(CHANNEL_COUNT * 2),
+  lpState2:      new Float64Array(CHANNEL_COUNT * 2),
+  notchState:    new Float64Array(CHANNEL_COUNT * 6),
+  dcState:       new Float64Array(CHANNEL_COUNT),
+  dcInitialized: new Uint8Array(CHANNEL_COUNT),
 });
 
 export interface DeviceConfig {

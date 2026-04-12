@@ -21,6 +21,8 @@ export interface WaveformViewProps {
   lang: Lang;
   isRecording: boolean;
   onEventMarker: (marker: { id: string; time: number; label: string }) => void;
+  /** Increment to trigger an event marker from outside (broadcast) */
+  externalMarkerSignal?: number;
 }
 
 const CHANNEL_COLORS: [number, number, number, number][] = [
@@ -142,7 +144,12 @@ function applyFilterChain(
   let s = x;
 
   // DC removal (always on): single-pole IIR, α=0.9985
+  // On first sample, seed dcState from x so the initial output ≈ 0 (no startup transient).
   const dcAlpha = 0.9985;
+  if (!biquad.dcInitialized[ch]) {
+    biquad.dcState[ch] = s;
+    biquad.dcInitialized[ch] = 1;
+  }
   const dcPrev = biquad.dcState[ch];
   const dcOut = s - dcPrev;
   biquad.dcState[ch] = dcAlpha * dcPrev + (1 - dcAlpha) * s;
@@ -179,6 +186,7 @@ export const WaveformView = ({
   lang,
   isRecording,
   onEventMarker,
+  externalMarkerSignal = 0,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -290,6 +298,13 @@ export const WaveformView = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [addMarker]);
+
+  // External broadcast marker (from simultaneous-event button)
+  useEffect(() => {
+    if (externalMarkerSignal === 0) return;
+    if (isRecording) addMarker();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalMarkerSignal]);
 
   // WebGL setup — recreated when windowSeconds changes
   useEffect(() => {

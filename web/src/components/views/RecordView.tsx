@@ -841,16 +841,15 @@ export const RecordView: FC<RecordViewProps> = ({
           </>) : (<>
             <button
               onClick={onStartRecording}
-              disabled={!isConnected || !consentGiven}
-              title={!consentGiven ? T(lang, 'disclaimerRequired') : undefined}
+              disabled={!isConnected}
               style={{
-                background: (isConnected && consentGiven) ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
-                border: `1px solid ${(isConnected && consentGiven) ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
+                background: isConnected ? 'rgba(63,185,80,0.18)' : 'rgba(60,80,100,0.2)',
+                border: `1px solid ${isConnected ? 'rgba(63,185,80,0.5)' : 'rgba(60,80,100,0.3)'}`,
                 borderRadius: 8,
-                color: (isConnected && consentGiven) ? '#3fb950' : 'rgba(100,120,140,0.5)',
+                color: isConnected ? '#3fb950' : 'rgba(100,120,140,0.5)',
                 fontSize: 13, fontWeight: 700,
                 padding: '9px 24px',
-                cursor: (isConnected && consentGiven) ? 'pointer' : 'not-allowed',
+                cursor: isConnected ? 'pointer' : 'not-allowed',
               }}
             >
               {T(lang, 'recordStart')}

@@ -33,10 +33,12 @@ export interface DevicePanelProps {
   disconnectSignal?: number;
   /** Increment to broadcast a simultaneous-event-marker command */
   eventSignal?: number;
+  /** Increment to broadcast a simultaneous-stop-recording command */
+  stopSignal?: number;
 }
 
 export const DevicePanel: FC<DevicePanelProps> = ({
-  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0,
+  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0,
 }) => {
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
@@ -55,18 +57,12 @@ export const DevicePanel: FC<DevicePanelProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disconnectSignal]);
 
-  // Broadcast: simultaneous event marker
+  // Broadcast: simultaneous stop recording
   useEffect(() => {
-    if (eventSignal === 0) return;
-    if (d.isRecording) {
-      d.handleEventMarker({
-        id: Math.random().toString(36).substring(2, 9),
-        time: Date.now(),
-        label: `M${d.eventMarkers.length + 1}`,
-      });
-    }
+    if (stopSignal === 0) return;
+    if (d.isRecording) d.handleStopRecording();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventSignal]);
+  }, [stopSignal]);
 
   const deviceColor = DEVICE_COLORS[deviceIndex % DEVICE_COLORS.length];
   const deviceLabel = `D${deviceIndex + 1}`;
@@ -197,6 +193,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             lang={lang}
             isRecording={d.isRecording}
             onEventMarker={d.handleEventMarker}
+            externalMarkerSignal={eventSignal}
           />
         </div>
 

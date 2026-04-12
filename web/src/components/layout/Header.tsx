@@ -9,6 +9,7 @@ export interface HeaderProps {
   onRemoveDevice: () => void;
   showMultiControls: boolean;
   onSimultaneousRecord: () => void;
+  onSimultaneousStop: () => void;
   onSimultaneousDisconnect: () => void;
   onSimultaneousEvent: () => void;
 }
@@ -40,7 +41,7 @@ const EEG_LOGO_SVG = (
 
 export const Header: FC<HeaderProps> = ({
   lang, onLangToggle, deviceCount, onAddDevice, onRemoveDevice,
-  showMultiControls, onSimultaneousRecord, onSimultaneousDisconnect, onSimultaneousEvent,
+  showMultiControls, onSimultaneousRecord, onSimultaneousStop, onSimultaneousDisconnect, onSimultaneousEvent,
 }) => {
   return (
     <header style={{
@@ -94,6 +95,14 @@ export const Header: FC<HeaderProps> = ({
             style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'var(--green)', borderColor: 'rgba(128,200,84,.4)' }}
           >
             {lang === 'zh' ? '同時錄製' : 'Rec All'}
+          </button>
+          <button
+            className="dev-count-btn"
+            onClick={onSimultaneousStop}
+            title={lang === 'zh' ? '同時停止所有錄製中裝置' : 'Stop all recording devices'}
+            style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'var(--red)', borderColor: 'rgba(208,112,112,.4)' }}
+          >
+            {lang === 'zh' ? '同時停止' : 'Stop All'}
           </button>
           <button
             className="dev-count-btn"
