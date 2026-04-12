@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, type FC, type CSSProperties } from 
 import type { SubjectInfo } from '../../types/eeg';
 import { CHANNEL_LABELS, CHANNEL_COUNT } from '../../types/eeg';
 import type { RecordedSample } from '../../services/csvWriter';
-import { generateCsv, downloadCsv, buildCsvFilename, generateCsvBlob, downloadCsvBlob } from '../../services/csvWriter';
+import { generateCsv, downloadCsv, buildCsvFilename, buildCsvFilenameCustom, generateCsvBlob, downloadCsvBlob } from '../../services/csvWriter';
 import { uploadSessionCsv, saveSessionResult, type SessionInfo } from '../../services/sessionApi';
 import type { Lang } from '../../i18n';
 import { T } from '../../i18n';
@@ -123,14 +123,14 @@ export const RecordView: FC<RecordViewProps> = ({
   // Use ref-based access when available (avoids full-array copy); fall back to prop
   const getSamples = (): RecordedSample[] => recordSamplesRef?.current ?? recordedSamples;
   const sampleCount = sampleCountProp ?? recordedSamples.length;
-  // Report generation blocked for: flexible electrode with non-default layout, or 32ch device
-  const isCh32 = (channelLabels?.length ?? 8) > 8;
+  // Report generation allowed as long as all 8 required positions are present in channel labels.
   const defaultLabels = ['Fp1', 'Fp2', 'T7', 'T8', 'O1', 'O2', 'Fz', 'Pz'];
-  const canGenerateReport = !isCh32 && (
-    !isFlexibleElectrode ||
-    (channelLabels ?? defaultLabels).every((l, i) => l === defaultLabels[i])
-  );
+  const activeLabels = channelLabels ?? defaultLabels;
+  const canGenerateReport = defaultLabels.every(l => activeLabels.includes(l));
+  // Indices of the 8 report channels within the active channel list
+  const reportChannelIndices = defaultLabels.map(l => activeLabels.indexOf(l));
 
+  const [saveFilename, setSaveFilename] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [autoStopMode, setAutoStopMode] = useState<'csv' | 'report'>('csv');
@@ -212,7 +212,7 @@ export const RecordView: FC<RecordViewProps> = ({
         channelLabels,
         deviceSampleRate,
       );
-      const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
+      const filename = buildCsvFilenameCustom(saveFilename, deviceId, startTime);
       downloadCsvBlob(blob, filename);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         blob.text().then(content =>
@@ -234,7 +234,7 @@ export const RecordView: FC<RecordViewProps> = ({
     const samples = getSamples();
     if (samples.length === 0 || !startTime) return;
     const blob = generateCsvBlob(samples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels, deviceSampleRate);
-    const filename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
+    const filename = buildCsvFilenameCustom(saveFilename, deviceId, startTime);
     downloadCsvBlob(blob, filename);
     if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
       blob.text().then(content =>
@@ -244,7 +244,7 @@ export const RecordView: FC<RecordViewProps> = ({
     if (durationSec < 90) return; // too short for report; CSV already saved
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval);
+      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval, reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
       if (result.error) { setReportStatus('error'); return; }
       await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined, fileReportLang);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
@@ -285,7 +285,7 @@ export const RecordView: FC<RecordViewProps> = ({
         channelLabels,
         deviceSampleRate,
       );
-      csvFilename = buildCsvFilename(subjectInfo.id || 'recording', startTime);
+      csvFilename = buildCsvFilenameCustom(saveFilename, deviceId, startTime);
       downloadCsvBlob(blob, csvFilename);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         blob.text().then(content =>
@@ -296,7 +296,7 @@ export const RecordView: FC<RecordViewProps> = ({
     broadcastEegDone();
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval);
+      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval, reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
       if (result.error) {
         alert(`${T(lang, 'recordReportError')}: ${result.error}`);
         setReportStatus('error');
@@ -334,16 +334,22 @@ export const RecordView: FC<RecordViewProps> = ({
         setFileStatusMsg(T(lang, 'recordFromFileErrParse') + (parsed.error ? ` (${parsed.error})` : ''));
         return;
       }
-      const dur = parsed.samples.length / SAMPLE_RATE;
+      const fileSr = parsed.sampleRate ?? SAMPLE_RATE;
+      const dur = parsed.samples.length / fileSr;
       if (dur < 90) {
         setFileStatus('error');
         setFileStatusMsg(T(lang, 'recordFromFileErrShort') + ` (${dur.toFixed(1)} s)`);
         return;
       }
+      // Compute channel indices for the 8 report positions from the parsed CSV labels
+      const fileChIndices = defaultLabels.map(l => {
+        const idx = parsed.channelLabels.indexOf(l);
+        return idx >= 0 ? idx : defaultLabels.indexOf(l); // fallback to identity
+      });
       setFileStatus('analyzing');
       let result;
       try {
-        result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', useArtifactRemoval);
+        result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', useArtifactRemoval, fileChIndices, fileSr);
       } catch (wasmErr) {
         console.error('analyzeEeg threw:', wasmErr);
         setFileStatus('error');
@@ -818,6 +824,59 @@ export const RecordView: FC<RecordViewProps> = ({
           </div>
         </div>
 
+        {/* Save filename input (only shown before recording starts) */}
+        {!isRecording && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <label style={{ fontSize: 12, color: 'rgba(136,176,168,0.75)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {lang === 'zh' ? '存檔檔名' : 'Filename'}:
+            </label>
+            <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+              <input
+                type="text"
+                value={saveFilename}
+                onChange={e => setSaveFilename(e.target.value)}
+                placeholder={lang === 'zh'
+                  ? `recording${deviceId?.replace(/^STEEG_/, '') ?? ''}_YYYYMMDD_HHmmss`
+                  : `recording${deviceId?.replace(/^STEEG_/, '') ?? ''}_YYYYMMDD_HHmmss`}
+                style={{
+                  ...inputStyle,
+                  fontSize: 12,
+                  padding: '6px 10px',
+                  paddingRight: saveFilename ? 70 : 10,
+                  color: saveFilename ? '#c8e0d8' : 'rgba(136,176,168,0.45)',
+                }}
+              />
+              {saveFilename && (
+                <span style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 11, color: 'rgba(136,176,168,0.5)',
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  pointerEvents: 'none',
+                }}>
+                  _HHmmss
+                </span>
+              )}
+            </div>
+            {saveFilename && (
+              <button
+                onClick={() => setSaveFilename('')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(136,176,168,0.45)',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  flexShrink: 0,
+                }}
+                title={lang === 'zh' ? '清除' : 'Clear'}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Button row */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {isRecording ? (<>
@@ -984,10 +1043,10 @@ export const RecordView: FC<RecordViewProps> = ({
                 colorScheme: 'dark',
               }}
             >
-              <option value="zh-TW">繁體中文</option>
-              <option value="zh-CN">简体中文</option>
+              <option value="zh-TW">{lang === 'zh' ? '繁體中文' : 'Traditional Chinese'}</option>
+              <option value="zh-CN">{lang === 'zh' ? '简体中文' : 'Simplified Chinese'}</option>
               <option value="en">English</option>
-              <option value="ja">日本語</option>
+              <option value="ja">{lang === 'zh' ? '日本語' : 'Japanese'}</option>
             </select>
 
             <input

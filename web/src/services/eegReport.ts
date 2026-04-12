@@ -64,23 +64,51 @@ export function ageFromDob(dob: string): number {
 // Main entry — delegates to WASM
 // ---------------------------------------------------------------------------
 
+/**
+ * Linear-interpolation resampling of 8-channel flat buffer.
+ * inRate → SAMPLE_RATE (1001 Hz).
+ */
+function resampleFlat(flat: Float32Array, nIn: number, inRate: number): Float32Array {
+  const nOut = Math.round(nIn * SAMPLE_RATE / inRate);
+  const out = new Float32Array(nOut * 8);
+  for (let i = 0; i < nOut; i++) {
+    const srcF = i * inRate / SAMPLE_RATE;
+    const srcLo = Math.min(Math.floor(srcF), nIn - 1);
+    const srcHi = Math.min(srcLo + 1, nIn - 1);
+    const frac = srcF - srcLo;
+    for (let ch = 0; ch < 8; ch++) {
+      out[i * 8 + ch] =
+        flat[srcLo * 8 + ch]! * (1 - frac) +
+        flat[srcHi * 8 + ch]! * frac;
+    }
+  }
+  return out;
+}
+
 export async function analyzeEeg(
   samples: RecordedSample[],
   dob: string,
   _useArtifactRemoval = false,
+  channelIndices: number[] = [0, 1, 2, 3, 4, 5, 6, 7],
+  inputSampleRate: number = SAMPLE_RATE,
 ): Promise<ReportResult> {
   await wasmService.init();
 
   const age      = ageFromDob(dob);
   const nSamples = samples.length;
 
-  // Build flat interleaved Float32Array: [s0_ch0 … s0_ch7, s1_ch0 …]
-  const flat = new Float32Array(nSamples * 8);
+  // Build flat interleaved Float32Array using the specified channel indices
+  let flat = new Float32Array(nSamples * 8);
   for (let i = 0; i < nSamples; i++) {
     const chs = samples[i]!.channels;
     for (let ch = 0; ch < 8; ch++) {
-      flat[i * 8 + ch] = chs[ch] ?? 0;
+      flat[i * 8 + ch] = chs[channelIndices[ch]!] ?? 0;
     }
+  }
+
+  // Resample to SAMPLE_RATE if input rate differs
+  if (inputSampleRate !== SAMPLE_RATE) {
+    flat = resampleFlat(flat, nSamples, inputSampleRate);
   }
 
   // Call WASM

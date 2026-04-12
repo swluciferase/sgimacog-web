@@ -126,3 +126,27 @@ export function buildCsvFilename(subjectId: string, startTime: Date): string {
   const id = subjectId.replace(/[^a-zA-Z0-9_-]/g, '_') || 'subject';
   return `${id}_${y}${mo}${d}_${h}${mi}${s}.csv`;
 }
+
+/**
+ * Build a CSV filename with custom-name or device-based logic.
+ * - customName set  → `${customName}_${HHmmss}.csv`
+ * - customName empty → `recording${deviceSuffix}_${YYYYMMDD}_${HHmmss}.csv`
+ */
+export function buildCsvFilenameCustom(
+  customName: string,
+  deviceId: string | null,
+  startTime: Date,
+): string {
+  const y = startTime.getFullYear();
+  const mo = pad2(startTime.getMonth() + 1);
+  const d = pad2(startTime.getDate());
+  const h = pad2(startTime.getHours());
+  const mi = pad2(startTime.getMinutes());
+  const s = pad2(startTime.getSeconds());
+  const safe = (str: string) => str.replace(/[^a-zA-Z0-9_\-\u4e00-\u9fff]/g, '_');
+  if (customName.trim()) {
+    return `${safe(customName.trim())}_${h}${mi}${s}.csv`;
+  }
+  const suffix = deviceId?.replace(/^STEEG_/, '') ?? '';
+  return `recording${suffix}_${y}${mo}${d}_${h}${mi}${s}.csv`;
+}

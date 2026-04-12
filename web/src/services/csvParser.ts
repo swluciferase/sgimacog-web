@@ -15,6 +15,7 @@ import type { RecordedSample } from './csvWriter';
 
 export interface CsvParseResult {
   samples: RecordedSample[];
+  channelLabels: string[];
   deviceId: string;
   recordDatetime: string;
   filterDesc: string;
@@ -62,10 +63,13 @@ export function parseCsv(text: string): CsvParseResult {
   const evtNameIdx = cols.indexOf('Software Marker Name');
 
   if (tsIdx === -1 || fp1Idx === -1) {
-    return { samples: [], deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_bad_header' };
+    return { samples: [], channelLabels: [], deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_bad_header' };
   }
 
-  const chStart = fp1Idx; // Fp1, Fp2, T7, T8, O1, O2, Fz, Pz = 8 channels
+  // Determine number of channels: from Fp1 up to (but not including) Event Id
+  const chStart = fp1Idx;
+  const nch = evtIdx > chStart ? evtIdx - chStart : 8;
+  const channelLabels = cols.slice(chStart, chStart + nch);
 
   // ── Parse data rows ────────────────────────────────────────────────────────
   const samples: RecordedSample[] = [];
@@ -73,7 +77,7 @@ export function parseCsv(text: string): CsvParseResult {
     const line = lines[i]!.trim();
     if (!line) continue;
     const parts = line.split(',');
-    if (parts.length < chStart + 8) continue;
+    if (parts.length < chStart + nch) continue;
 
     const ts = parseFloat(parts[tsIdx]!);
     if (isNaN(ts)) continue;
@@ -81,8 +85,8 @@ export function parseCsv(text: string): CsvParseResult {
     const sn = snIdx >= 0 ? parseInt(parts[snIdx]!, 10) : null;
     const serialNumber = isNaN(sn as number) ? null : sn;
 
-    const channels = new Float32Array(8);
-    for (let ch = 0; ch < 8; ch++) {
+    const channels = new Float32Array(nch);
+    for (let ch = 0; ch < nch; ch++) {
       const v = parseFloat(parts[chStart + ch]!);
       channels[ch] = isNaN(v) ? 0 : v;
     }
@@ -94,8 +98,8 @@ export function parseCsv(text: string): CsvParseResult {
   }
 
   if (samples.length === 0) {
-    return { samples, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_no_data' };
+    return { samples, channelLabels, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_no_data' };
   }
 
-  return { samples, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate };
+  return { samples, channelLabels, deviceId, recordDatetime, filterDesc, notchDesc, sampleRate };
 }
