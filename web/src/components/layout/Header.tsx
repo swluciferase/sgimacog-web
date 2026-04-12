@@ -7,6 +7,10 @@ export interface HeaderProps {
   deviceCount: number;
   onAddDevice: () => void;
   onRemoveDevice: () => void;
+  showMultiControls: boolean;
+  onSimultaneousRecord: () => void;
+  onSimultaneousDisconnect: () => void;
+  onSimultaneousEvent: () => void;
 }
 
 // EEG_logo.svg inline — brand colors preserved from logo file
@@ -34,7 +38,10 @@ const EEG_LOGO_SVG = (
   </svg>
 );
 
-export const Header: FC<HeaderProps> = ({ lang, onLangToggle, deviceCount, onAddDevice, onRemoveDevice }) => {
+export const Header: FC<HeaderProps> = ({
+  lang, onLangToggle, deviceCount, onAddDevice, onRemoveDevice,
+  showMultiControls, onSimultaneousRecord, onSimultaneousDisconnect, onSimultaneousEvent,
+}) => {
   return (
     <header style={{
       flexShrink: 0,
@@ -76,6 +83,36 @@ export const Header: FC<HeaderProps> = ({ lang, onLangToggle, deviceCount, onAdd
           title={lang === 'zh' ? '新增裝置' : 'Add device'}
         >+</button>
       </div>
+
+      {/* Simultaneous controls — only when n > 1 */}
+      {showMultiControls && (
+        <div style={{ display: 'flex', gap: 4, marginLeft: '.5rem' }}>
+          <button
+            className="dev-count-btn"
+            onClick={onSimultaneousRecord}
+            title={lang === 'zh' ? '同時開始錄製所有已連線裝置' : 'Record all connected devices'}
+            style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'var(--green)', borderColor: 'rgba(128,200,84,.4)' }}
+          >
+            {lang === 'zh' ? '同時錄製' : 'Rec All'}
+          </button>
+          <button
+            className="dev-count-btn"
+            onClick={onSimultaneousEvent}
+            title={lang === 'zh' ? '同時標記所有錄製中裝置' : 'Event marker on all recording devices'}
+            style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'rgba(240,230,80,.9)', borderColor: 'rgba(220,210,60,.4)' }}
+          >
+            {lang === 'zh' ? '同時標記' : 'Mark All'}
+          </button>
+          <button
+            className="dev-count-btn"
+            onClick={onSimultaneousDisconnect}
+            title={lang === 'zh' ? '同時斷開所有裝置' : 'Disconnect all devices'}
+            style={{ width: 'auto', padding: '0 8px', fontSize: '.6rem', color: 'var(--red)', borderColor: 'rgba(208,112,112,.4)' }}
+          >
+            {lang === 'zh' ? '同時斷開' : 'Disc All'}
+          </button>
+        </div>
+      )}
 
       {/* Right: lang toggle */}
       <div style={{ display: 'flex', alignItems: 'center', marginLeft: '.6rem' }}>

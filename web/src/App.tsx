@@ -490,10 +490,13 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-device layout — renders DevicePanel × n
 // ─────────────────────────────────────────────────────────────────────────────
-function MultiDeviceLayout({ deviceCount, lang, sessionInfo }: {
+function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, disconnectSignal, eventSignal }: {
   deviceCount: number;
   lang: Lang;
   sessionInfo: SessionInfo | null;
+  recordSignal: number;
+  disconnectSignal: number;
+  eventSignal: number;
 }) {
   const layoutClass = `multi-layout n${deviceCount}`;
   return (
@@ -504,6 +507,9 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo }: {
           deviceIndex={i}
           lang={lang}
           sessionInfo={sessionInfo}
+          recordSignal={recordSignal}
+          disconnectSignal={disconnectSignal}
+          eventSignal={eventSignal}
         />
       ))}
     </div>
@@ -517,6 +523,9 @@ function App() {
   const [lang, setLang] = useState<Lang>('zh');
   const [deviceCount, setDeviceCount] = useState(1);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [recordSignal, setRecordSignal] = useState(0);
+  const [disconnectSignal, setDisconnectSignal] = useState(0);
+  const [eventSignal, setEventSignal] = useState(0);
   const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
 
   useEffect(() => {
@@ -537,11 +546,22 @@ function App() {
         deviceCount={deviceCount}
         onAddDevice={() => setDeviceCount(n => Math.min(n + 1, 4))}
         onRemoveDevice={() => setDeviceCount(n => Math.max(n - 1, 1))}
+        showMultiControls={deviceCount > 1}
+        onSimultaneousRecord={() => setRecordSignal(n => n + 1)}
+        onSimultaneousDisconnect={() => setDisconnectSignal(n => n + 1)}
+        onSimultaneousEvent={() => setEventSignal(n => n + 1)}
       />
 
       {deviceCount === 1
         ? <SingleDeviceLayout key="single" lang={lang} sessionInfo={sessionInfo} />
-        : <MultiDeviceLayout deviceCount={deviceCount} lang={lang} sessionInfo={sessionInfo} />
+        : <MultiDeviceLayout
+            deviceCount={deviceCount}
+            lang={lang}
+            sessionInfo={sessionInfo}
+            recordSignal={recordSignal}
+            disconnectSignal={disconnectSignal}
+            eventSignal={eventSignal}
+          />
       }
     </div>
   );

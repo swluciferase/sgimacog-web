@@ -305,6 +305,12 @@ select option {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   max-width: 90px; flex-shrink: 1;
 }
+.dp-pktrate {
+  font-size: .62rem; color: var(--faint);
+  font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0; white-space: nowrap;
+}
+.dp-pktrate span { font-size: .58rem; }
 .dp-status {
   font-size: .65rem; color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

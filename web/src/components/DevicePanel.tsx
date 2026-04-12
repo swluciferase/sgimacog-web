@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react';
+import { useState, useEffect, type FC } from 'react';
 import type { Lang } from '../i18n';
 import { T } from '../i18n';
 import { HomeView } from './views/HomeView';
@@ -27,11 +27,46 @@ export interface DevicePanelProps {
   deviceIndex: number; // 0-based
   lang: Lang;
   sessionInfo?: SessionInfo | null;
+  /** Increment to broadcast a simultaneous-record command */
+  recordSignal?: number;
+  /** Increment to broadcast a simultaneous-disconnect command */
+  disconnectSignal?: number;
+  /** Increment to broadcast a simultaneous-event-marker command */
+  eventSignal?: number;
 }
 
-export const DevicePanel: FC<DevicePanelProps> = ({ deviceIndex, lang, sessionInfo }) => {
+export const DevicePanel: FC<DevicePanelProps> = ({
+  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0,
+}) => {
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
+
+  // Broadcast: simultaneous record
+  useEffect(() => {
+    if (recordSignal === 0) return;
+    if (d.isConnected && !d.isRecording) d.handleStartRecording();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordSignal]);
+
+  // Broadcast: simultaneous disconnect
+  useEffect(() => {
+    if (disconnectSignal === 0) return;
+    if (d.isConnected) d.handleDisconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disconnectSignal]);
+
+  // Broadcast: simultaneous event marker
+  useEffect(() => {
+    if (eventSignal === 0) return;
+    if (d.isRecording) {
+      d.handleEventMarker({
+        id: Math.random().toString(36).substring(2, 9),
+        time: Date.now(),
+        label: `M${d.eventMarkers.length + 1}`,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventSignal]);
 
   const deviceColor = DEVICE_COLORS[deviceIndex % DEVICE_COLORS.length];
   const deviceLabel = `D${deviceIndex + 1}`;
@@ -64,6 +99,9 @@ export const DevicePanel: FC<DevicePanelProps> = ({ deviceIndex, lang, sessionIn
         <div className="dp-id">{deviceLabel}</div>
         {d.isConnected && d.subjectInfo.name && (
           <div className="dp-name">{d.subjectInfo.name}</div>
+        )}
+        {d.isConnected && (
+          <div className="dp-pktrate">{d.deviceStats.packetRate} <span>pkt/s</span></div>
         )}
         <div className="dp-status">· {statusTxt}</div>
         <div className="dp-head-btns">
