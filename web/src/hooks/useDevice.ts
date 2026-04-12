@@ -382,8 +382,8 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     if (isRecording) pendingMarkerRef.current = marker;
   }, [isRecording]);
 
-  // Derived: STEEG_DB819### → flexible electrode mode
-  const deviceMode = deviceId?.startsWith('STEEG_DB819') ? 'flexible' as const : 'standard' as const;
+  // Derived: STEEG_DG819### → flexible electrode mode
+  const deviceMode = deviceId?.startsWith('STEEG_DG819') ? 'flexible' as const : 'standard' as const;
 
   return {
     // connection

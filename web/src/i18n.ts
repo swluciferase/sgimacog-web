@@ -197,8 +197,8 @@ const translations: Record<string, Record<Lang, string>> = {
     en: 'Please complete the informed consent process before recording',
   },
 
-  // Flexible electrode mode (STEEG_DB819)
-  electrodeMode:         { zh: '可選電極模式 (DB819)', en: 'Flexible Electrode Mode (DB819)' },
+  // Flexible electrode mode (STEEG_DG819)
+  electrodeMode:         { zh: '可選電極模式 (DG819)', en: 'Flexible Electrode Mode (DG819)' },
   electrodeEditBtn:      { zh: '⚙ 設定電極', en: '⚙ Electrodes' },
   electrodeEditTitle:    { zh: 'CH 1–8 電極位置指定', en: 'CH 1–8 Electrode Assignment' },
   electrodeEditApply:    { zh: '套用', en: 'Apply' },

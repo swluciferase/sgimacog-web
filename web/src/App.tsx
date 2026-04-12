@@ -430,7 +430,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               lang={lang}
               onEnterImpedanceMode={handleEnterImpedance}
               onExitImpedanceMode={handleExitImpedance}
-              deviceMode={deviceId?.startsWith('STEEG_DB819') ? 'flexible' : 'standard'}
+              deviceMode={deviceId?.startsWith('STEEG_DG819') ? 'flexible' : 'standard'}
               channelLabels={channelLabels}
               onChannelLabelsChange={setChannelLabels}
             />
@@ -478,7 +478,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               shouldAutoStop={shouldAutoStop}
               sessionInfo={sessionInfo}
               channelLabels={channelLabels}
-              isFlexibleElectrode={deviceId?.startsWith('STEEG_DB819') ?? false}
+              isFlexibleElectrode={deviceId?.startsWith('STEEG_DG819') ?? false}
             />
           </div>
         </div>
