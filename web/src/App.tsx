@@ -29,6 +29,7 @@ import {
   makeFilterBiquadState,
   DEFAULT_CONFIG,
   SAMPLE_RATE_HZ,
+  CHANNEL_LABELS,
 } from './types/eeg';
 import type { RecordedSample } from './services/csvWriter';
 import type { Lang } from './i18n';
@@ -81,6 +82,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
 
   const [config] = useState<DeviceConfig>(DEFAULT_CONFIG);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [channelLabels, setChannelLabels] = useState<string[]>([...CHANNEL_LABELS]);
   const deviceIdSeenRef = useRef(false);
   const expectedSerialRef = useRef<string>('');
   const impedanceModeActiveRef = useRef(false);
@@ -124,6 +126,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
         setDeviceId(null);
         deviceIdSeenRef.current = false;
         expectedSerialRef.current = '';
+        setChannelLabels([...CHANNEL_LABELS]);
         registerDisconnected();
       }
     };
@@ -427,6 +430,9 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               lang={lang}
               onEnterImpedanceMode={handleEnterImpedance}
               onExitImpedanceMode={handleExitImpedance}
+              deviceMode={deviceId?.startsWith('STEEG_DB819') ? 'flexible' : 'standard'}
+              channelLabels={channelLabels}
+              onChannelLabelsChange={setChannelLabels}
             />
           </div>
         </div>
@@ -441,6 +447,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
             lang={lang}
             isRecording={isRecording}
             onEventMarker={handleEventMarker}
+            channelLabels={channelLabels}
           />
         </div>
 
@@ -470,6 +477,8 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               goodPercent={goodPercent}
               shouldAutoStop={shouldAutoStop}
               sessionInfo={sessionInfo}
+              channelLabels={channelLabels}
+              isFlexibleElectrode={deviceId?.startsWith('STEEG_DB819') ?? false}
             />
           </div>
         </div>
