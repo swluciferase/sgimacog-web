@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { serviceStart, NoCreditError } from './services/creditApi';
 import './App.css';
 import { Header } from './components/layout/Header';
 import { HomeView } from './components/views/HomeView';
@@ -371,7 +372,15 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
     }, 100);
   }, [serial, getCommands, parser]);
 
-  const handleStartRecording = useCallback(() => {
+  const handleStartRecording = useCallback(async () => {
+    try {
+      await serviceStart('sigmacog');
+    } catch (e) {
+      if (e instanceof NoCreditError) {
+        alert('SigmaCog 使用次數已用完，請聯繫管理員補充額度。');
+        return;
+      }
+    }
     recordSamplesRef.current = [];
     recordTimestampRef.current = 0;
     setRecordStartTime(new Date());
