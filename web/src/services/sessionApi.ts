@@ -15,9 +15,14 @@ export interface SessionInfo {
   subject_id: string | null;
 }
 
-/** Read session_token from URL params. Returns null if not present. */
+/** Read session_token from URL params or steeg_session cookie (set by proxy after redirect). */
 export function getSessionTokenFromUrl(): string | null {
-  return new URLSearchParams(window.location.search).get('session_token');
+  const fromUrl = new URLSearchParams(window.location.search).get('session_token');
+  if (fromUrl) return fromUrl;
+  // Proxy strips session_token from URL and stores it as a cookie — read it as fallback
+  const cookieMatch = document.cookie.match(/steeg_session=([^;]+)/);
+  if (cookieMatch) return decodeURIComponent(cookieMatch[1]);
+  return null;
 }
 
 /** Fetch session info from backend using the JWT token. */
