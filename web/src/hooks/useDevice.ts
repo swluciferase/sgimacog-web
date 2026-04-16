@@ -187,6 +187,7 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
     useQualityMonitor(latestPackets, isRecording, qualityConfig, effectiveChannelCount);
 
   // ── On connect: send machine_info + adc_on ──
+  // parser is in deps so this re-fires when WASM finishes init after device is already connected
   useEffect(() => {
     if (status !== 'connected') return;
     if (!wasmService.isInitialized) return;
@@ -200,7 +201,8 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
       } catch { /* ignore */ }
     }, 300);
     return () => clearTimeout(t);
-  }, [status]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, parser]);
 
   // ── Process machineInfo packets ──
   useEffect(() => {
