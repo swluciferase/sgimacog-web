@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, type FC } from 'react';
-import { serviceStart, NoCreditError } from '../services/creditApi';
+import { useState, useEffect, type FC } from 'react';
 import type { Lang } from '../i18n';
 import { T } from '../i18n';
 import { HomeView } from './views/HomeView';
@@ -52,20 +51,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
 
-  // Per-device start with credit check (used for individual device record button and RecordView)
-  const handleStartWithCredit = useCallback(async () => {
-    try {
-      await serviceStart('sigmacog');
-    } catch (e) {
-      if (e instanceof NoCreditError) {
-        alert('SigmaCog 使用次數已用完，請聯繫管理員補充額度。');
-        return;
-      }
-    }
-    d.handleStartRecording();
-  }, [d.handleStartRecording]);
-
-  // Broadcast: simultaneous record — credit already deducted once at App level, just start
+  // Broadcast: simultaneous record — no credit check here; credits are deducted at report generation time
   useEffect(() => {
     if (recordSignal === 0) return;
     if (d.isConnected && !d.isRecording && !d.isImpedanceActive) d.handleStartRecording();
@@ -134,7 +120,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
           {d.isConnected && !d.isRecording && (
             <button
               className="dp-btn dp-btn-green"
-              onClick={handleStartWithCredit}
+              onClick={d.handleStartRecording}
               disabled={d.isImpedanceActive}
               title={d.isImpedanceActive ? (lang === 'zh' ? '阻抗量測中，無法錄製' : 'Stop impedance measurement first') : undefined}
               style={{ opacity: d.isImpedanceActive ? 0.35 : 1, cursor: d.isImpedanceActive ? 'not-allowed' : 'pointer' }}
@@ -244,7 +230,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             isRecording={d.isRecording}
             subjectInfo={d.subjectInfo}
             onSubjectInfoChange={d.setSubjectInfo}
-            onStartRecording={handleStartWithCredit}
+            onStartRecording={d.handleStartRecording}
             onStopRecording={d.handleStopRecording}
             recordedSamples={[]}
             recordSamplesRef={d.recordSamplesRef}

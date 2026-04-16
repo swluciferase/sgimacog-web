@@ -243,6 +243,15 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     const durationSec = samples.length / SAMPLE_RATE;
     if (durationSec < 90) return; // too short for report; CSV already saved
+    // Deduct one session credit before running analysis
+    try {
+      await serviceStart('sigmacog');
+    } catch (e) {
+      if (e instanceof NoCreditError) {
+        setReportStatus('error');
+        return;
+      }
+    }
     setReportStatus('analyzing');
     try {
       const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval, reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
@@ -291,6 +300,16 @@ export const RecordView: FC<RecordViewProps> = ({
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         blob.text().then(content =>
           uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, csvFilename));
+      }
+    }
+    // Deduct one session credit before running analysis
+    try {
+      await serviceStart('sigmacog');
+    } catch (e) {
+      if (e instanceof NoCreditError) {
+        alert(lang === 'zh' ? 'SigmaCog 使用次數已用完，請聯繫管理員補充額度。' : 'No remaining SigmaCog credits. Contact admin.');
+        setReportStatus('idle');
+        return;
       }
     }
     // Run EEG analysis asynchronously
