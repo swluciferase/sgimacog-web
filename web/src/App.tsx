@@ -634,7 +634,17 @@ function App() {
         onAddDevice={() => setDeviceCount(n => Math.min(n + 1, 4))}
         onRemoveDevice={() => setDeviceCount(n => Math.max(n - 1, 1))}
         showMultiControls={deviceCount > 1}
-        onSimultaneousRecord={() => setRecordSignal(n => n + 1)}
+        onSimultaneousRecord={async () => {
+          try {
+            await serviceStart('sigmacog');
+          } catch (e) {
+            if (e instanceof NoCreditError) {
+              alert('SigmaCog 使用次數已用完，請聯繫管理員補充額度。');
+              return;
+            }
+          }
+          setRecordSignal(n => n + 1);
+        }}
         onSimultaneousStop={() => setStopSignal(n => n + 1)}
         onSimultaneousDisconnect={() => setDisconnectSignal(n => n + 1)}
         syncMarkerOn={syncMarkerOn}

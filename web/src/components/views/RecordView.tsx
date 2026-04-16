@@ -11,6 +11,7 @@ import { analyzeEeg, SAMPLE_RATE } from '../../services/eegReport';
 import { type RppgResults } from '../../services/reportPdf';
 import { openHtmlReport, type ReportLang } from '../../services/eegReportHtml';
 import { parseCsv } from '../../services/csvParser';
+import { serviceStart, NoCreditError } from '../../services/creditApi';
 
 const VISIOMYND_URL = 'https://www.sigmacog.xyz/visiomynd';
 const RPPG_CHANNEL  = 'sgimacog_rppg_sync';
@@ -340,6 +341,16 @@ export const RecordView: FC<RecordViewProps> = ({
         setFileStatus('error');
         setFileStatusMsg(T(lang, 'recordFromFileErrShort') + ` (${dur.toFixed(1)} s)`);
         return;
+      }
+      // Deduct one session credit before running analysis
+      try {
+        await serviceStart('sigmacog');
+      } catch (e) {
+        if (e instanceof NoCreditError) {
+          setFileStatus('error');
+          setFileStatusMsg(lang === 'zh' ? 'SigmaCog 使用次數已用完，請聯繫管理員補充額度。' : 'No remaining SigmaCog credits. Contact admin.');
+          return;
+        }
       }
       // Compute channel indices for the 8 report positions from the parsed CSV labels
       const fileChIndices = defaultLabels.map(l => {
