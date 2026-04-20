@@ -139,9 +139,12 @@ export async function analyzeEeg(
     };
   }
 
+  // NOTE: WASM already applies the sqrt·10 transform to COH inside to_t().
+  // A previous post-processing step here applied sqrt again to COH and also
+  // (incorrectly) to EnTP, inflating both T-scores (a normal z=0 subject
+  // landed at ~84 for COH, ~71 for EnTP instead of 50). The transform is now
+  // authoritatively handled in WASM, so just pass the scores through.
   const tscores = parsed['tscores'] as TScores;
-  tscores.COH  = Math.round(Math.sqrt(tscores.COH)  * 10);
-  tscores.EnTP = Math.round(Math.sqrt(tscores.EnTP) * 10);
 
   return {
     indices:     parsed['indices']     as BrainIndices,

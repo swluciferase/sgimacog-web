@@ -184,9 +184,11 @@ $$\text{p2p\_thresh} = \min\!\left(Q_3(\text{p2p}) + 1.8 \times \text{IQR}(\text
 
 $$P[k] = \frac{|X[k]|^2}{\sum w^2 \cdot f_s}$$
 
-頻率解析度 $\Delta f = f_s / N_{fft} \approx 0.5\,\text{Hz}$（2 s epoch, 1001 Hz）
+頻率解析度 $\Delta f = f_s / N_{fft} \approx 0.489\,\text{Hz}$（2 s epoch, 1001 Hz，NFFT=2048）
 
-頻帶積分使用**複合梯形法（trapezoid rule）**。
+頻帶積分使用**複合梯形法（trapezoid rule）**，並在 `lo` 與 `hi` 兩端以**線性內插**補入端點 PSD，內部 bin 採嚴格 `(lo, hi)` 半開區間。此修正避免：
+1. 窄頻帶（α₁、α₂ 各 2 Hz）在 0.489 Hz 解析度下僅覆蓋約 1.47 Hz 而被系統性低估約 27%；
+2. 若某 bin 頻率恰落在整數邊界（如 10.0 Hz）時被 α₁ 與 α₂ 雙重計入。
 
 ---
 

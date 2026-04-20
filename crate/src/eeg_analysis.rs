@@ -160,16 +160,41 @@ fn compute_psd(signal: &[f64], fs: f64) -> (Vec<f64>, Vec<f64>) {
 }
 
 // ---------------------------------------------------------------------------
-// Band power — Simpson's rule
+// Band power — trapezoidal rule with linearly-interpolated band edges.
+// Interior bins use strict (lo, hi) to avoid double-counting boundary bins.
+// End-points at exactly `lo` and `hi` are inserted via linear PSD
+// interpolation so narrow bands (e.g. 2 Hz alpha sub-bands) are not
+// systematically under-integrated at coarse frequency resolution.
 // ---------------------------------------------------------------------------
 fn band_power(freqs: &[f64], power: &[f64], lo: f64, hi: f64) -> f64 {
-    let idx: Vec<usize> = (0..freqs.len()).filter(|&k| freqs[k] >= lo && freqs[k] <= hi).collect();
-    if idx.len() < 2 { return 0.0; }
+    let n = freqs.len();
+    if n < 2 || hi <= lo { return 0.0; }
+    let interp = |f: f64| -> f64 {
+        if f <= freqs[0] { return power[0]; }
+        if f >= freqs[n - 1] { return power[n - 1]; }
+        for k in 0..n - 1 {
+            if freqs[k + 1] >= f {
+                let t = (f - freqs[k]) / (freqs[k + 1] - freqs[k]);
+                return power[k] * (1.0 - t) + power[k + 1] * t;
+            }
+        }
+        power[n - 1]
+    };
+    let mut xs: Vec<f64> = Vec::with_capacity(n + 2);
+    let mut ys: Vec<f64> = Vec::with_capacity(n + 2);
+    xs.push(lo);
+    ys.push(interp(lo));
+    for k in 0..n {
+        if freqs[k] > lo && freqs[k] < hi {
+            xs.push(freqs[k]);
+            ys.push(power[k]);
+        }
+    }
+    xs.push(hi);
+    ys.push(interp(hi));
     let mut sum = 0.0;
-    for i in 0..idx.len()-1 {
-        let k0 = idx[i]; let k1 = idx[i+1];
-        let df = freqs[k1] - freqs[k0];
-        sum += 0.5 * (power[k0] + power[k1]) * df;
+    for i in 0..xs.len() - 1 {
+        sum += 0.5 * (ys[i] + ys[i + 1]) * (xs[i + 1] - xs[i]);
     }
     sum
 }

@@ -4,6 +4,7 @@
 
 | 版本 | Commit | 主要內容 |
 |------|--------|---------|
+| v1.1.1 | (pending) | Alpha 功率帶積分加入端點線性內插；移除 COH 二次 sqrt 與 EnTP 誤加 sqrt |
 | v0.5.8 | d09be38 | 能力指標演算法升級至 v2 Utility Score 轉換 |
 | v0.5.7 | 65de1d9 | EEG 分析管線與常模資料編譯入 WASM；PDF 報告新增五分層說明與能力條形圖 |
 | v0.5.5 | 647b775 | 讀取 CSV 報告加入 DOB 欄位、修正 resize 後波形游標偏移 |
