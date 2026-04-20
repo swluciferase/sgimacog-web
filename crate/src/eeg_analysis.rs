@@ -489,14 +489,14 @@ fn to_t(value: f64, norm: (f64, f64)) -> u32 {
     t.round().clamp(1.0, 99.0) as u32
 }
 
-// PAF spectral-search range (for center-of-gravity estimation in 8–13 Hz region).
-// Still age-gated to avoid contamination from child theta peaks, but norm uses
-// the continuous GAMLSS model above.
+// PAF spectral-search range (for center-of-gravity estimation in alpha region).
+// Aligned with eeg_health SDK (brain_index.index_IAF): wider lower bound in
+// younger cohorts so the child alpha/theta overlap isn't cut off.
 fn paf_range(age: f64) -> (f64, f64) {
-    if age < 6.0  { (5.0,  9.0) }
-    else if age < 13.0 { (6.0, 10.0) }
-    else if age < 19.0 { (8.0, 12.0) }
-    else                { (8.0, 13.0) }
+    if age < 6.0  { (4.0,   9.5) }
+    else if age < 13.0 { (5.5, 11.0) }
+    else if age < 19.0 { (6.5, 12.0) }
+    else                { (7.0, 13.0) }
 }
 
 // ---------------------------------------------------------------------------
