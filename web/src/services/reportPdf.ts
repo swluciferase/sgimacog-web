@@ -514,7 +514,7 @@ export async function generateReportPdf(
 
   const col1 = ML + 5, col2 = ML + CW / 2 + 5;
   const infoRows1 = [['Subject ID', subject.id || '—'], ['Name', subject.name || '—'], ['Date of Birth', subject.dob || '—']];
-  const infoRows2 = [['Age', `${result.age} years`], ['Sex', subject.sex || '—'], ['Device', deviceId || '—']];
+  const infoRows2 = [['Age', `${Math.floor(result.age)} years`], ['Sex', subject.sex || '—'], ['Device', deviceId || '—']];
   infoRows1.forEach(([label, val], i) => {
     const iy = y + 14 + i * 7;
     setFont(doc, 8, 'normal', C.subtext); doc.text(label + ':', col1, iy);

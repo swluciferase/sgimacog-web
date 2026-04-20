@@ -322,7 +322,7 @@ pub fn cmd_stop_acquisition() -> Box<[u8]> {
 ///
 /// `samples_flat`: f32 slice, row-major layout `[sample_idx * 8 + channel_idx]`,
 ///   8 channels, values in µV.
-/// `age`: subject age in years.
+/// `age`: subject age in fractional years (e.g. 12.5 for 12 years 6 months).
 ///
 /// Returns a JSON string:
 /// ```json
@@ -335,7 +335,7 @@ pub fn cmd_stop_acquisition() -> Box<[u8]> {
 /// ```
 /// On error: `{"error":"reason","age":…,"cleanEpochs":…,"totalEpochs":…,"durationSec":…}`
 #[wasm_bindgen]
-pub fn analyze_eeg(samples_flat: &[f32], age: u32) -> String {
+pub fn analyze_eeg(samples_flat: &[f32], age: f64) -> String {
     let result = crate::eeg_analysis::analyze_eeg_internal(samples_flat, age);
     crate::eeg_analysis::result_to_json(&result)
 }

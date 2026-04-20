@@ -47,13 +47,15 @@ fn utility_score(t: f64, mode: u8) -> f64 {
 
 /// Compute 8-dimension capability profile.
 /// Returns None for age 4–6 (not applicable).
-/// T-scores are u32 (1–99).
+/// T-scores are u32 (1–99). Age is fractional years; cohort is chosen by the
+/// integer part (floor).
 pub fn compute_capability(
     tbr: u32, apr: u32, faa: u32, paf: u32,
     rsa: u32, coh: u32, entp: u32,
-    age: u32,
+    age: f64,
 ) -> Option<Vec<CapDim>> {
-    if age >= 4 && age <= 6 {
+    let age_yr = age.floor().max(0.0) as u32;
+    if age_yr >= 4 && age_yr <= 6 {
         return None;
     }
 
@@ -73,7 +75,7 @@ pub fn compute_capability(
     // Inverted COH for creativity/flexibility dimensions
     let q_coh_inv = utility_score(100.0 - coh, CENTERED);
 
-    let dims: Vec<CapDim> = if age >= 7 && age <= 24 {
+    let dims: Vec<CapDim> = if age_yr >= 7 && age_yr <= 24 {
         // ── Student (7–24) ──────────────────────────────────────────
         vec![
             CapDim { name: "專注持久力", score: round2(q_tbr*0.7  + q_coh*0.3) },
@@ -85,7 +87,7 @@ pub fn compute_capability(
             CapDim { name: "考試抗壓力", score: round2(q_apr*0.7  + q_tbr*0.3) },
             CapDim { name: "心智續航力", score: round2(q_rsa*0.6  + q_paf*0.4) },
         ]
-    } else if age >= 25 && age <= 64 {
+    } else if age_yr >= 25 && age_yr <= 64 {
         // ── Adult / Workplace (25–64) ───────────────────────────────
         vec![
             CapDim { name: "職場執行力", score: round2(q_tbr*0.6  + q_paf*0.4) },

@@ -60,7 +60,7 @@ export class SteegParser {
  *
  * `samples_flat`: f32 slice, row-major layout `[sample_idx * 8 + channel_idx]`,
  *   8 channels, values in µV.
- * `age`: subject age in years.
+ * `age`: subject age in fractional years (e.g. 12.5 for 12 years 6 months).
  *
  * Returns a JSON string:
  * ```json

@@ -49,16 +49,18 @@ export interface ReportResult {
 // Age helper (needed by callers that pass DOB)
 // ---------------------------------------------------------------------------
 
+/**
+ * Fractional age in years (precision to days) — required by GAMLSS continuous
+ * normative models. e.g. a child born 2013-06-15 on 2026-04-20 → 12.85 years.
+ */
 export function ageFromDob(dob: string): number {
   if (!dob) return 25;
   const birth = new Date(dob);
   const now   = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  if (
-    now.getMonth() < birth.getMonth() ||
-    (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())
-  ) age--;
-  return Math.max(0, age);
+  const ms    = now.getTime() - birth.getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  const years = ms / (365.2425 * 24 * 60 * 60 * 1000);
+  return Math.max(0, Math.round(years * 100) / 100);
 }
 
 // ---------------------------------------------------------------------------

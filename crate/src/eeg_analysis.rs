@@ -69,7 +69,7 @@ pub struct TScores {
 pub struct AnalysisResult {
     pub indices:      BrainIndices,
     pub tscores:      TScores,
-    pub age:          u32,
+    pub age:          f64,
     pub clean_epochs: usize,
     pub total_epochs: usize,
     pub duration_sec: f64,
@@ -425,51 +425,62 @@ fn mean_filtered(arr: &[f64]) -> f64 {
 }
 
 // ---------------------------------------------------------------------------
-// T-score normative tables (private — compiled into WASM binary)
+// T-score normative models — GAMLSS continuous μ(age), σ(age)
 // ---------------------------------------------------------------------------
-// Norms below assume eyes-closed (EC) resting-state recording.
-// Means from the reference summary table (APR EC / COH F-P); SDs set as
-// range/3 ≈ ±1.5σ to match the document's "normal range" convention.
-fn tbr_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (4.0,  0.667) }
-    else if age < 13 { (3.0,  0.667) }
-    else if age < 19 { (2.25, 0.5)   }
-    else             { (1.75, 0.5)   }
+// All seven indicators use GAMLSS-fitted continuous age-dependent norms
+// (eyes-closed resting state). See docs/algorithm_report.md for derivations.
+// Z = (value − μ(age)) / σ(age);   T = 10·Z + 50.
+
+fn tbr_norm(age: f64) -> (f64, f64) {
+    let a = age.min(40.0);
+    let mu = 4.45 - 0.16 * a + 0.002 * a * a;
+    let sigma = 0.60 + 0.65 * (-0.02 * (a - 8.0).powi(2)).exp();
+    (mu, sigma)
 }
-fn apr_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (0.20, 0.067) }
-    else if age < 13 { (0.30, 0.067) }
-    else if age < 19 { (0.35, 0.067) }
-    else             { (0.40, 0.067) }
+
+fn apr_norm(age: f64) -> (f64, f64) {
+    let mu = 0.15 + 0.15 * (age / 28.0) * (1.0 - age / 28.0).exp();
+    let sigma = 0.075
+        + 0.025 * (-0.1 * age).exp()
+        + 0.025 * (-0.01 * (age - 27.0).powi(2)).exp();
+    (mu, sigma)
 }
-fn faa_norm(age: u32) -> (f64, f64) {
-    if age < 13 { (0.0, 0.067) }    // doc ±0.1 for 3-12 y/o
-    else        { (0.0, 0.033) }    // doc ±0.05 for ≥13 y/o
+
+fn faa_norm(age: f64) -> (f64, f64) {
+    let mu = 0.0;
+    let sigma = 0.05 + 0.05 / (1.0 + (age - 12.5).exp());
+    (mu, sigma)
 }
-fn paf_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (6.75, 0.5)   }
-    else if age < 13 { (8.25, 0.5)   }
-    else if age < 19 { (9.25, 0.5)   }
-    else             { (10.0, 0.667) }
+
+fn paf_norm(age: f64) -> (f64, f64) {
+    let mu = 10.2 - 4.59 * (-0.095 * age).exp();
+    let sigma = 0.75 + 0.25 / (1.0 + (-0.5 * (age - 19.0)).exp());
+    (mu, sigma)
 }
-fn rsa_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (25.0,  16.0)  }
-    else if age < 13 { (13.0,  6.67)  }
-    else if age < 19 { (8.5,   5.0)   }
-    else if age < 36 { (18.5,  11.67) }
-    else if age < 61 { (13.0,  8.0)   }
-    else             { (32.25, 21.17) }
+
+fn rsa_norm(age: f64) -> (f64, f64) {
+    let a = age.max(0.0).min(85.0);
+    let mu = 8.0
+        + 17.0 * (-0.02 * (a - 3.0).powi(2)).exp()
+        + 11.0 * (-0.03 * (a - 27.0).powi(2)).exp()
+        + 26.0 * (-0.003 * (a - 72.0).powi(2)).exp();
+    let sigma = (mu - 1.0).max(0.5);
+    (mu, sigma)
 }
+
 // COH: frontal-parietal pairs only (Fp1-Pz, Fp2-Pz, Fz-Pz) — see coh_pairs.
-fn coh_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (0.30, 0.067) }
-    else if age < 13 { (0.50, 0.067) }
-    else             { (0.60, 0.067) }
+fn coh_norm(age: f64) -> (f64, f64) {
+    let a = age.max(1.0).min(25.0);
+    let mu = 0.182 * a.ln() + 0.15;
+    let sigma = 0.15;
+    (mu, sigma)
 }
-fn entp_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (0.75, 0.167) }
-    else if age < 13 { (1.15, 0.233) }
-    else             { (1.5,  0.333) }
+
+fn entp_norm(age: f64) -> (f64, f64) {
+    let a = age.min(20.0);
+    let mu = 0.48 * a.powf(0.41);
+    let sigma = 0.18 + 0.02 * a;
+    (mu, sigma)
 }
 
 fn to_t(value: f64, norm: (f64, f64)) -> u32 {
@@ -478,11 +489,14 @@ fn to_t(value: f64, norm: (f64, f64)) -> u32 {
     t.round().clamp(1.0, 99.0) as u32
 }
 
-fn paf_range(age: u32) -> (f64, f64) {
-    if age < 6  { (5.0,  9.0) }
-    else if age < 13 { (6.0, 10.0) }
-    else if age < 19 { (8.0, 12.0) }
-    else             { (8.0, 13.0) }
+// PAF spectral-search range (for center-of-gravity estimation in 8–13 Hz region).
+// Still age-gated to avoid contamination from child theta peaks, but norm uses
+// the continuous GAMLSS model above.
+fn paf_range(age: f64) -> (f64, f64) {
+    if age < 6.0  { (5.0,  9.0) }
+    else if age < 13.0 { (6.0, 10.0) }
+    else if age < 19.0 { (8.0, 12.0) }
+    else                { (8.0, 13.0) }
 }
 
 // ---------------------------------------------------------------------------
@@ -490,7 +504,7 @@ fn paf_range(age: u32) -> (f64, f64) {
 // ---------------------------------------------------------------------------
 pub fn analyze_eeg_internal(
     samples_flat: &[f32],
-    age: u32,
+    age: f64,
 ) -> AnalysisResult {
     let n_samples = samples_flat.len() / N_CH;
     let duration_sec = n_samples as f64 / FS;
@@ -676,15 +690,13 @@ pub fn analyze_eeg_internal(
     }).collect();
     let EnTP = mean_filtered(&entp_by_ch);
 
-    // ── T-scores ─────────────────────────────────────────────────
+    // ── T-scores (pure GAMLSS: T = 10·Z + 50, no post-transform) ─
     let t_tbr  = to_t(TBR,  tbr_norm(age));
     let t_apr  = to_t(APR,  apr_norm(age));
     let t_faa  = to_t(FAA,  faa_norm(age));
     let t_paf  = to_t(PAF,  paf_norm(age));
     let t_rsa  = to_t(RSA,  rsa_norm(age));
-    // COH: raw T then sqrt transform
-    let t_coh_raw = to_t(COH, coh_norm(age));
-    let t_coh = ((t_coh_raw as f64).sqrt() * 10.0).round().clamp(1.0, 99.0) as u32;
+    let t_coh  = to_t(COH,  coh_norm(age));
     let t_entp = to_t(EnTP, entp_norm(age));
 
     AnalysisResult {
@@ -704,14 +716,14 @@ pub fn analyze_eeg_internal(
 pub fn result_to_json(r: &AnalysisResult) -> String {
     if let Some(ref err) = r.error {
         return format!(
-            r#"{{"error":"{}","age":{},"cleanEpochs":{},"totalEpochs":{},"durationSec":{:.2}}}"#,
+            r#"{{"error":"{}","age":{:.2},"cleanEpochs":{},"totalEpochs":{},"durationSec":{:.2}}}"#,
             err, r.age, r.clean_epochs, r.total_epochs, r.duration_sec
         );
     }
     let i = &r.indices;
     let t = &r.tscores;
 
-    // Capability profile
+    // Capability profile (uses integer-year age for cohort bucketing only).
     let cap_opt = compute_capability(
         t.tbr, t.apr, t.faa, t.paf, t.rsa, t.coh, t.entp, r.age,
     );
@@ -725,7 +737,7 @@ pub fn result_to_json(r: &AnalysisResult) -> String {
     };
 
     format!(
-        r#"{{"indices":{{"TBR":{:.4},"APR":{:.4},"FAA":{:.4},"PAF":{:.2},"RSA":{:.4},"COH":{:.4},"EnTP":{:.4}}},"tscores":{{"TBR":{},"APR":{},"FAA":{},"PAF":{},"RSA":{},"COH":{},"EnTP":{}}},"capability":{},"age":{},"cleanEpochs":{},"totalEpochs":{},"durationSec":{:.2}}}"#,
+        r#"{{"indices":{{"TBR":{:.4},"APR":{:.4},"FAA":{:.4},"PAF":{:.2},"RSA":{:.4},"COH":{:.4},"EnTP":{:.4}}},"tscores":{{"TBR":{},"APR":{},"FAA":{},"PAF":{},"RSA":{},"COH":{},"EnTP":{}}},"capability":{},"age":{:.2},"cleanEpochs":{},"totalEpochs":{},"durationSec":{:.2}}}"#,
         i.tbr, i.apr, i.faa, i.paf, i.rsa, i.coh, i.entp,
         t.tbr, t.apr, t.faa, t.paf, t.rsa, t.coh, t.entp,
         cap_json,

@@ -1168,7 +1168,7 @@ function buildReportProps(
       reportId,
       id:            subject.id  || '—',
       name:          subject.name || '—',
-      age:           `${result.age}${RT.ageSuffix}`,
+      age:           `${Math.floor(result.age)}${RT.ageSuffix}`,
       sex:           sexLabel,
       recordingDate: `${rec.getFullYear()}/${pad2(rec.getMonth()+1)}/${pad2(rec.getDate())} ${pad2(rec.getHours())}:${pad2(rec.getMinutes())}:${pad2(rec.getSeconds())}`,
       quality,
