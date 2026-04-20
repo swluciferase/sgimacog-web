@@ -4,6 +4,7 @@
 
 | 版本 | Commit | 主要內容 |
 |------|--------|---------|
+| v1.3.0 | (pending) | 常模校正（EC 狀態）：APR 6–18 歲、FAA 年齡分層、TBR 6–12、成人 TBR、COH F-P 限縮為 3 對×5 帶 |
 | v1.2.0 | (pending) | CCA 偽影移除正式套用於所有報告生成流程（即時量測與離線 CSV）；移除未連線的 UI toggle |
 | v1.1.2 | (pending) | EnTP 改用 Sample Entropy (m=2, r=0.2·SD, 降採樣 4× ≈250 Hz)，與常模一致 |
 | v1.1.1 | 5c97b7b | Alpha 功率帶積分加入端點線性內插；移除 COH 二次 sqrt 與 EnTP 誤加 sqrt |

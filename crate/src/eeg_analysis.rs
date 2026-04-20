@@ -427,21 +427,25 @@ fn mean_filtered(arr: &[f64]) -> f64 {
 // ---------------------------------------------------------------------------
 // T-score normative tables (private — compiled into WASM binary)
 // ---------------------------------------------------------------------------
+// Norms below assume eyes-closed (EC) resting-state recording.
+// Means from the reference summary table (APR EC / COH F-P); SDs set as
+// range/3 ≈ ±1.5σ to match the document's "normal range" convention.
 fn tbr_norm(age: u32) -> (f64, f64) {
     if age < 6  { (4.0,  0.667) }
-    else if age < 13 { (3.25, 0.833) }
+    else if age < 13 { (3.0,  0.667) }
     else if age < 19 { (2.25, 0.5)   }
-    else             { (1.65, 0.433) }
+    else             { (1.75, 0.5)   }
 }
 fn apr_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (0.2,   0.067) }
-    else if age < 13 { (0.225, 0.05)  }
-    else if age < 19 { (0.275, 0.05)  }
-    else if age < 36 { (0.3,   0.067) }
-    else if age < 61 { (0.265, 0.057) }
-    else             { (0.225, 0.05)  }
+    if age < 6  { (0.20, 0.067) }
+    else if age < 13 { (0.30, 0.067) }
+    else if age < 19 { (0.35, 0.067) }
+    else             { (0.40, 0.067) }
 }
-fn faa_norm() -> (f64, f64) { (0.0, 0.067) }
+fn faa_norm(age: u32) -> (f64, f64) {
+    if age < 13 { (0.0, 0.067) }    // doc ±0.1 for 3-12 y/o
+    else        { (0.0, 0.033) }    // doc ±0.05 for ≥13 y/o
+}
 fn paf_norm(age: u32) -> (f64, f64) {
     if age < 6  { (6.75, 0.5)   }
     else if age < 13 { (8.25, 0.5)   }
@@ -456,10 +460,11 @@ fn rsa_norm(age: u32) -> (f64, f64) {
     else if age < 61 { (13.0,  8.0)   }
     else             { (32.25, 21.17) }
 }
+// COH: frontal-parietal pairs only (Fp1-Pz, Fp2-Pz, Fz-Pz) — see coh_pairs.
 fn coh_norm(age: u32) -> (f64, f64) {
-    if age < 6  { (0.35, 0.1) }
-    else if age < 13 { (0.55, 0.1) }
-    else             { (0.65, 0.1) }
+    if age < 6  { (0.30, 0.067) }
+    else if age < 13 { (0.50, 0.067) }
+    else             { (0.60, 0.067) }
 }
 fn entp_norm(age: u32) -> (f64, f64) {
     if age < 6  { (0.75, 0.167) }
@@ -638,23 +643,23 @@ pub fn analyze_eeg_internal(
     let rsa_a2 = mean_band(&rsa_ch, B_ALPHA2);
     let RSA    = rsa_a1 / (rsa_a2 + 1e-12);
 
-    // ── COH — 6 pairs × 5 bands, Fp1/Fp2/Fz/Pz ─────────────────
-    let coh_ch = [CH_FP1, CH_FP2, CH_FZ, CH_PZ];
+    // ── COH — 3 frontal–parietal pairs × 5 bands ───────────────
+    // Fp1-Pz, Fp2-Pz, Fz-Pz  (doc: 前-頂葉同調性, F-P column).
+    // Intra-frontal pairs (Fp1-Fp2, Fp1-Fz, Fp2-Fz) and language (Broca-
+    // Wernicke) pairs are intentionally excluded.
+    let coh_pairs = [(CH_FP1, CH_PZ), (CH_FP2, CH_PZ), (CH_FZ, CH_PZ)];
     let coh_bands = [THETA, ALPHA1, ALPHA2, BETA1, BETA2];
     let mut coh_sum = 0.0f64;
     let mut coh_n   = 0u32;
-    for i in 0..coh_ch.len() {
-        for j in i+1..coh_ch.len() {
-            let c1 = coh_ch[i]; let c2 = coh_ch[j];
-            for &(lo, hi) in &coh_bands {
-                let c = spectral_coherence(
-                    &clean_global,
-                    &chan_epochs[c1], &chan_epochs[c2],
-                    lo, hi, FS,
-                );
-                coh_sum += c;
-                coh_n   += 1;
-            }
+    for &(c1, c2) in &coh_pairs {
+        for &(lo, hi) in &coh_bands {
+            let c = spectral_coherence(
+                &clean_global,
+                &chan_epochs[c1], &chan_epochs[c2],
+                lo, hi, FS,
+            );
+            coh_sum += c;
+            coh_n   += 1;
         }
     }
     let COH = if coh_n > 0 { coh_sum / coh_n as f64 } else { 0.0 };
@@ -674,7 +679,7 @@ pub fn analyze_eeg_internal(
     // ── T-scores ─────────────────────────────────────────────────
     let t_tbr  = to_t(TBR,  tbr_norm(age));
     let t_apr  = to_t(APR,  apr_norm(age));
-    let t_faa  = to_t(FAA,  faa_norm());
+    let t_faa  = to_t(FAA,  faa_norm(age));
     let t_paf  = to_t(PAF,  paf_norm(age));
     let t_rsa  = to_t(RSA,  rsa_norm(age));
     // COH: raw T then sqrt transform
