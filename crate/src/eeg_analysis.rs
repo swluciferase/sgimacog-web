@@ -362,31 +362,50 @@ fn spectral_coherence(
 }
 
 // ---------------------------------------------------------------------------
-// Permutation entropy (order = 3), normalised
+// Sample Entropy (Richman & Moorman 2000) — m=2, r=0.2·SD of the epoch.
+// `decimate` subsamples the signal by a fixed stride before the pair
+// comparisons (pre-filtered 4–30 Hz, so ≥60 Hz effective rate is aliasing-
+// safe). At 1001 Hz a stride of 4 brings the effective rate to ≈250 Hz,
+// matching the rate at which the normative table was established.
+// Returns SampEn = -ln(A/B) where B counts m-length template matches and
+// A counts (m+1)-length matches, both at Chebyshev tolerance r.
 // ---------------------------------------------------------------------------
-fn perm_entropy(signal: &[f64], order: usize) -> f64 {
-    use std::collections::BTreeMap;
-    let n = signal.len();
-    let mut counts: BTreeMap<Vec<usize>, u32> = BTreeMap::new();
-    let mut total = 0u32;
-    for i in 0..=(n.saturating_sub(order)) {
-        if i + order > n { break; }
-        let seg: Vec<f64> = signal[i..i+order].to_vec();
-        let mut idx: Vec<usize> = (0..order).collect();
-        idx.sort_by(|&a, &b| seg[a].partial_cmp(&seg[b]).unwrap());
-        *counts.entry(idx).or_insert(0) += 1;
-        total += 1;
+fn sample_entropy(signal: &[f64], m: usize, decimate: usize) -> f64 {
+    let stride = decimate.max(1);
+    let ds: Vec<f64> = signal.iter().step_by(stride).copied().collect();
+    let n = ds.len();
+    if n <= m + 1 { return 0.0; }
+
+    let mean = ds.iter().sum::<f64>() / n as f64;
+    let var = ds.iter().map(|&v| (v - mean) * (v - mean)).sum::<f64>() / n as f64;
+    let sd = var.sqrt();
+    if sd < 1e-12 { return 0.0; }
+    let r = 0.2 * sd;
+
+    let n_vec = n - m;
+    let mut b_count: u64 = 0;
+    let mut a_count: u64 = 0;
+
+    for i in 0..n_vec {
+        for j in (i + 1)..n_vec {
+            let mut max_d = 0.0f64;
+            let mut exceeded = false;
+            for k in 0..m {
+                let d = (ds[i + k] - ds[j + k]).abs();
+                if d > max_d {
+                    max_d = d;
+                    if max_d > r { exceeded = true; break; }
+                }
+            }
+            if exceeded { continue; }
+            b_count += 1;
+            let d_extra = (ds[i + m] - ds[j + m]).abs();
+            if d_extra <= r { a_count += 1; }
+        }
     }
-    if total == 0 { return 0.0; }
-    let mut h = 0.0f64;
-    for &c in counts.values() {
-        let p = c as f64 / total as f64;
-        h -= p * p.log2();
-    }
-    // Normalise by log2(order!)
-    let mut fact = 1u64;
-    for i in 2..=order as u64 { fact *= i; }
-    h / (fact as f64).log2()
+
+    if b_count == 0 || a_count == 0 { return 0.0; }
+    -((a_count as f64) / (b_count as f64)).ln()
 }
 
 fn iqr_filter(vals: &[f64], r: f64) -> Vec<f64> {
@@ -640,12 +659,13 @@ pub fn analyze_eeg_internal(
     }
     let COH = if coh_n > 0 { coh_sum / coh_n as f64 } else { 0.0 };
 
-    // ── EnTP — permutation entropy, 6 channels, filtered 4-30 Hz ─
+    // ── EnTP — sample entropy (m=2, r=0.2·SD), 6 channels, 4-30 Hz filtered,
+    //     decimated 4× (≈250 Hz) to match the normative table's convention ─
     let entp_ch = [CH_O1, CH_O2, CH_FZ, CH_PZ, CH_T7, CH_T8];
     let entp_by_ch: Vec<f64> = entp_ch.iter().map(|&ch| {
         let ep_entp: Vec<Vec<f64>> = chan_epochs_entp[ch].clone();
         let vals: Vec<f64> = clean_global.iter()
-            .map(|&gi| perm_entropy(&ep_entp[gi], 3))
+            .map(|&gi| sample_entropy(&ep_entp[gi], 2, 4))
             .collect();
         mean_filtered(&vals)
     }).collect();

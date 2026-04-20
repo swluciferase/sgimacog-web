@@ -358,16 +358,16 @@ $$\text{COH\_T} = \text{round}\!\left(\sqrt{\max(0,\,T_{raw})} \times 10\right)$
 
 **通道：** O1, O2, Fz, Pz, T7, T8（6 通道）
 
-使用 **Permutation Entropy（order = 3）**：
+使用 **Sample Entropy (SampEn, Richman & Moorman 2000)**：
 
-1. 對訊號中每個長度 3 的子序列，計算排列模式（共 $3! = 6$ 種）
-2. 統計各排列出現機率 $p_i$
-3. Shannon entropy：$H = -\sum p_i \log_2 p_i$
-4. 正規化：$H_{norm} = H / \log_2(3!) = H / \log_2(6)$
+1. 對每個 clean epoch 以 4–30 Hz 帶通後，**每 4 點抽樣**降採樣到 ≈250 Hz（與常模建立時一致）
+2. 參數：嵌入維度 $m = 2$，容忍度 $r = 0.2 \cdot \sigma_{epoch}$
+3. 計算 $B$ = m 維度下所有模板向量兩兩 Chebyshev 距離 $\leq r$ 的配對數；$A$ = m+1 維度下的配對數
+4. $\text{SampEn} = -\ln(A / B)$
 
 對每通道取各 clean epoch 的 IQR 過濾均值，再對 6 通道的均值取 IQR 過濾均值。
 
-**預處理：** 使用 4–30 Hz 帶通濾波後的訊號（非 1.5–45 Hz）。
+**預處理：** 使用 4–30 Hz 帶通濾波後的訊號（非 1.5–45 Hz），並降採樣 4× ≈ 250 Hz。
 
 **臨床意義：** 腦訊號複雜度指標，較高 EnTP 代表訊號更隨機/複雜，與認知靈活性相關。
 
