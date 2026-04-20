@@ -6,6 +6,7 @@
 
 import type { RecordedSample } from './csvWriter';
 import { wasmService } from './wasm';
+import { removeArtifacts } from './eegArtifactRemoval';
 
 // ---------------------------------------------------------------------------
 // Public interfaces (unchanged — callers see the same types)
@@ -88,7 +89,6 @@ function resampleFlat(flat: Float32Array, nIn: number, inRate: number): Float32A
 export async function analyzeEeg(
   samples: RecordedSample[],
   dob: string,
-  _useArtifactRemoval = false,
   channelIndices: number[] = [0, 1, 2, 3, 4, 5, 6, 7],
   inputSampleRate: number = SAMPLE_RATE,
 ): Promise<ReportResult> {
@@ -109,6 +109,22 @@ export async function analyzeEeg(
   // Resample to SAMPLE_RATE if input rate differs
   if (inputSampleRate !== SAMPLE_RATE) {
     flat = resampleFlat(flat, nSamples, inputSampleRate);
+  }
+
+  // CCA-based artifact removal (eye-blink + muscle) before WASM analysis.
+  // Applied unconditionally for every report — both live-stream and offline CSV.
+  const nResampled = flat.length / 8;
+  const perCh: Float64Array[] = [];
+  for (let ch = 0; ch < 8; ch++) {
+    const arr = new Float64Array(nResampled);
+    for (let i = 0; i < nResampled; i++) arr[i] = flat[i * 8 + ch]!;
+    perCh.push(arr);
+  }
+  const cleaned = removeArtifacts(perCh, SAMPLE_RATE);
+  for (let i = 0; i < nResampled; i++) {
+    for (let ch = 0; ch < 8; ch++) {
+      flat[i * 8 + ch] = cleaned[ch]![i]!;
+    }
   }
 
   // Call WASM

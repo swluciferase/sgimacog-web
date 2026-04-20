@@ -135,7 +135,6 @@ export const RecordView: FC<RecordViewProps> = ({
   const [elapsed, setElapsed] = useState(0);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [autoStopMode, setAutoStopMode] = useState<'csv' | 'report'>('csv');
-  const [useArtifactRemoval, setUseArtifactRemoval] = useState(false);
   const [enableRppg, setEnableRppg] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
@@ -254,7 +253,7 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval, reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
+      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
       if (result.error) { setReportStatus('error'); return; }
       await openHtmlReport(result, subjectInfo, startTime, deviceId, rppgResults ?? undefined, fileReportLang);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
@@ -316,7 +315,7 @@ export const RecordView: FC<RecordViewProps> = ({
     broadcastEegDone();
     setReportStatus('analyzing');
     try {
-      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', useArtifactRemoval, reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
+      const result = await analyzeEeg(samples, subjectInfo.dob ?? '', reportChannelIndices, deviceSampleRate ?? SAMPLE_RATE);
       if (result.error) {
         alert(`${T(lang, 'recordReportError')}: ${result.error}`);
         setReportStatus('error');
@@ -379,7 +378,7 @@ export const RecordView: FC<RecordViewProps> = ({
       setFileStatus('analyzing');
       let result;
       try {
-        result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', useArtifactRemoval, fileChIndices, fileSr);
+        result = await analyzeEeg(parsed.samples, subjectInfo.dob ?? '', fileChIndices, fileSr);
       } catch (wasmErr) {
         console.error('analyzeEeg threw:', wasmErr);
         setFileStatus('error');
@@ -813,20 +812,6 @@ export const RecordView: FC<RecordViewProps> = ({
 
           {/* Right: checkboxes */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              cursor: 'pointer', userSelect: 'none', fontSize: 13,
-              color: useArtifactRemoval ? 'var(--teal)' : 'rgba(140,160,185,0.65)',
-            }}>
-              <input
-                type="checkbox"
-                checked={useArtifactRemoval}
-                onChange={e => setUseArtifactRemoval(e.target.checked)}
-                style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--teal)' }}
-              />
-              {T(lang, 'recordArtifactRemoval')}
-            </label>
-
             <label style={{
               display: 'flex', alignItems: 'center', gap: 7,
               cursor: isRecording ? 'not-allowed' : 'pointer', userSelect: 'none', fontSize: 13,

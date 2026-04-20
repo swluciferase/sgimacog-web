@@ -162,7 +162,6 @@ const translations: Record<string, Record<Lang, string>> = {
   recordAutoStopped: { zh: '已達目標時長，自動停止', en: 'Target duration reached — auto stopped' },
 
   // Report generation
-  recordArtifactRemoval:  { zh: '去雜訊 (CCA)', en: 'Artifact Removal (CCA)' },
   recordFromFile:         { zh: '讀取 CSV 生成報告', en: 'Load CSV & Generate Report' },
   recordFromFileHint:     { zh: '選擇先前錄製的 CSV 檔案', en: 'Select a previously recorded CSV file' },
   recordFromFileParsing:  { zh: '解析中…', en: 'Parsing…' },
