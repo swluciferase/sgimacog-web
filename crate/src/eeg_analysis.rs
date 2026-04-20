@@ -690,13 +690,16 @@ pub fn analyze_eeg_internal(
     }).collect();
     let EnTP = mean_filtered(&entp_by_ch);
 
-    // ── T-scores (pure GAMLSS: T = 10·Z + 50, no post-transform) ─
+    // ── T-scores (GAMLSS: T = 10·Z + 50) ──────────────────────────
+    // COH applies an additional √T·10 post-transform to compress the
+    // right tail and widen resolution in the clinically-typical range.
     let t_tbr  = to_t(TBR,  tbr_norm(age));
     let t_apr  = to_t(APR,  apr_norm(age));
     let t_faa  = to_t(FAA,  faa_norm(age));
     let t_paf  = to_t(PAF,  paf_norm(age));
     let t_rsa  = to_t(RSA,  rsa_norm(age));
-    let t_coh  = to_t(COH,  coh_norm(age));
+    let t_coh_raw = to_t(COH, coh_norm(age));
+    let t_coh  = ((t_coh_raw as f64).sqrt() * 10.0).round().clamp(1.0, 99.0) as u32;
     let t_entp = to_t(EnTP, entp_norm(age));
 
     AnalysisResult {
