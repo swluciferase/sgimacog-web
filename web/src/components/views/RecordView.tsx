@@ -164,6 +164,52 @@ export const RecordView: FC<RecordViewProps> = ({
     return () => { ch.close(); rppgChannelRef.current = null; };
   }, []);
 
+  // ── THEMynd event-marker receiver ───────────────────────────────────────
+  // Accepts markers from THEMynd via (a) same-origin BroadcastChannel and
+  // (b) cross-origin postMessage (when THEMynd is iframed or opened via window.open).
+  useEffect(() => {
+    const handleMarker = (data: {
+      source?: string;
+      id?: number;
+      event?: string;
+      taskId?: number;
+      trialIdx?: number;
+      rt?: number;
+      correct?: boolean;
+      wallclock?: number;
+    }) => {
+      if (!data || data.source !== 'themynd') return;
+      const parts = [`#${data.id ?? '?'}`, data.event ?? '?', `task=${data.taskId ?? '?'}`];
+      if (data.trialIdx != null) parts.push(`trial=${data.trialIdx}`);
+      if (data.rt != null) parts.push(`rt=${data.rt}ms`);
+      if (data.correct != null) parts.push(data.correct ? '✓' : '✗');
+      onEventMarker({
+        id: `themynd-${data.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        time: data.wallclock ?? Date.now(),
+        label: parts.join(' · '),
+      });
+    };
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('sigmacog-markers');
+      bc.onmessage = (ev) => handleMarker(ev.data);
+    } catch {
+      /* some browsers may not support BroadcastChannel */
+    }
+
+    const onPostMsg = (ev: MessageEvent) => {
+      // Accept from any origin — THEMynd tags messages with source='themynd'
+      handleMarker(ev.data);
+    };
+    window.addEventListener('message', onPostMsg);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('message', onPostMsg);
+    };
+  }, [onEventMarker]);
+
   useEffect(() => {
     if (isRecording) {
       timerRef.current = setInterval(() => {
