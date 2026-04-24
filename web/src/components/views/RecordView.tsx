@@ -183,11 +183,18 @@ export const RecordView: FC<RecordViewProps> = ({
       if (data.trialIdx != null) parts.push(`trial=${data.trialIdx}`);
       if (data.rt != null) parts.push(`rt=${data.rt}ms`);
       if (data.correct != null) parts.push(data.correct ? '✓' : '✗');
+      const fullLabel = parts.join(' · ');
+      // (1) Add to the right-side marker list
       onEventMarker({
         id: `themynd-${data.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         time: data.wallclock ?? Date.now(),
-        label: parts.join(' · '),
+        label: fullLabel,
       });
+      // (2) Also draw a vertical marker on the waveform canvas (short label to fit)
+      const shortLabel = `#${data.id ?? '?'}`;
+      window.dispatchEvent(new CustomEvent('themynd-marker-visual', {
+        detail: { label: shortLabel, fullLabel },
+      }));
     };
 
     let bc: BroadcastChannel | null = null;

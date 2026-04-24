@@ -373,6 +373,32 @@ export const WaveformView = ({
     onEventMarker({ id, time, label });
   }, [onEventMarker]);
 
+  // Visual-only marker draw — used when the marker list is already being
+  // maintained elsewhere (e.g. THEMynd broadcast). Skips onEventMarker so the
+  // right-side list isn't double-populated.
+  const drawMarkerVisualOnly = useCallback((label: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    const time = Date.now();
+    const newMarker: EventMarker = { id, time, label, sweepPos: sweepPosRef.current, totalSweep: totalSweepRef.current };
+    markersRef.current = [...markersRef.current, newMarker];
+    setMarkers(markersRef.current);
+  }, []);
+
+  // Listen for THEMynd visual-only marker events (fired from RecordView when
+  // a BroadcastChannel/postMessage marker arrives).
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const ce = ev as CustomEvent<{ label?: string }>;
+      const shouldFire = isFocused !== undefined
+        ? isFocused
+        : (canvasRef.current?.offsetParent !== null);
+      if (!shouldFire) return;
+      drawMarkerVisualOnly(ce.detail?.label || `M${markersRef.current.length + 1}`);
+    };
+    window.addEventListener('themynd-marker-visual', handler);
+    return () => window.removeEventListener('themynd-marker-visual', handler);
+  }, [drawMarkerVisualOnly, isFocused]);
+
   // Ingest packets
   useEffect(() => {
     if (!packets || packets.length === 0) return;
