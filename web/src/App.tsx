@@ -452,8 +452,8 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
               compact
             />
             {cam.enabled && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0' }}>
-                <span style={{ fontSize: 12, color: 'rgba(200,224,216,0.7)' }}>📷</span>
+              <div className="cam-slot-row">
+                <span className="cam-slot-glyph" aria-hidden="true">▣</span>
                 <CameraSlotSelector
                   slot="dev1"
                   selectedDeviceId={cam.slots.dev1.deviceId}
@@ -461,7 +461,7 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
                   onChange={(id, label) => cam.setSlotDevice('dev1', id, label)}
                 />
                 {cam.slots.dev1.status === 'error' && (
-                  <span style={{ color: '#dc7860', fontSize: 11 }} title={cam.slots.dev1.errorMsg}>⚠</span>
+                  <span className="cam-slot-warn" title={cam.slots.dev1.errorMsg}>!</span>
                 )}
               </div>
             )}

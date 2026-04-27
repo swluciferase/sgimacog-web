@@ -28,6 +28,7 @@ export const CameraSlotSelector: FC<Props> = ({ slot, selectedDeviceId, disabled
 
   return (
     <select
+      className="cam-select"
       aria-label={`Camera for ${slot}`}
       disabled={disabled}
       value={selectedDeviceId ?? ''}
@@ -40,17 +41,8 @@ export const CameraSlotSelector: FC<Props> = ({ slot, selectedDeviceId, disabled
         const info = devices.find((d) => d.deviceId === id);
         onChange(id, info?.label ?? id);
       }}
-      style={{
-        padding: '4px 6px',
-        background: 'rgba(0,0,0,0.25)',
-        color: '#cce',
-        border: '1px solid rgba(120,180,200,0.3)',
-        borderRadius: 4,
-        fontSize: 12,
-        minWidth: 140,
-      }}
     >
-      <option value="">📷 未選擇 / None</option>
+      <option value="">— None —</option>
       {devices.map((d) => (
         <option key={d.deviceId} value={d.deviceId}>
           {d.label || `Camera ${d.deviceId.slice(0, 6)}`}

@@ -398,3 +398,473 @@ select option {
 }
 .dev-count-btn:hover { background: var(--bg3); }
 .dev-count-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Camera recording UI — lab-instrument deck-recorder aesthetic
+ * Tokens: teal accents on dark glass, Crimson Pro italic glyph marks,
+ * IBM Plex Mono numerics, pulsing rec dot + LCD-style elapsed counter.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* Custom dropdown — replaces browser-native chrome */
+.cam-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg4);
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(136,176,168,0.6) 50%),
+    linear-gradient(135deg, rgba(136,176,168,0.6) 50%, transparent 50%);
+  background-position:
+    calc(100% - 11px) 52%,
+    calc(100% - 7px) 52%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(72,186,166,0.25);
+  border-radius: 3px;
+  color: var(--cream);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .68rem;
+  padding: 4px 22px 4px 8px;
+  min-width: 160px;
+  cursor: pointer;
+  transition: border-color .15s, background-color .15s;
+  letter-spacing: .02em;
+}
+.cam-select:hover:not(:disabled) {
+  border-color: rgba(72,186,166,0.5);
+  background-color: rgba(20,40,52,0.7);
+}
+.cam-select:disabled { opacity: .45; cursor: not-allowed; }
+
+/* RecordView camera control rig */
+.cam-rig {
+  margin: 12px 0;
+  padding: 9px 12px 11px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  position: relative;
+  overflow: hidden;
+}
+.cam-rig::before {
+  content: '';
+  position: absolute; top: 0; left: 14px; right: 14px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(72,186,166,0.45), transparent);
+}
+.cam-rig-head {
+  display: flex; align-items: center; gap: .35rem;
+  font-size: .62rem; color: var(--muted);
+  letter-spacing: .18em; text-transform: uppercase;
+  margin-bottom: 9px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.cam-rig-head-glyph {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-size: 1rem;
+  color: var(--cyan); line-height: 1;
+}
+.cam-rig-body {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+
+/* Custom checkbox */
+.cam-check {
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer; user-select: none;
+  font-size: .72rem; color: var(--cream);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .03em;
+}
+.cam-check input { position: absolute; opacity: 0; pointer-events: none; }
+.cam-check-box {
+  width: 14px; height: 14px;
+  border: 1px solid rgba(72,186,166,0.55);
+  border-radius: 2px;
+  background: var(--bg4);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  font-size: 9px; color: var(--bg);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cam-check input:checked + .cam-check-box {
+  background: var(--teal);
+  border-color: var(--teal);
+  box-shadow: 0 0 6px rgba(92,196,168,0.45);
+}
+.cam-check input:checked + .cam-check-box::after { content: '✓'; }
+.cam-check input:disabled + .cam-check-box {
+  opacity: .35;
+}
+.cam-check.disabled { cursor: not-allowed; color: var(--muted); }
+
+/* Pill button (folder picker / advanced) */
+.cam-pill {
+  padding: 4px 11px;
+  border-radius: 3px;
+  border: 1px solid rgba(72,186,166,0.35);
+  background: transparent;
+  color: var(--teal);
+  font-size: .68rem;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+  letter-spacing: .04em;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.cam-pill:hover:not(:disabled) {
+  background: rgba(72,186,166,0.1);
+  border-color: rgba(72,186,166,0.6);
+}
+.cam-pill:disabled { opacity: .35; cursor: not-allowed; }
+.cam-pill.has-folder {
+  color: var(--cream);
+  border-color: rgba(72,186,166,0.5);
+  background: rgba(72,186,166,0.06);
+}
+.cam-pill-glyph { font-size: .8rem; line-height: 1; }
+
+.cam-ready {
+  font-size: .65rem; color: var(--green);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .08em;
+  display: inline-flex; align-items: baseline; gap: 4px;
+}
+.cam-ready-count {
+  font-size: .85rem; font-weight: 600;
+  text-shadow: 0 0 6px rgba(63,185,80,0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Browser compat banner */
+.cam-compat {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  background: rgba(216,184,74,0.07);
+  border: 1px solid rgba(216,184,74,0.35);
+  border-radius: 5px;
+  position: relative;
+  overflow: hidden;
+}
+.cam-compat::before {
+  content: '';
+  position: absolute; top: 0; left: 14px; right: 14px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(216,184,74,0.55), transparent);
+}
+.cam-compat-glyph {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-weight: 600; font-size: 1.45rem;
+  color: var(--amber);
+  line-height: .9; flex-shrink: 0;
+  text-shadow: 0 0 8px rgba(216,184,74,0.35);
+}
+.cam-compat-text {
+  font-size: .72rem;
+  color: rgba(216,184,74,0.92);
+  line-height: 1.55;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .02em;
+}
+
+/* Per-device slot selector row */
+.cam-slot-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 10px;
+  background: var(--bg4);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: .65rem;
+}
+.cam-slot-glyph {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-size: .95rem;
+  color: var(--cyan); line-height: 1;
+}
+.cam-slot-warn {
+  color: var(--rose); font-size: .9rem;
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic;
+  text-shadow: 0 0 5px rgba(220,120,96,0.5);
+}
+
+/* ── Floating PiP dock ── */
+.cam-dock {
+  position: fixed;
+  background: rgba(13,23,32,0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(72,186,166,0.42);
+  border-radius: 6px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow:
+    0 14px 36px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(72,186,166,0.06),
+    inset 0 1px 0 rgba(72,186,166,0.18);
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--cream);
+}
+.cam-dock::before {
+  content: '';
+  position: absolute; top: 0; left: 14px; right: 14px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(72,186,166,0.6), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+.cam-dock-head {
+  height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 9px;
+  padding: 0 6px 0 10px;
+  background: linear-gradient(180deg, rgba(20,40,52,0.95), rgba(13,23,32,0.95));
+  border-bottom: 1px solid rgba(72,186,166,0.18);
+  cursor: move; user-select: none;
+}
+.cam-dock-recdot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ff5050;
+  box-shadow: 0 0 8px rgba(255,80,80,0.75);
+  animation: cam-rec-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes cam-rec-pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+.cam-dock-label {
+  font-size: .58rem; letter-spacing: .22em;
+  color: var(--muted); text-transform: uppercase;
+  flex-shrink: 0;
+}
+.cam-dock-time {
+  font-size: .82rem; font-weight: 500;
+  color: var(--cream);
+  letter-spacing: .14em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 6px rgba(72,186,166,0.3);
+  flex-shrink: 0;
+}
+.cam-dock-spacer { flex: 1; }
+.cam-dock-icon {
+  width: 22px; height: 22px;
+  border: 1px solid rgba(72,186,166,0.3);
+  background: transparent;
+  color: var(--text);
+  border-radius: 3px;
+  font-size: .7rem; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all .12s;
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1;
+}
+.cam-dock-icon:hover { background: rgba(72,186,166,0.12); color: var(--teal); }
+.cam-dock-icon.danger:hover {
+  background: rgba(208,112,112,0.18);
+  color: var(--rose);
+  border-color: rgba(208,112,112,0.5);
+}
+
+.cam-dock-grid {
+  flex: 1; min-height: 0;
+  display: grid; gap: 4px; padding: 5px;
+}
+
+.cam-tile {
+  position: relative;
+  background: #000;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  border: 1px solid rgba(72,186,166,0.18);
+}
+.cam-tile-video {
+  flex: 1; width: 100%;
+  object-fit: cover;
+  background: #000;
+  min-height: 0;
+}
+.cam-tile-id {
+  position: absolute; top: 5px; left: 5px;
+  font-size: .55rem; letter-spacing: .15em;
+  color: var(--cream);
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(72,186,166,0.4);
+  border-radius: 2px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  pointer-events: none;
+  font-family: 'IBM Plex Mono', monospace;
+  backdrop-filter: blur(4px);
+}
+.cam-tile-status {
+  position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  pointer-events: none;
+}
+.cam-tile-status.recording {
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(128,200,84,0.7);
+  animation: cam-rec-pulse 1.4s ease-in-out infinite;
+}
+.cam-tile-status.paused {
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(216,184,74,0.6);
+}
+.cam-tile-status.error {
+  background: var(--rose);
+  box-shadow: 0 0 6px rgba(220,120,96,0.6);
+}
+.cam-tile-status.idle {
+  background: var(--muted);
+  box-shadow: 0 0 4px rgba(87,136,136,0.4);
+}
+
+.cam-tile-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 6px;
+  background: rgba(0,0,0,0.7);
+  font-size: .58rem;
+  border-top: 1px solid rgba(72,186,166,0.15);
+  flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.cam-tile-seg {
+  color: var(--muted);
+  letter-spacing: .12em;
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+  text-transform: uppercase;
+}
+.cam-tile-seg b { color: var(--cream); font-weight: 500; }
+.cam-tile-action {
+  border: 1px solid rgba(72,186,166,0.35);
+  background: transparent;
+  color: var(--teal);
+  font-size: .55rem;
+  padding: 1px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: all .12s;
+}
+.cam-tile-action:hover { background: rgba(72,186,166,0.14); }
+.cam-tile-action.amber {
+  color: var(--amber);
+  border-color: rgba(216,184,74,0.45);
+}
+.cam-tile-action.amber:hover { background: rgba(216,184,74,0.12); }
+
+.cam-tile-error {
+  position: absolute; inset: 0;
+  background: rgba(208,112,112,0.6);
+  color: #fff;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-size: .6rem; padding: 8px; text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .04em;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.cam-tile-error-glyph {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-weight: 600;
+  font-size: 1.3rem; line-height: 1;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+
+.cam-dock-resize {
+  position: absolute; right: 0; bottom: 0;
+  width: 14px; height: 14px;
+  cursor: nwse-resize;
+  background:
+    linear-gradient(135deg,
+      transparent 0%, transparent 38%,
+      rgba(72,186,166,0.55) 38%, rgba(72,186,166,0.55) 50%,
+      transparent 50%, transparent 62%,
+      rgba(72,186,166,0.55) 62%, rgba(72,186,166,0.55) 74%,
+      transparent 74%);
+  z-index: 2;
+}
+
+/* ── Advanced settings modal ── */
+.cam-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(8,15,22,0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2500;
+  animation: cam-modal-in .15s ease-out;
+}
+@keyframes cam-modal-in { from { opacity: 0; } to { opacity: 1; } }
+.cam-modal {
+  background: var(--bg2);
+  border: 1px solid rgba(72,186,166,0.4);
+  border-radius: 6px;
+  width: 360px;
+  padding: 16px 20px 14px;
+  position: relative;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.65);
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--cream);
+  animation: cam-modal-pop .18s cubic-bezier(0.2, 0.7, 0.4, 1);
+}
+@keyframes cam-modal-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.cam-modal::before {
+  content: '';
+  position: absolute; top: 0; left: 16px; right: 16px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(72,186,166,0.6), transparent);
+}
+.cam-modal-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .68rem; letter-spacing: .18em;
+  color: var(--muted); text-transform: uppercase;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.cam-modal-title-glyph {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-size: 1.05rem;
+  color: var(--plum); line-height: 1;
+}
+.cam-modal-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: .7rem;
+}
+.cam-modal-row:last-of-type { border-bottom: none; }
+.cam-modal-label {
+  color: var(--muted);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: .62rem;
+}
+.cam-modal-warn {
+  margin-top: 12px; padding: 7px 10px;
+  border: 1px solid rgba(216,184,74,0.4);
+  background: rgba(216,184,74,0.07);
+  border-radius: 3px;
+  font-size: .65rem; color: var(--amber);
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1.55;
+  letter-spacing: .02em;
+  display: flex; align-items: flex-start; gap: 7px;
+}
+.cam-modal-warn-glyph {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-style: italic; font-weight: 600;
+  font-size: 1rem; line-height: 1; margin-top: 1px;
+}
+.cam-modal-foot {
+  display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;
+}

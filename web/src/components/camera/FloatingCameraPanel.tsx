@@ -39,55 +39,64 @@ export const FloatingCameraPanel: FC<Props> = ({ cam, visible, elapsedMs, onClos
 
   return (
     <div
+      className="cam-dock"
       style={{
-        position: 'fixed',
         left: pos.x,
         top: pos.y,
         width: size.w,
-        height: collapsed ? 32 : size.h,
-        background: 'rgba(8,20,28,0.95)',
-        border: '1px solid rgba(72,186,166,0.5)',
-        borderRadius: 6,
-        zIndex: 2000,
-        color: '#cde',
-        fontSize: 12,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
+        height: collapsed ? 30 : size.h,
       }}
     >
       <div
+        className="cam-dock-head"
         onPointerDown={startDrag}
         onPointerMove={onDrag}
         onPointerUp={endDrag}
-        style={{
-          height: 32,
-          background: 'rgba(20,40,52,0.9)',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 8px',
-          cursor: 'move',
-          userSelect: 'none',
-          gap: 8,
-        }}
       >
-        <span style={{ color: '#3fb950' }}>●</span>
-        <span>Cameras {formatElapsed(elapsedMs)}</span>
-        <span style={{ flex: 1 }} />
-        <button type="button" onClick={() => setCollapsed((v) => !v)}>{collapsed ? '▢' : '—'}</button>
-        <button type="button" onClick={onClose}>✕</button>
+        <span className="cam-dock-recdot" aria-hidden="true" />
+        <span className="cam-dock-label">REC</span>
+        <span className="cam-dock-time">{formatElapsed(elapsedMs)}</span>
+        <span className="cam-dock-spacer" />
+        <button
+          type="button"
+          className="cam-dock-icon"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-label={collapsed ? 'Expand' : 'Collapse'}
+        >
+          {collapsed ? '▢' : '−'}
+        </button>
+        <button
+          type="button"
+          className="cam-dock-icon danger"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ✕
+        </button>
       </div>
 
       {!collapsed && (
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 4, padding: 4 }}>
+        <div
+          className="cam-dock-grid"
+          style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+        >
           {activeSlots.map((s) => (
-            <SlotCell key={s} slot={s} state={cam.slots[s]} stream={cam.getSlotStream(s)} pause={() => cam.pauseSlot(s)} resume={() => cam.resumeSlot(s)} />
+            <SlotCell
+              key={s}
+              slot={s}
+              state={cam.slots[s]}
+              stream={cam.getSlotStream(s)}
+              pause={() => cam.pauseSlot(s)}
+              resume={() => cam.resumeSlot(s)}
+            />
           ))}
         </div>
       )}
 
       {!collapsed && (
         <div
+          className="cam-dock-resize"
+          aria-hidden="true"
           onPointerDown={(ev) => {
             const startX = ev.clientX;
             const startY = ev.clientY;
@@ -105,15 +114,6 @@ export const FloatingCameraPanel: FC<Props> = ({ cam, visible, elapsedMs, onClos
             };
             window.addEventListener('pointermove', onMove);
             window.addEventListener('pointerup', onUp);
-          }}
-          style={{
-            position: 'absolute',
-            right: 0,
-            bottom: 0,
-            width: 14,
-            height: 14,
-            cursor: 'nwse-resize',
-            background: 'rgba(72,186,166,0.4)',
           }}
         />
       )}
@@ -135,33 +135,35 @@ const SlotCell: FC<SlotCellProps> = ({ slot, state, stream, pause, resume }) => 
     if (videoRef.current) videoRef.current.srcObject = stream;
   }, [stream]);
 
-  const dotColor =
+  const statusClass =
     state.status === 'recording'
-      ? '#3fb950'
+      ? 'recording'
       : state.status === 'paused'
-        ? '#f0c14b'
+        ? 'paused'
         : state.status === 'error'
-          ? '#dc7860'
-          : '#888';
+          ? 'error'
+          : 'idle';
 
   return (
-    <div style={{ position: 'relative', background: '#000', borderRadius: 4, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <video ref={videoRef} autoPlay muted playsInline style={{ flex: 1, width: '100%', objectFit: 'cover' }} />
-      <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', gap: 6, background: 'rgba(0,0,0,0.6)' }}>
-        <span style={{ color: dotColor }}>●</span>
-        <span>{slot}</span>
-        <span style={{ flex: 1 }} />
-        <span>seg {String(state.segmentCount).padStart(2, '0')}</span>
+    <div className="cam-tile">
+      <video ref={videoRef} className="cam-tile-video" autoPlay muted playsInline />
+      <span className="cam-tile-id">{slot}</span>
+      <span className={`cam-tile-status ${statusClass}`} aria-hidden="true" />
+      <div className="cam-tile-bar">
+        <span className="cam-tile-seg">
+          seg <b>{String(state.segmentCount).padStart(2, '0')}</b>
+        </span>
         {state.status === 'recording' && (
-          <button type="button" onClick={pause}>Pause</button>
+          <button type="button" className="cam-tile-action amber" onClick={pause}>Pause</button>
         )}
         {state.status === 'paused' && (
-          <button type="button" onClick={resume}>Resume</button>
+          <button type="button" className="cam-tile-action" onClick={resume}>Resume</button>
         )}
       </div>
       {state.status === 'error' && state.errorMsg && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(220,120,96,0.7)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, padding: 6, textAlign: 'center' }}>
-          ⚠ {state.errorMsg}
+        <div className="cam-tile-error">
+          <span className="cam-tile-error-glyph" aria-hidden="true">!</span>
+          <span>{state.errorMsg}</span>
         </div>
       )}
     </div>

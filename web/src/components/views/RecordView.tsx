@@ -1018,35 +1018,47 @@ export const RecordView: FC<RecordViewProps> = ({
 
         {/* Camera control row */}
         {cam && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '12px 0' }}>
+          <div className="cam-rig">
+            <div className="cam-rig-head">
+              <span className="cam-rig-head-glyph" aria-hidden="true">α</span>
+              <span>{lang === 'zh' ? '相機錄製' : 'Camera Recording'}</span>
+            </div>
             {!cam.fsAvailable && <BrowserCompatBanner lang={lang} />}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <div className="cam-rig-body">
+              <label className={`cam-check${(!cam.fsAvailable || isRecording) ? ' disabled' : ''}`}>
                 <input
                   type="checkbox"
                   checked={cam.enabled}
                   disabled={!cam.fsAvailable || isRecording}
                   onChange={(e) => cam.setEnabled(e.target.checked)}
                 />
+                <span className="cam-check-box" aria-hidden="true" />
                 {lang === 'zh' ? '啟用相機錄製' : 'Enable camera recording'}
               </label>
               <button
                 type="button"
+                className={`cam-pill${cam.rootFolderName ? ' has-folder' : ''}`}
                 disabled={!cam.enabled || isRecording}
                 onClick={() => { void cam.pickFolder().catch(() => {/* user cancelled */}); }}
               >
-                📁 {cam.rootFolderName ?? (lang === 'zh' ? '選擇資料夾' : 'Choose folder')}
+                <span className="cam-pill-glyph" aria-hidden="true">▦</span>
+                {cam.rootFolderName ?? (lang === 'zh' ? '選擇資料夾' : 'Choose folder')}
               </button>
               <button
                 type="button"
+                className="cam-pill"
                 disabled={!cam.enabled}
                 onClick={() => setShowCamSettings(true)}
               >
-                ⚙ {lang === 'zh' ? '進階' : 'Advanced'}
+                <span className="cam-pill-glyph" aria-hidden="true">⚙</span>
+                {lang === 'zh' ? '進階' : 'Advanced'}
               </button>
               {cam.enabled && cam.rootFolderName && (
-                <span style={{ fontSize: 12, color: '#3fb950' }}>
-                  ✅ {Object.values(cam.slots).filter((s) => s.deviceId).length} {lang === 'zh' ? '台相機就緒' : 'cameras ready'}
+                <span className="cam-ready">
+                  <span className="cam-ready-count">
+                    {Object.values(cam.slots).filter((s) => s.deviceId).length}
+                  </span>
+                  {lang === 'zh' ? '台相機就緒' : 'cameras ready'}
                 </span>
               )}
             </div>

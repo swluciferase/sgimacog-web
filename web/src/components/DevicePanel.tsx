@@ -150,8 +150,8 @@ export const DevicePanel: FC<DevicePanelProps> = ({
 
       {/* ── Camera slot row ── */}
       {cam && cameraSlot && cam.enabled && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderTop: '1px solid rgba(120,180,200,0.12)' }}>
-          <span style={{ fontSize: 12, color: 'rgba(200,224,216,0.7)' }}>📷</span>
+        <div className="cam-slot-row">
+          <span className="cam-slot-glyph" aria-hidden="true">▣</span>
           <CameraSlotSelector
             slot={cameraSlot}
             selectedDeviceId={cam.slots[cameraSlot].deviceId}
@@ -159,7 +159,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             onChange={(id, label) => cam.setSlotDevice(cameraSlot, id, label)}
           />
           {cam.slots[cameraSlot].status === 'error' && (
-            <span style={{ color: '#dc7860', fontSize: 11 }} title={cam.slots[cameraSlot].errorMsg}>⚠</span>
+            <span className="cam-slot-warn" title={cam.slots[cameraSlot].errorMsg}>!</span>
           )}
         </div>
       )}
