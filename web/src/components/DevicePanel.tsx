@@ -8,6 +8,9 @@ import { RecordView } from './views/RecordView';
 import { ConnectModal } from './modals/ConnectModal';
 import { useDevice } from '../hooks/useDevice';
 import type { SessionInfo } from '../services/sessionApi';
+import { CameraSlotSelector } from './camera/CameraSlotSelector';
+import type { CameraSlotId } from '../types/camera';
+import type { UseCameraSessionResult } from '../hooks/useCameraSession';
 
 // Per-device color accents
 const DEVICE_COLORS = ['#52b8d8', '#80c854', '#dc7860', '#b060c8'];
@@ -43,10 +46,14 @@ export interface DevicePanelProps {
   onFocus?: () => void;
   /** Called whenever this device's impedance-active state changes */
   onImpedanceActiveChange?: (active: boolean) => void;
+  /** Global camera session (passed from App). When provided, renders a camera slot selector. */
+  cam?: UseCameraSessionResult;
+  /** Camera slot id — usually 'dev1'..'dev4' matching deviceIndex. */
+  cameraSlot?: CameraSlotId;
 }
 
 export const DevicePanel: FC<DevicePanelProps> = ({
-  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false, isFocused, onFocus, onImpedanceActiveChange,
+  deviceIndex, lang, sessionInfo, recordSignal = 0, disconnectSignal = 0, eventSignal = 0, stopSignal = 0, syncMarkerOn = false, isFocused, onFocus, onImpedanceActiveChange, cam, cameraSlot,
 }) => {
   const d = useDevice(sessionInfo);
   const [activeTab, setActiveTab] = useState<TabId>('connect');
@@ -140,6 +147,22 @@ export const DevicePanel: FC<DevicePanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* ── Camera slot row ── */}
+      {cam && cameraSlot && cam.enabled && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderTop: '1px solid rgba(120,180,200,0.12)' }}>
+          <span style={{ fontSize: 12, color: 'rgba(200,224,216,0.7)' }}>📷</span>
+          <CameraSlotSelector
+            slot={cameraSlot}
+            selectedDeviceId={cam.slots[cameraSlot].deviceId}
+            disabled={cam.globalState === 'recording'}
+            onChange={(id, label) => cam.setSlotDevice(cameraSlot, id, label)}
+          />
+          {cam.slots[cameraSlot].status === 'error' && (
+            <span style={{ color: '#dc7860', fontSize: 11 }} title={cam.slots[cameraSlot].errorMsg}>⚠</span>
+          )}
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="dp-tabs">
