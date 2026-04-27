@@ -277,6 +277,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             isFlexibleElectrode={d.deviceMode === 'flexible'}
             isImpedanceActive={d.isImpedanceActive}
             deviceSampleRate={d.effectiveSampleRate}
+            cam={cam}
             compact
           />
         </div>

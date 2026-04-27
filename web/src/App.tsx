@@ -529,6 +529,7 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
               isFlexibleElectrode={deviceMode === 'flexible'}
               isImpedanceActive={isImpedanceActive}
               deviceSampleRate={effectiveSampleRate}
+              cam={cam}
             />
           </div>
         </div>
