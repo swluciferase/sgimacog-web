@@ -40,6 +40,9 @@ import { getSessionTokenFromUrl, fetchSessionInfo, type SessionInfo } from './se
 import { useEegStream } from './hooks/useEegStream';
 import { useQualityMonitor } from './hooks/useQualityMonitor';
 import type { QualityConfig } from './hooks/useQualityMonitor';
+import { useCameraSession, type UseCameraSessionResult } from './hooks/useCameraSession';
+import { CameraSlotSelector } from './components/camera/CameraSlotSelector';
+import type { CameraSlotId } from './types/camera';
 
 // ── WASM interface types ──
 
@@ -74,7 +77,7 @@ function computeNotchDesc(fp: FilterParams): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // Single-device view — uses the existing singleton services (device slot 0)
 // ─────────────────────────────────────────────────────────────────────────────
-function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: SessionInfo | null }) {
+function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInfo: SessionInfo | null; cam: UseCameraSessionResult }) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [showConnectModal, setShowConnectModal] = useState(false);
 
@@ -448,6 +451,20 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               onDisconnect={handleDisconnect}
               compact
             />
+            {cam.enabled && (
+              <div className="cam-slot-row">
+                <span className="cam-slot-glyph" aria-hidden="true">▣</span>
+                <CameraSlotSelector
+                  slot="dev1"
+                  selectedDeviceId={cam.slots.dev1.deviceId}
+                  disabled={cam.globalState === 'recording'}
+                  onChange={(id, label) => cam.setSlotDevice('dev1', id, label)}
+                />
+                {cam.slots.dev1.status === 'error' && (
+                  <span className="cam-slot-warn" title={cam.slots.dev1.errorMsg}>!</span>
+                )}
+              </div>
+            )}
             <div className="sh" style={{ marginTop: 10 }}>
               <span className="sh-g">~</span>{lang === 'zh' ? '電極阻抗' : 'Impedance'}
             </div>
@@ -512,6 +529,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
               isFlexibleElectrode={deviceMode === 'flexible'}
               isImpedanceActive={isImpedanceActive}
               deviceSampleRate={effectiveSampleRate}
+              cam={cam}
             />
           </div>
         </div>
@@ -532,7 +550,7 @@ function SingleDeviceLayout({ lang, sessionInfo }: { lang: Lang; sessionInfo: Se
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-device layout — renders DevicePanel × n
 // ─────────────────────────────────────────────────────────────────────────────
-function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal, syncMarkerOn, onAnyImpedanceActiveChange }: {
+function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopSignal, disconnectSignal, eventSignal, syncMarkerOn, onAnyImpedanceActiveChange, cam }: {
   deviceCount: number;
   lang: Lang;
   sessionInfo: SessionInfo | null;
@@ -542,6 +560,7 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
   eventSignal: number;
   syncMarkerOn: boolean;
   onAnyImpedanceActiveChange: (active: boolean) => void;
+  cam: UseCameraSessionResult;
 }) {
   const [focusedDevice, setFocusedDevice] = useState(0);
   const [impedanceActiveSet, setImpedanceActiveSet] = useState<Set<number>>(new Set());
@@ -572,6 +591,8 @@ function MultiDeviceLayout({ deviceCount, lang, sessionInfo, recordSignal, stopS
           isFocused={focusedDevice === i}
           onFocus={() => setFocusedDevice(i)}
           onImpedanceActiveChange={active => handleImpedanceActiveChange(i, active)}
+          cam={cam}
+          cameraSlot={`dev${i + 1}` as CameraSlotId}
         />
       ))}
     </div>
@@ -591,6 +612,7 @@ function App() {
   const [eventSignal, setEventSignal] = useState(0);
   const [syncMarkerOn, setSyncMarkerOn] = useState(false);
   const [anyImpedanceActive, setAnyImpedanceActive] = useState(false);
+  const cam = useCameraSession();
   const sessionTokenRef = useRef<string | null>(getSessionTokenFromUrl());
 
   useEffect(() => {
@@ -634,7 +656,7 @@ function App() {
       />
 
       {deviceCount === 1
-        ? <SingleDeviceLayout key="single" lang={lang} sessionInfo={sessionInfo} />
+        ? <SingleDeviceLayout key="single" lang={lang} sessionInfo={sessionInfo} cam={cam} />
         : <MultiDeviceLayout
             deviceCount={deviceCount}
             lang={lang}
@@ -645,6 +667,7 @@ function App() {
             eventSignal={eventSignal}
             syncMarkerOn={syncMarkerOn}
             onAnyImpedanceActiveChange={setAnyImpedanceActive}
+            cam={cam}
           />
       }
     </div>

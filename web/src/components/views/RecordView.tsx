@@ -12,6 +12,13 @@ import { type RppgResults } from '../../services/reportPdf';
 import { openHtmlReport, type ReportLang } from '../../services/eegReportHtml';
 import { parseCsv } from '../../services/csvParser';
 import { serviceStart, NoCreditError } from '../../services/creditApi';
+import type { UseCameraSessionResult } from '../../hooks/useCameraSession';
+import { FloatingCameraPanel } from '../camera/FloatingCameraPanel';
+import { BrowserCompatBanner } from '../camera/BrowserCompatBanner';
+import { CameraAdvancedSettings } from '../camera/CameraAdvancedSettings';
+import type { SessionMeta } from '../../types/camera';
+import { writeSessionMeta } from '../../services/camera/fsWriter';
+import { APP_VERSION } from '../../version';
 
 const VISIOMYND_URL = 'https://www.sigmacog.xyz/visiomynd';
 const RPPG_CHANNEL  = 'sgimacog_rppg_sync';
@@ -54,6 +61,8 @@ export interface RecordViewProps {
   isImpedanceActive?: boolean;
   /** Device sample rate — used for CSV header (default 1000) */
   deviceSampleRate?: number;
+  /** Global camera session — passed from App via DevicePanel. */
+  cam?: UseCameraSessionResult;
 }
 
 function formatDuration(ms: number): string {
@@ -120,6 +129,7 @@ export const RecordView: FC<RecordViewProps> = ({
   isFlexibleElectrode = false,
   isImpedanceActive = false,
   deviceSampleRate,
+  cam,
 }) => {
   // Use ref-based access when available (avoids full-array copy); fall back to prop
   const getSamples = (): RecordedSample[] => recordSamplesRef?.current ?? recordedSamples;
@@ -133,6 +143,9 @@ export const RecordView: FC<RecordViewProps> = ({
 
   const [saveFilename, setSaveFilename] = useState('');
   const [elapsed, setElapsed] = useState(0);
+  const [showCamSettings, setShowCamSettings] = useState(false);
+  const [showCamPanel, setShowCamPanel] = useState(true);
+  const [recStartTs, setRecStartTs] = useState<number | null>(null);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [autoStopMode, setAutoStopMode] = useState<'csv' | 'report'>('csv');
   const [enableRppg, setEnableRppg] = useState(false);
@@ -251,9 +264,64 @@ export const RecordView: FC<RecordViewProps> = ({
     rppgChannelRef.current?.postMessage({ type: 'eeg_done' });
   };
 
+  // ── Camera session lifecycle helpers ──────────────────────────────────────
+  const handleStartWithCam = async () => {
+    const startedAt = new Date();
+    const epochOriginMs = startedAt.getTime();
+    setRecStartTs(epochOriginMs);
+    onStartRecording();
+    if (cam?.enabled && cam.rootFolderName) {
+      try {
+        await cam.startAll({
+          epochOriginMs,
+          sessionId: sessionInfo?.sessionId ?? `local-${epochOriginMs}`,
+          startedAt,
+        });
+      } catch (err) {
+        console.error('[camera] startAll failed:', err);
+        alert(`Camera start failed: ${(err as Error).message}\nEEG recording continues.`);
+      }
+    }
+  };
+
+  const cameraStopAndWriteMeta = async () => {
+    if (!cam?.enabled) return;
+    const stoppedAt = Date.now();
+    try {
+      const sidecars = await cam.stopAll();
+      if (cam.sessionDirHandle && recStartTs) {
+        const meta: SessionMeta = {
+          schema_version: '1.0',
+          session_id: sessionInfo?.sessionId ?? `local-${recStartTs}`,
+          app: 'sgimacog-web',
+          app_version: APP_VERSION,
+          created_at_iso: new Date(recStartTs).toISOString(),
+          epoch_origin_ms: recStartTs,
+          duration_ms: stoppedAt - recStartTs,
+          eeg: {
+            devices: [
+              { slot: 'dev1', csv: 'eeg/dev1.csv', sample_rate_hz: deviceSampleRate ?? 1000 },
+            ],
+          },
+          video: {
+            cameras: sidecars.map((sc) => ({
+              slot: sc.slot,
+              sidecar: `video/${sc.slot}_video.json`,
+            })),
+          },
+        };
+        await writeSessionMeta(cam.sessionDirHandle, meta);
+      }
+    } catch (err) {
+      console.error('[camera] stopAll/meta failed:', err);
+    }
+    setRecStartTs(null);
+  };
+
   const handleStop = () => {
     broadcastEegDone();
     onStopRecording();
+    void cameraStopAndWriteMeta();
     const samples = getSamples();
     if (samples.length > 0 && startTime) {
       const blob = generateCsvBlob(
@@ -278,12 +346,14 @@ export const RecordView: FC<RecordViewProps> = ({
   const handleStopOnly = () => {
     broadcastEegDone();
     onStopRecording();
+    void cameraStopAndWriteMeta();
   };
 
   // Auto-stop + report: always saves CSV, generates report only if data ≥ 90s (no alert on short data)
   const handleAutoStopReport = async () => {
     broadcastEegDone();
     onStopRecording();
+    void cameraStopAndWriteMeta();
     const samples = getSamples();
     if (samples.length === 0 || !startTime) return;
     const blob = generateCsvBlob(samples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels, deviceSampleRate);
@@ -336,6 +406,7 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     // Stop recording and download CSV first
     onStopRecording();
+    void cameraStopAndWriteMeta();
     let csvFilename = '';
     if (samples.length > 0 && startTime) {
       const blob = generateCsvBlob(
@@ -945,11 +1016,60 @@ export const RecordView: FC<RecordViewProps> = ({
           </div>
         )}
 
+        {/* Camera control row */}
+        {cam && (
+          <div className="cam-rig">
+            <div className="cam-rig-head">
+              <span className="cam-rig-head-glyph" aria-hidden="true">α</span>
+              <span>{lang === 'zh' ? '相機錄製' : 'Camera Recording'}</span>
+            </div>
+            {!cam.fsAvailable && <BrowserCompatBanner lang={lang} />}
+            <div className="cam-rig-body">
+              <label className={`cam-check${(!cam.fsAvailable || isRecording) ? ' disabled' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={cam.enabled}
+                  disabled={!cam.fsAvailable || isRecording}
+                  onChange={(e) => cam.setEnabled(e.target.checked)}
+                />
+                <span className="cam-check-box" aria-hidden="true" />
+                {lang === 'zh' ? '啟用相機錄製' : 'Enable camera recording'}
+              </label>
+              <button
+                type="button"
+                className={`cam-pill${cam.rootFolderName ? ' has-folder' : ''}`}
+                disabled={!cam.enabled || isRecording}
+                onClick={() => { void cam.pickFolder().catch(() => {/* user cancelled */}); }}
+              >
+                <span className="cam-pill-glyph" aria-hidden="true">▦</span>
+                {cam.rootFolderName ?? (lang === 'zh' ? '選擇資料夾' : 'Choose folder')}
+              </button>
+              <button
+                type="button"
+                className="cam-pill"
+                disabled={!cam.enabled}
+                onClick={() => setShowCamSettings(true)}
+              >
+                <span className="cam-pill-glyph" aria-hidden="true">⚙</span>
+                {lang === 'zh' ? '進階' : 'Advanced'}
+              </button>
+              {cam.enabled && cam.rootFolderName && (
+                <span className="cam-ready">
+                  <span className="cam-ready-count">
+                    {Object.values(cam.slots).filter((s) => s.deviceId).length}
+                  </span>
+                  {lang === 'zh' ? '台相機就緒' : 'cameras ready'}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Button row */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {isRecording ? (<>
             <button
-              onClick={onStartRecording}
+              onClick={handleStartWithCam}
               disabled
               style={{
                 background: 'rgba(63,185,80,0.08)',
@@ -1038,7 +1158,7 @@ export const RecordView: FC<RecordViewProps> = ({
             )}
           </>) : (<>
             <button
-              onClick={onStartRecording}
+              onClick={handleStartWithCam}
               disabled={!isConnected || isImpedanceActive}
               title={isImpedanceActive ? (lang === 'zh' ? '阻抗量測中，無法錄製' : 'Stop impedance measurement first') : undefined}
               style={{
@@ -1294,6 +1414,24 @@ export const RecordView: FC<RecordViewProps> = ({
           </div>
         </div>
       </div>
+    )}
+
+    {cam && (
+      <>
+        <CameraAdvancedSettings
+          open={showCamSettings}
+          config={cam.config}
+          activeCameraCount={Object.values(cam.slots).filter((s) => s.deviceId).length}
+          onClose={() => setShowCamSettings(false)}
+          onApply={(c) => cam.setConfig(c)}
+        />
+        <FloatingCameraPanel
+          cam={cam}
+          visible={showCamPanel && cam.enabled && cam.globalState === 'recording'}
+          elapsedMs={recStartTs ? Date.now() - recStartTs : 0}
+          onClose={() => setShowCamPanel(false)}
+        />
+      </>
     )}
     </>
   );
