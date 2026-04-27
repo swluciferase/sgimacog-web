@@ -17,7 +17,7 @@ import { FloatingCameraPanel } from '../camera/FloatingCameraPanel';
 import { BrowserCompatBanner } from '../camera/BrowserCompatBanner';
 import { CameraAdvancedSettings } from '../camera/CameraAdvancedSettings';
 import type { SessionMeta } from '../../types/camera';
-import { writeSessionMeta } from '../../services/camera/fsWriter';
+import { writeBlobAsFile, writeSessionMeta } from '../../services/camera/fsWriter';
 import { APP_VERSION } from '../../version';
 
 const VISIOMYND_URL = 'https://www.sigmacog.xyz/visiomynd';
@@ -145,6 +145,8 @@ export const RecordView: FC<RecordViewProps> = ({
   const [elapsed, setElapsed] = useState(0);
   const [showCamSettings, setShowCamSettings] = useState(false);
   const [showCamPanel, setShowCamPanel] = useState(true);
+  const [showFolderError, setShowFolderError] = useState(false);
+  const [folderErrorMsg, setFolderErrorMsg] = useState('');
   const [recStartTs, setRecStartTs] = useState<number | null>(null);
   const [reportStatus, setReportStatus] = useState<'idle' | 'analyzing' | 'done' | 'error'>('idle');
   const [autoStopMode, setAutoStopMode] = useState<'csv' | 'report'>('csv');
@@ -264,24 +266,44 @@ export const RecordView: FC<RecordViewProps> = ({
     rppgChannelRef.current?.postMessage({ type: 'eeg_done' });
   };
 
-  // ── Camera session lifecycle helpers ──────────────────────────────────────
+  // ── Session lifecycle helpers ────────────────────────────────────────────
   const handleStartWithCam = async () => {
     const startedAt = new Date();
     const epochOriginMs = startedAt.getTime();
     setRecStartTs(epochOriginMs);
     onStartRecording();
+    const sid = sessionInfo?.sessionId ?? `local-${epochOriginMs}`;
+    // If a folder is picked, prepare the session dir up-front so EEG CSV can land
+    // in the same place even when cameras are disabled.
+    if (cam?.hasFolder) {
+      try {
+        await cam.prepareSession({ sessionId: sid, startedAt });
+      } catch (err) {
+        console.error('[session] prepareSession failed:', err);
+      }
+    }
     if (cam?.enabled && cam.rootFolderName) {
       try {
-        await cam.startAll({
-          epochOriginMs,
-          sessionId: sessionInfo?.sessionId ?? `local-${epochOriginMs}`,
-          startedAt,
-        });
+        await cam.startAll({ epochOriginMs, sessionId: sid, startedAt });
       } catch (err) {
         console.error('[camera] startAll failed:', err);
         alert(`Camera start failed: ${(err as Error).message}\nEEG recording continues.`);
       }
     }
+  };
+
+  /** Write CSV to the picked folder's eeg/ subdir if available; else download to browser. */
+  const saveCsvToFolderOrDownload = async (blob: Blob, filename: string): Promise<void> => {
+    if (cam?.hasFolder && cam.sessionDirHandle) {
+      try {
+        const eegDir = await cam.sessionDirHandle.getDirectoryHandle('eeg', { create: false });
+        await writeBlobAsFile(eegDir, filename, blob);
+        return;
+      } catch (err) {
+        console.error('[fsa] EEG CSV write failed, falling back to download:', err);
+      }
+    }
+    downloadCsvBlob(blob, filename);
   };
 
   const cameraStopAndWriteMeta = async () => {
@@ -318,10 +340,9 @@ export const RecordView: FC<RecordViewProps> = ({
     setRecStartTs(null);
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
     broadcastEegDone();
     onStopRecording();
-    void cameraStopAndWriteMeta();
     const samples = getSamples();
     if (samples.length > 0 && startTime) {
       const blob = generateCsvBlob(
@@ -334,12 +355,13 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceSampleRate,
       );
       const filename = buildCsvFilenameCustom(saveFilename, deviceId, startTime);
-      downloadCsvBlob(blob, filename);
+      await saveCsvToFolderOrDownload(blob, filename);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         blob.text().then(content =>
           uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, filename));
       }
     }
+    void cameraStopAndWriteMeta();
   };
 
   // Plain stop — no download
@@ -353,12 +375,15 @@ export const RecordView: FC<RecordViewProps> = ({
   const handleAutoStopReport = async () => {
     broadcastEegDone();
     onStopRecording();
-    void cameraStopAndWriteMeta();
     const samples = getSamples();
-    if (samples.length === 0 || !startTime) return;
+    if (samples.length === 0 || !startTime) {
+      void cameraStopAndWriteMeta();
+      return;
+    }
     const blob = generateCsvBlob(samples, startTime, deviceId ?? 'STEEG_UNKNOWN', filterDesc, notchDesc, channelLabels, deviceSampleRate);
     const filename = buildCsvFilenameCustom(saveFilename, deviceId, startTime);
-    downloadCsvBlob(blob, filename);
+    await saveCsvToFolderOrDownload(blob, filename);
+    void cameraStopAndWriteMeta();
     if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
       blob.text().then(content =>
         uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, filename));
@@ -404,9 +429,8 @@ export const RecordView: FC<RecordViewProps> = ({
       alert(T(lang, 'recordReportTooShort'));
       return;
     }
-    // Stop recording and download CSV first
+    // Stop recording and save CSV first
     onStopRecording();
-    void cameraStopAndWriteMeta();
     let csvFilename = '';
     if (samples.length > 0 && startTime) {
       const blob = generateCsvBlob(
@@ -419,12 +443,13 @@ export const RecordView: FC<RecordViewProps> = ({
         deviceSampleRate,
       );
       csvFilename = buildCsvFilenameCustom(saveFilename, deviceId, startTime);
-      downloadCsvBlob(blob, csvFilename);
+      await saveCsvToFolderOrDownload(blob, csvFilename);
       if (sessionInfo?.sessionId && sessionInfo.sessionToken) {
         blob.text().then(content =>
           uploadSessionCsv(sessionInfo.sessionId!, sessionInfo.sessionToken!, content, csvFilename));
       }
     }
+    void cameraStopAndWriteMeta();
     // Deduct one session credit before running analysis
     try {
       await serviceStart('sigmacog');
@@ -1016,34 +1041,87 @@ export const RecordView: FC<RecordViewProps> = ({
           </div>
         )}
 
-        {/* Camera control row */}
-        {cam && (
+        {/* Save folder — controls EEG CSV destination (and camera output when enabled) */}
+        {cam && cam.fsAvailable && (
+          <div className="cam-rig">
+            <div className="cam-rig-head">
+              <span className="cam-rig-head-glyph" aria-hidden="true">α</span>
+              <span>{lang === 'zh' ? '存檔資料夾' : 'Save Folder'}</span>
+            </div>
+            <div className="cam-rig-body">
+              <button
+                type="button"
+                className={`cam-pill${cam.rootFolderName ? ' has-folder' : ''}`}
+                disabled={isRecording}
+                onClick={async () => {
+                  try {
+                    await cam.pickFolder();
+                  } catch (err) {
+                    const e = err as DOMException;
+                    if (e?.name === 'AbortError') return; // user cancelled
+                    setFolderErrorMsg(e?.message ?? String(err));
+                    setShowFolderError(true);
+                  }
+                }}
+              >
+                <span className="cam-pill-glyph" aria-hidden="true">▦</span>
+                {cam.rootFolderName ?? (lang === 'zh' ? '選擇資料夾' : 'Choose folder')}
+              </button>
+              <span style={{
+                fontSize: '.62rem',
+                color: cam.rootFolderName ? 'var(--green)' : 'var(--muted)',
+                fontFamily: "'IBM Plex Mono', monospace",
+                letterSpacing: '.08em',
+                lineHeight: 1.5,
+              }}>
+                {cam.rootFolderName
+                  ? (lang === 'zh' ? 'EEG／相機檔將寫入此資料夾' : 'EEG / camera files will be written here')
+                  : (lang === 'zh' ? '未選 — EEG 將下載到瀏覽器預設位置' : 'Not set — EEG will download to browser default')}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {cam && !cam.fsAvailable && (
+          <div style={{ margin: '12px 0' }}>
+            <BrowserCompatBanner lang={lang} />
+          </div>
+        )}
+
+        {/* Camera enable — independent of folder picker */}
+        {cam && cam.fsAvailable && (
           <div className="cam-rig">
             <div className="cam-rig-head">
               <span className="cam-rig-head-glyph" aria-hidden="true">α</span>
               <span>{lang === 'zh' ? '相機錄製' : 'Camera Recording'}</span>
             </div>
-            {!cam.fsAvailable && <BrowserCompatBanner lang={lang} />}
             <div className="cam-rig-body">
-              <label className={`cam-check${(!cam.fsAvailable || isRecording) ? ' disabled' : ''}`}>
+              <label className={`cam-check${isRecording ? ' disabled' : ''}`}>
                 <input
                   type="checkbox"
                   checked={cam.enabled}
-                  disabled={!cam.fsAvailable || isRecording}
-                  onChange={(e) => cam.setEnabled(e.target.checked)}
+                  disabled={isRecording}
+                  onChange={async (e) => {
+                    const wantOn = e.target.checked;
+                    if (!wantOn) { cam.setEnabled(false); return; }
+                    // Ensure a writable folder is granted before enabling cameras
+                    if (!cam.hasFolder) {
+                      try {
+                        await cam.pickFolder();
+                      } catch (err) {
+                        const ex = err as DOMException;
+                        if (ex?.name === 'AbortError') return; // user cancelled, keep unchecked
+                        setFolderErrorMsg(ex?.message ?? String(err));
+                        setShowFolderError(true);
+                        return;
+                      }
+                    }
+                    cam.setEnabled(true);
+                  }}
                 />
                 <span className="cam-check-box" aria-hidden="true" />
                 {lang === 'zh' ? '啟用相機錄製' : 'Enable camera recording'}
               </label>
-              <button
-                type="button"
-                className={`cam-pill${cam.rootFolderName ? ' has-folder' : ''}`}
-                disabled={!cam.enabled || isRecording}
-                onClick={() => { void cam.pickFolder().catch(() => {/* user cancelled */}); }}
-              >
-                <span className="cam-pill-glyph" aria-hidden="true">▦</span>
-                {cam.rootFolderName ?? (lang === 'zh' ? '選擇資料夾' : 'Choose folder')}
-              </button>
               <button
                 type="button"
                 className="cam-pill"
@@ -1410,6 +1488,43 @@ export const RecordView: FC<RecordViewProps> = ({
               }}
             >
               {lang === 'zh' ? '確認' : 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showFolderError && (
+      <div className="cam-modal-backdrop" onClick={() => setShowFolderError(false)}>
+        <div className="cam-modal" onClick={(ev) => ev.stopPropagation()}>
+          <h3 className="cam-modal-title">
+            <span className="cam-modal-title-glyph" aria-hidden="true">!</span>
+            {lang === 'zh' ? '資料夾無法存取' : 'Folder Not Accessible'}
+          </h3>
+          <div className="cam-modal-warn" style={{ marginTop: 0 }}>
+            <span className="cam-modal-warn-glyph" aria-hidden="true">!</span>
+            <span style={{ lineHeight: 1.6 }}>
+              {lang === 'zh'
+                ? '瀏覽器拒絕存取此資料夾（可能含系統檔或受系統保護）。請改選一般使用者資料夾，例如桌面下新建的「sigmacog_data」或「My Documents」內的子資料夾。'
+                : 'The browser refused access to this folder (it may contain system files or be system-protected). Please pick a regular user folder — e.g. a freshly created "sigmacog_data" on Desktop, or a subfolder under Documents.'}
+            </span>
+          </div>
+          {folderErrorMsg && (
+            <div style={{
+              marginTop: 10,
+              fontSize: '.58rem',
+              color: 'var(--muted)',
+              fontFamily: "'IBM Plex Mono', monospace",
+              letterSpacing: '.04em',
+              opacity: .75,
+              wordBreak: 'break-word',
+            }}>
+              {folderErrorMsg}
+            </div>
+          )}
+          <div className="cam-modal-foot">
+            <button type="button" className="cam-pill" onClick={() => setShowFolderError(false)}>
+              {lang === 'zh' ? '了解' : 'Got it'}
             </button>
           </div>
         </div>

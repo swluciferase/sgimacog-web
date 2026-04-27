@@ -40,12 +40,21 @@ export interface UseCameraSessionResult {
   enabled: boolean;
   setEnabled(v: boolean): void;
   rootFolderName: string | null;
+  hasFolder: boolean;
   pickFolder(): Promise<void>;
   config: CameraConfig;
   setConfig(c: CameraConfig): void;
   slots: Record<CameraSlotId, SlotState>;
   setSlotDevice(slot: CameraSlotId, deviceId: string | null, label?: string): void;
   globalState: GlobalRecordState;
+  /**
+   * Create the session directory (and eeg/ + video/ subdirs) under the picked root folder.
+   * Used by EEG controller so CSV can be written into the same session even without cameras.
+   */
+  prepareSession(args: { sessionId: string; startedAt: Date }): Promise<{
+    sessionDir: FileSystemDirectoryHandle;
+    eegDir: FileSystemDirectoryHandle;
+  }>;
   /**
    * Start recording for all configured slots. Caller is the EEG recording controller —
    * pass the same epoch_origin_ms it uses, and the session_id used in CSV filenames.
@@ -106,9 +115,8 @@ export function useCameraSession(): UseCameraSessionResult {
     [patchSlot],
   );
 
-  const startAll = useCallback(
-    async (args: { epochOriginMs: number; sessionId: string; startedAt: Date }) => {
-      if (!enabled) return;
+  const prepareSession = useCallback(
+    async (args: { sessionId: string; startedAt: Date }) => {
       if (!rootHandle.current) {
         throw new Error('No folder selected — call pickFolder() first.');
       }
@@ -116,6 +124,18 @@ export function useCameraSession(): UseCameraSessionResult {
       const sDir = await ensureSessionDir(rootHandle.current, dirName);
       sessionDirHandle.current = sDir;
       videoDirHandle.current = await sDir.getDirectoryHandle('video', { create: false });
+      const eegDir = await sDir.getDirectoryHandle('eeg', { create: false });
+      return { sessionDir: sDir, eegDir };
+    },
+    [],
+  );
+
+  const startAll = useCallback(
+    async (args: { epochOriginMs: number; sessionId: string; startedAt: Date }) => {
+      if (!enabled) return;
+      if (!sessionDirHandle.current) {
+        await prepareSession({ sessionId: args.sessionId, startedAt: args.startedAt });
+      }
 
       setGlobalState('recording');
       const activeSlots = ALL_SLOTS.filter((s) => slots[s].deviceId);
@@ -143,7 +163,7 @@ export function useCameraSession(): UseCameraSessionResult {
         }
       }
     },
-    [enabled, slots, config, patchSlot],
+    [enabled, slots, config, patchSlot, prepareSession],
   );
 
   const pauseSlot = useCallback(async (slot: CameraSlotId) => {
@@ -170,6 +190,8 @@ export function useCameraSession(): UseCameraSessionResult {
       }
     }
     setGlobalState('idle');
+    sessionDirHandle.current = null;
+    videoDirHandle.current = null;
     return sidecars;
   }, [patchSlot]);
 
@@ -183,12 +205,14 @@ export function useCameraSession(): UseCameraSessionResult {
     enabled,
     setEnabled,
     rootFolderName,
+    hasFolder: rootHandle.current !== null,
     pickFolder,
     config,
     setConfig,
     slots,
     setSlotDevice,
     globalState,
+    prepareSession,
     startAll,
     pauseSlot,
     resumeSlot,
