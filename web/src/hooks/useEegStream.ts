@@ -35,6 +35,7 @@ type RawPacket = {
   gsensor?: Float32Array | null;
   impedanceResults?: RawImpedanceResult[] | null;
   machineInfo?: string | null;
+  event?: number | null;
 };
 
 export function useEegStream(
@@ -110,6 +111,7 @@ export function useEegStream(
           synctick: null,
           euler: null,
           machineInfo: packet.machineInfo ?? null,
+          event: packet.event ?? null,
           gsensor: packet.gsensor
             ? {
                 gyroX: packet.gsensor[0],
