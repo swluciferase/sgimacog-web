@@ -17,11 +17,11 @@ export default defineConfig({
       debugger: true,
       options: {
         compact: true,
-        // controlFlowFlattening disabled 2026-05-01 — broke multi-device
-        // hardware-marker path (while-loop mutation in drawHardwareMarkerVisualOnly
-        // + ref-callback patterns in useDevice broadcast listener crashed as
-        // `he is not a function`). Other transforms remain.
-        controlFlowFlattening: false,
+        // Re-enabled 2026-05-02 after refactoring obfuscator-unsafe patterns:
+        // (1) while-mutate loops in WaveformView.drawMarker*VisualOnly → single modulo;
+        // (2) `someRef.current(callback)` chains → hoist deref to local before call.
+        controlFlowFlattening: true,
+        controlFlowFlatteningThreshold: 0.5,
         numbersToExpressions: true,
         simplify: true,
         stringArrayShuffle: true,

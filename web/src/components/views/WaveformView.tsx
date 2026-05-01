@@ -391,8 +391,8 @@ export const WaveformView = ({
       const sr = effectiveSampleRateRef.current ?? 1000;
       const offsetUnits = offsetMs * (sr / 1000);
       const total = totalSweepRef.current || 1;
-      markerSweepPos = sweepPosRef.current - offsetUnits;
-      while (markerSweepPos < 0) markerSweepPos += total;
+      const raw = sweepPosRef.current - offsetUnits;
+      markerSweepPos = ((raw % total) + total) % total;
     }
     const newMarker: EventMarker = {
       id, time, label,
@@ -421,8 +421,8 @@ export const WaveformView = ({
       const sr = effectiveSampleRateRef.current ?? 1000;
       const offsetUnits = offsetMs * (sr / 1000);
       const total = totalSweepRef.current || 1;
-      markerSweepPos = sweepPosRef.current - offsetUnits;
-      while (markerSweepPos < 0) markerSweepPos += total;
+      const raw = sweepPosRef.current - offsetUnits;
+      markerSweepPos = ((raw % total) + total) % total;
     }
     const newMarker: EventMarker = {
       id, time, label,

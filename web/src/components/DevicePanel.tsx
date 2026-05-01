@@ -93,7 +93,8 @@ export const DevicePanel: FC<DevicePanelProps> = ({
       // Only handle events for this panel's device.
       if (!deviceIdForMarkerRef.current) return;
       if (ce.detail.deviceId !== deviceIdForMarkerRef.current) return;
-      setEventMarkersRef.current((prev) => [
+      const setter = setEventMarkersRef.current;
+      setter((prev) => [
         ...prev,
         {
           id: `hw-${ce.detail.deviceId}-${ce.detail.timestamp}-${Math.random().toString(36).slice(2, 6)}`,

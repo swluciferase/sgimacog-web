@@ -609,7 +609,8 @@ export const RecordView: FC<RecordViewProps> = ({
     }
     if (shouldAutoStop && !autoStoppedRef.current) {
       autoStoppedRef.current = true;
-      void handleAutoStopRef.current();
+      const autoStop = handleAutoStopRef.current;
+      void autoStop();
     }
   }, [shouldAutoStop, isRecording]);
 

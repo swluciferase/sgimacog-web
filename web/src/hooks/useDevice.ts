@@ -182,7 +182,8 @@ export function useDevice(
           originWallclock: ce.detail.originWallclock,  // forwarded source wallclock (for CSV)
         },
       }));
-      onHardwareEventMarkerRef.current?.({ value: ce.detail.value, deviceId: own, timestamp: evTimestamp });
+      const cb = onHardwareEventMarkerRef.current;
+      if (cb) cb({ value: ce.detail.value, deviceId: own, timestamp: evTimestamp });
     };
     window.addEventListener('hardware-marker-broadcast', handler);
     return () => window.removeEventListener('hardware-marker-broadcast', handler);
@@ -523,7 +524,8 @@ export function useDevice(
     }
     if (shouldAutoStop && !autoStopFiredRef.current) {
       autoStopFiredRef.current = true;
-      handleStopRef.current();
+      const stop = handleStopRef.current;
+      stop();
     }
   }, [shouldAutoStop, isRecording]);
 

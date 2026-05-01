@@ -99,7 +99,8 @@ export function useEegStream(
             e,
           );
           running = false;
-          onParserErrorRef.current?.();
+          const onErr = onParserErrorRef.current;
+          if (onErr) onErr();
           return;
         }
 
