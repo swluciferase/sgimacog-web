@@ -10,9 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:wasm": "cd ../crate && wasm-pack build --target web --release --out-dir ../web/src/pkg",
+    "build:wasm": "cd ../crate && wasm-pack build --target web --release --out-dir ../web/src/pkg && cd ../web && WASM_ENC_KEY=b1a4c39bf3010859ecb8b2072d7f4f2c76043dd79b66a86556ca04d155395614 bun run encrypt:wasm",
     "encrypt:wasm": "node ../scripts/encrypt-wasm.mjs src/pkg/steeg_wasm_bg.wasm src/pkg/steeg_wasm_bg.wasm",
-    "build:full": "bun run build:wasm && WASM_ENC_KEY=b1a4c39bf3010859ecb8b2072d7f4f2c76043dd79b66a86556ca04d155395614 bun run encrypt:wasm && bun run build"
+    "build:full": "bun run build:wasm && bun run build"
   },
   "dependencies": {
     "@fontsource/noto-sans-tc": "^5.2.9",
