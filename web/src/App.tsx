@@ -8,6 +8,7 @@ import { RecordView } from './components/views/RecordView';
 import { ConnectModal } from './components/modals/ConnectModal';
 import { DevicePanel } from './components/DevicePanel';
 import { useDevice } from './hooks/useDevice';
+import type { EventMarker } from './hooks/useDevice';
 import { serialService } from './services/serial';
 import type { ConnectionStatus } from './services/serial';
 import { ftdiUsbService, type UsbDeviceLike } from './services/ftdiUsb';
@@ -114,7 +115,7 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
     enabled: true, sensitivity: 3, targetDurationSec: 60, windowSec: 2,
   });
 
-  const [eventMarkers, setEventMarkers] = useState<{ id: string; time: number; label: string }[]>([]);
+  const [eventMarkers, setEventMarkers] = useState<EventMarker[]>([]);
   const pendingMarkerRef = useRef<{ id: string; time: number; label: string } | null>(null);
   /** Hardware-marker value queued for the next packet (set by broadcast listener in Task E4). */
   const pendingHardwareMarkerRef = useRef<number | null>(null);
@@ -283,8 +284,25 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
         softwareMarkerId,
         softwareMarkerName,
       });
+
+      if (hardwareEvent !== undefined) {
+        const evDeviceId = deviceId ?? 'unknown';
+        const evTimestamp = Date.now();
+        // 1. Visual line on this device's waveform (WaveformView listens — Task G1)
+        window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
+          detail: { value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp },
+        }));
+        // 2. Side-list entry — inline append (single-device path; multi-device uses callback via Task F2)
+        setEventMarkers((prev) => [...prev, {
+          id: `hw-${evDeviceId}-${evTimestamp}-${Math.random().toString(36).slice(2, 6)}`,
+          time: evTimestamp,
+          label: `H${hardwareEvent}`,
+          kind: 'hardware' as const,
+          deviceId: evDeviceId,
+        }]);
+      }
     }
-  }, [latestPackets, isRecording]);
+  }, [latestPackets, isRecording, deviceId]);
 
   const getCommands = useCallback((): WasmCommands | null => {
     if (!wasmService.isInitialized) return null;

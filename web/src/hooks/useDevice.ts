@@ -57,7 +57,10 @@ export type EventMarker = {
   deviceId?: string;
 };
 
-export function useDevice(sessionInfo?: SessionInfo | null) {
+export function useDevice(
+  sessionInfo?: SessionInfo | null,
+  onHardwareEventMarker?: (m: { value: number; deviceId: string; timestamp: number }) => void,
+) {
   // ── Services (one instance per device) ──
   const serialRef  = useRef<SerialService>(new SerialService());
   const ftdiRef    = useRef<FtdiUsbService>(new FtdiUsbService());
@@ -282,6 +285,17 @@ export function useDevice(sessionInfo?: SessionInfo | null) {
         softwareMarkerId,
         softwareMarkerName,
       });
+
+      if (hardwareEvent !== undefined) {
+        const evDeviceId = deviceIdRef.current ?? 'unknown';
+        const evTimestamp = Date.now();
+        // 1. Visual line on this device's waveform (WaveformView listens — Task G1)
+        window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
+          detail: { value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp },
+        }));
+        // 2. Side-list entry — RecordView wires the callback (Task F2)
+        onHardwareEventMarker?.({ value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp });
+      }
     }
   }, [latestPackets, isRecording]);
 
