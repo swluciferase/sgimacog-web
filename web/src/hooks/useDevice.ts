@@ -153,6 +153,21 @@ export function useDevice(
   // Keep deviceIdRef in sync for use in stable callbacks
   useEffect(() => { deviceIdRef.current = deviceId; }, [deviceId]);
 
+  // ── Listen for cross-device hardware-marker broadcasts ──
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const ce = ev as CustomEvent<{ value: number; originDeviceId: string }>;
+      const own = deviceIdRef.current;
+      if (!own) return;
+      // Skip our own broadcast — source already recorded it directly via pkt.event.
+      if (ce.detail.originDeviceId === own) return;
+      // Queue the value for the next packet on this device.
+      pendingHardwareMarkerRef.current = ce.detail.value;
+    };
+    window.addEventListener('hardware-marker-broadcast', handler);
+    return () => window.removeEventListener('hardware-marker-broadcast', handler);
+  }, []);
+
   // ── Re-create parser when device ID is detected (ch32 vs standard) ──
   useEffect(() => {
     if (!deviceId || !wasmService.isInitialized) return;
