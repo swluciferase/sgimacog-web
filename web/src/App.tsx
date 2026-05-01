@@ -116,6 +116,8 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
 
   const [eventMarkers, setEventMarkers] = useState<{ id: string; time: number; label: string }[]>([]);
   const pendingMarkerRef = useRef<{ id: string; time: number; label: string } | null>(null);
+  /** Hardware-marker value queued for the next packet (set by broadcast listener in Task E4). */
+  const pendingHardwareMarkerRef = useRef<number | null>(null);
 
   // Init WASM + wire serial callbacks
   useEffect(() => {
@@ -253,19 +255,33 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
     for (const pkt of latestPackets) {
       if (!pkt.eegChannels || pkt.eegChannels.length < deviceConfigRef.current.channels) continue;
       recordTimestampRef.current += 1 / deviceConfigRef.current.sampleRate;
-      let eventId: string | undefined;
-      let eventName: string | undefined;
+
+      // Software marker (BroadcastChannel) injection — first non-null is consumed.
+      let softwareMarkerId: string | undefined;
+      let softwareMarkerName: string | undefined;
       if (pendingMarkerRef.current) {
-        eventId = pendingMarkerRef.current.id;
-        eventName = pendingMarkerRef.current.label;
+        softwareMarkerId = pendingMarkerRef.current.id;
+        softwareMarkerName = pendingMarkerRef.current.label;
         pendingMarkerRef.current = null;
       }
+
+      // Hardware event: prefer the byte from this packet; fall back to broadcast-injected value.
+      // Filter 0 (firmware idle).
+      let hardwareEvent: number | undefined;
+      if (pkt.event != null && pkt.event !== 0) {
+        hardwareEvent = pkt.event;
+      } else if (pendingHardwareMarkerRef.current != null) {
+        hardwareEvent = pendingHardwareMarkerRef.current;
+        pendingHardwareMarkerRef.current = null;
+      }
+
       recordSamplesRef.current.push({
         timestamp: recordTimestampRef.current,
         serialNumber: pkt.serialNumber,
         channels: new Float32Array(pkt.eegChannels),
-        eventId,
-        eventName,
+        hardwareEvent,
+        softwareMarkerId,
+        softwareMarkerName,
       });
     }
   }, [latestPackets, isRecording]);
