@@ -10,28 +10,27 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: st
 export default defineConfig({
   plugins: [
     react(),
-    // Obfuscator temporarily disabled 2026-05-01 — `controlFlowFlattening`
-    // breaks the new multi-device hardware-marker code path (`he is not a
-    // function` crash on hardware event with 2+ devices). Re-enable after
-    // identifying the offending pattern in the broadcast listener / setEventMarkersRef path.
-    // obfuscatorPlugin({
-    //   include: ['src/**/*.js', 'src/**/*.ts', 'src/**/*.tsx'],
-    //   exclude: [/node_modules/, /src\/pkg\/.*\.js/, /src\/services\/wasm\.ts/],
-    //   apply: 'build',
-    //   debugger: true,
-    //   options: {
-    //     compact: true,
-    //     controlFlowFlattening: true,
-    //     controlFlowFlatteningThreshold: 0.5,
-    //     numbersToExpressions: true,
-    //     simplify: true,
-    //     stringArrayShuffle: true,
-    //     splitStrings: false,
-    //     stringArrayThreshold: 0.8,
-    //     unicodeEscapeSequence: false,
-    //     identifierNamesGenerator: 'hexadecimal'
-    //   }
-    // })
+    obfuscatorPlugin({
+      include: ['src/**/*.js', 'src/**/*.ts', 'src/**/*.tsx'],
+      exclude: [/node_modules/, /src\/pkg\/.*\.js/, /src\/services\/wasm\.ts/],
+      apply: 'build',
+      debugger: true,
+      options: {
+        compact: true,
+        // controlFlowFlattening disabled 2026-05-01 — broke multi-device
+        // hardware-marker path (while-loop mutation in drawHardwareMarkerVisualOnly
+        // + ref-callback patterns in useDevice broadcast listener crashed as
+        // `he is not a function`). Other transforms remain.
+        controlFlowFlattening: false,
+        numbersToExpressions: true,
+        simplify: true,
+        stringArrayShuffle: true,
+        splitStrings: false,
+        stringArrayThreshold: 0.8,
+        unicodeEscapeSequence: false,
+        identifierNamesGenerator: 'hexadecimal'
+      }
+    })
   ],
   base: './',
   define: {
