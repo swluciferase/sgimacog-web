@@ -11,6 +11,8 @@ export interface EventMarker {
   label: string;
   sweepPos: number;     // canvas write position (0 to windowPoints-1) at placement time
   totalSweep: number;  // monotonically increasing sample counter at placement
+  /** 'software' (red dashed, default) or 'hardware' (green solid). */
+  kind?: 'software' | 'hardware';
 }
 
 export interface WaveformViewProps {

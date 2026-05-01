@@ -47,7 +47,15 @@ export interface WasmCommandsIface {
   cmd_machine_info(): Uint8Array;
 }
 
-export type EventMarker = { id: string; time: number; label: string };
+export type EventMarker = {
+  id: string;
+  time: number;
+  label: string;
+  /** Source kind. Defaults to 'software' when omitted (backward compat). */
+  kind?: 'software' | 'hardware';
+  /** Origin device for hardware events; undefined for software. */
+  deviceId?: string;
+};
 
 export function useDevice(sessionInfo?: SessionInfo | null) {
   // ── Services (one instance per device) ──
