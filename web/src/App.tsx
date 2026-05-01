@@ -193,6 +193,20 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
     return () => window.removeEventListener('hardware-marker-broadcast', handler);
   }, []);
 
+  // Auto-disconnect on tab close / page hide (Web Serial doesn't auto-release in modern Chrome)
+  useEffect(() => {
+    const handler = () => {
+      void serialService.disconnect();
+      void ftdiUsbService.disconnect();
+    };
+    window.addEventListener('pagehide', handler);
+    window.addEventListener('beforeunload', handler);
+    return () => {
+      window.removeEventListener('pagehide', handler);
+      window.removeEventListener('beforeunload', handler);
+    };
+  }, []);
+
   // Re-create parser when device ID is detected (ch32 vs standard)
   useEffect(() => {
     if (!deviceId || !wasmService.isInitialized) return;
