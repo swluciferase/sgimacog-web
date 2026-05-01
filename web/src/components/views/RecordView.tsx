@@ -161,6 +161,8 @@ export const RecordView: FC<RecordViewProps> = ({
   const [fileName, setFileName] = useState('');
   const [fileSex, setFileSex] = useState<'M' | 'F' | 'Other' | ''>('');
   const [fileReportLang, setFileReportLang] = useState<ReportLang>('zh-TW');
+  const [broadcastHardwareMarker, setBroadcastHardwareMarker] = useState(false);
+  const broadcastHardwareMarkerRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStoppedRef = useRef(false);
@@ -177,6 +179,26 @@ export const RecordView: FC<RecordViewProps> = ({
       }
     };
     return () => { ch.close(); rppgChannelRef.current = null; };
+  }, []);
+
+  // ── Hardware marker broadcast toggle — mirror state to ref ───────────────
+  useEffect(() => { broadcastHardwareMarkerRef.current = broadcastHardwareMarker; }, [broadcastHardwareMarker]);
+
+  // ── Hardware marker broadcast re-dispatch ────────────────────────────────
+  // Listens for hardware-marker-visual events (fired by useDevice or App.tsx
+  // on every TLV Tag-7 byte) and, when the broadcast toggle is on, re-dispatches
+  // as hardware-marker-broadcast so sibling useDevice instances queue the value
+  // into their pendingHardwareMarkerRef (E4).
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      if (!broadcastHardwareMarkerRef.current) return;
+      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number }>;
+      window.dispatchEvent(new CustomEvent('hardware-marker-broadcast', {
+        detail: { value: ce.detail.value, originDeviceId: ce.detail.deviceId },
+      }));
+    };
+    window.addEventListener('hardware-marker-visual', handler);
+    return () => window.removeEventListener('hardware-marker-visual', handler);
   }, []);
 
   // ── THEMynd event-marker receiver ───────────────────────────────────────
@@ -985,6 +1007,20 @@ export const RecordView: FC<RecordViewProps> = ({
                 ✓ rPPG 資料已接收
               </span>
             )}
+
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              cursor: 'pointer', userSelect: 'none', fontSize: 13,
+              color: broadcastHardwareMarker ? '#e3a030' : 'rgba(140,160,185,0.65)',
+            }}>
+              <input
+                type="checkbox"
+                checked={broadcastHardwareMarker}
+                onChange={e => setBroadcastHardwareMarker(e.target.checked)}
+                style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#e3a030' }}
+              />
+              硬體 marker 廣播至所有錄製中的裝置
+            </label>
           </div>
         </div>
 
