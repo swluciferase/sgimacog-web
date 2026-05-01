@@ -1,9 +1,13 @@
 export interface RecordedSample {
   timestamp: number;        // seconds from recording start
   serialNumber: number | null;
-  channels: Float32Array;   // 8 raw µV values (unfiltered)
-  eventId?: string;
-  eventName?: string;
+  channels: Float32Array;   // raw µV values (unfiltered)
+  /** Hardware event byte (TLV Tag 7), 1..255 when set; undefined when no event in this sample. */
+  hardwareEvent?: number;
+  /** Software marker numeric ID as string (e.g. "1101"). Comes from BroadcastChannel marker. */
+  softwareMarkerId?: string;
+  /** Software marker label string (e.g. "stim_target"). Comes from BroadcastChannel marker. */
+  softwareMarkerName?: string;
 }
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -68,11 +72,13 @@ function generateCsvRows(
     const ch = Array.from({ length: nch }, (_, i) =>
       sample.channels[i] !== undefined ? sample.channels[i]!.toFixed(4) : '0.0000',
     ).join(',');
-    const eventId = sample.eventId ?? '';
-    const eventDate = sample.eventId ? formatDatetime(new Date(startTime.getTime() + sample.timestamp * 1000)) : '';
-    const softwareMarker = sample.eventId ? '1' : '';
-    const softwareMarkerName = sample.eventName ?? '';
-    lines.push(`${ts},${sn},${ch},${eventId},${eventDate},,${softwareMarker},${softwareMarkerName}`);
+    const hwEvent = sample.hardwareEvent != null ? String(sample.hardwareEvent) : '';
+    const eventDate = sample.hardwareEvent != null
+      ? formatDatetime(new Date(startTime.getTime() + sample.timestamp * 1000))
+      : '';
+    const swMarker = sample.softwareMarkerId ?? '';
+    const swMarkerName = sample.softwareMarkerName ?? '';
+    lines.push(`${ts},${sn},${ch},${hwEvent},${eventDate},,${swMarker},${swMarkerName}`);
   }
   return lines.join('\r\n') + '\r\n';
 }
