@@ -7,8 +7,16 @@
  *   Line 11:    column headers
  *   Lines 12+:  data rows
  *
- * Columns: Timestamp, Serial Number, Fp1, Fp2, T7, T8, O1, O2, Fz, Pz,
- *          Event Id, Event Date, Event Duration, Software Marker, Software Marker Name
+ * Columns:
+ *   Timestamp, Serial Number, <channel labels...>,
+ *   Event Id              — hardware event byte (TLV Tag 7), 1..255 or empty
+ *   Event Date            — wallclock for hardware event row
+ *   Event Duration        — reserved (always empty)
+ *   Software Marker       — software marker numeric ID (e.g. "1101"); legacy CSVs may have "1"
+ *   Software Marker Name  — software marker label
+ *
+ * Backward-compat: when `Software Marker == "1"`, treat as legacy format
+ * (Event Id was the software ID; remap into softwareMarkerId).
  */
 
 import type { RecordedSample } from './csvWriter';
@@ -55,20 +63,19 @@ export function parseCsv(text: string): CsvParseResult {
   // ── Verify column header line (line 11, index 10) ────────────────────────
   const colHeader = lines[10]!;
   const cols = colHeader.split(',').map(c => c.trim());
-  // Expected channel indices
-  const tsIdx  = cols.indexOf('Timestamp');
-  const snIdx  = cols.indexOf('Serial Number');
-  const fp1Idx = cols.indexOf('Fp1');
-  const evtIdx = cols.indexOf('Event Id');
-  const evtNameIdx = cols.indexOf('Software Marker Name');
+  const tsIdx          = cols.indexOf('Timestamp');
+  const snIdx          = cols.indexOf('Serial Number');
+  const fp1Idx         = cols.indexOf('Fp1');
+  const evtIdIdx       = cols.indexOf('Event Id');
+  const swMarkerIdx    = cols.indexOf('Software Marker');
+  const swMarkerNmIdx  = cols.indexOf('Software Marker Name');
 
   if (tsIdx === -1 || fp1Idx === -1) {
     return { samples: [], channelLabels: [], deviceId, recordDatetime, filterDesc, notchDesc, sampleRate, error: 'csv_bad_header' };
   }
 
-  // Determine number of channels: from Fp1 up to (but not including) Event Id
   const chStart = fp1Idx;
-  const nch = evtIdx > chStart ? evtIdx - chStart : 8;
+  const nch = evtIdIdx > chStart ? evtIdIdx - chStart : 8;
   const channelLabels = cols.slice(chStart, chStart + nch);
 
   // ── Parse data rows ────────────────────────────────────────────────────────
@@ -91,10 +98,27 @@ export function parseCsv(text: string): CsvParseResult {
       channels[ch] = isNaN(v) ? 0 : v;
     }
 
-    const eventId   = evtIdx >= 0 ? (parts[evtIdx]!.trim() || undefined) : undefined;
-    const eventName = evtNameIdx >= 0 ? (parts[evtNameIdx]!.trim() || undefined) : undefined;
+    const eventIdRaw  = evtIdIdx >= 0 ? parts[evtIdIdx]!.trim() : '';
+    const swMarkerRaw = swMarkerIdx >= 0 ? parts[swMarkerIdx]!.trim() : '';
+    const swMarkerNm  = swMarkerNmIdx >= 0 ? (parts[swMarkerNmIdx]!.trim() || undefined) : undefined;
 
-    samples.push({ timestamp: ts, serialNumber, channels, eventId, eventName });
+    let hardwareEvent: number | undefined;
+    let softwareMarkerId: string | undefined;
+    const softwareMarkerName: string | undefined = swMarkerNm;
+
+    if (swMarkerRaw === '1') {
+      // Legacy format: `Software Marker = "1"` flag means Event Id was a software marker ID.
+      softwareMarkerId = eventIdRaw || undefined;
+    } else {
+      // New format: Event Id is the hardware event byte; Software Marker holds software ID.
+      if (eventIdRaw) {
+        const n = parseInt(eventIdRaw, 10);
+        if (!isNaN(n) && n >= 1 && n <= 255) hardwareEvent = n;
+      }
+      if (swMarkerRaw) softwareMarkerId = swMarkerRaw;
+    }
+
+    samples.push({ timestamp: ts, serialNumber, channels, hardwareEvent, softwareMarkerId, softwareMarkerName });
   }
 
   if (samples.length === 0) {
