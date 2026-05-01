@@ -285,11 +285,16 @@ export function useDevice(
       // Hardware event: prefer the byte from this packet; fall back to broadcast-injected value.
       // Filter 0 (firmware idle).
       let hardwareEvent: number | undefined;
+      // Bug #2 fix: track whether this event came from a primary packet or a broadcast injection.
+      // RecordView re-dispatch listener uses this to avoid re-broadcasting broadcast-sourced events.
+      let hwSource: 'packet' | 'broadcast' = 'packet';
       if (pkt.event != null && pkt.event !== 0) {
         hardwareEvent = pkt.event;
+        hwSource = 'packet';
       } else if (pendingHardwareMarkerRef.current != null) {
         hardwareEvent = pendingHardwareMarkerRef.current;
         pendingHardwareMarkerRef.current = null;
+        hwSource = 'broadcast';
       }
 
       recordSamplesRef.current.push({
@@ -306,7 +311,7 @@ export function useDevice(
         const evTimestamp = Date.now();
         // 1. Visual line on this device's waveform (WaveformView listens — Task G1)
         window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
-          detail: { value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp },
+          detail: { value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp, source: hwSource },
         }));
         // 2. Side-list entry — RecordView wires the callback (Task F2)
         onHardwareEventMarker?.({ value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp });

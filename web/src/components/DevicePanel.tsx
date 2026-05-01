@@ -1,4 +1,4 @@
-import { useState, useEffect, type FC } from 'react';
+import { useState, useEffect, useRef, type FC } from 'react';
 import type { Lang } from '../i18n';
 import { T } from '../i18n';
 import { HomeView } from './views/HomeView';
@@ -76,6 +76,37 @@ export const DevicePanel: FC<DevicePanelProps> = ({
   useEffect(() => {
     onImpedanceActiveChange?.(d.isImpedanceActive);
   }, [d.isImpedanceActive, onImpedanceActiveChange]);
+
+  // Bug #1 fix (Pattern C): listen for hardware-marker-visual at panel level and append to
+  // this device's eventMarkers side-list.  The DevicePanel owns exactly one useDevice instance
+  // (`d`), so we compare the event's deviceId to d.deviceId to ensure we only react to our own
+  // device's events.  We use a ref to hold the stable setter so the effect doesn't need to
+  // re-register on every render cycle.
+  const setEventMarkersRef = useRef(d.setEventMarkers);
+  useEffect(() => { setEventMarkersRef.current = d.setEventMarkers; }, [d.setEventMarkers]);
+  const deviceIdForMarkerRef = useRef(d.deviceId);
+  useEffect(() => { deviceIdForMarkerRef.current = d.deviceId; }, [d.deviceId]);
+
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number; source?: 'packet' | 'broadcast' }>;
+      // Only handle events for this panel's device.
+      if (!deviceIdForMarkerRef.current) return;
+      if (ce.detail.deviceId !== deviceIdForMarkerRef.current) return;
+      setEventMarkersRef.current((prev) => [
+        ...prev,
+        {
+          id: `hw-${ce.detail.deviceId}-${ce.detail.timestamp}-${Math.random().toString(36).slice(2, 6)}`,
+          time: ce.detail.timestamp,
+          label: `H${ce.detail.value}`,
+          kind: 'hardware' as const,
+          deviceId: ce.detail.deviceId,
+        },
+      ]);
+    };
+    window.addEventListener('hardware-marker-visual', handler);
+    return () => window.removeEventListener('hardware-marker-visual', handler);
+  }, []);
 
   // stopSignal is forwarded to RecordView as stopAndSaveSignal so it handles stop+save together
 

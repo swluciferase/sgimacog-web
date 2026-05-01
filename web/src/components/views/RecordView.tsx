@@ -190,10 +190,16 @@ export const RecordView: FC<RecordViewProps> = ({
   // on every TLV Tag-7 byte) and, when the broadcast toggle is on, re-dispatches
   // as hardware-marker-broadcast so sibling useDevice instances queue the value
   // into their pendingHardwareMarkerRef (E4).
+  //
+  // Bug #2 fix: only re-broadcast events with source === 'packet'.  Events whose
+  // source is 'broadcast' originated from a sibling's injected pending value —
+  // re-broadcasting them would create an infinite echo loop between devices.
   useEffect(() => {
     const handler = (ev: Event) => {
       if (!broadcastHardwareMarkerRef.current) return;
-      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number }>;
+      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number; source?: 'packet' | 'broadcast' }>;
+      // Only re-broadcast events that originated from a primary packet.
+      if (ce.detail.source !== 'packet') return;
       window.dispatchEvent(new CustomEvent('hardware-marker-broadcast', {
         detail: { value: ce.detail.value, originDeviceId: ce.detail.deviceId },
       }));
