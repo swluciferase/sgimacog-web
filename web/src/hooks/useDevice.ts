@@ -152,20 +152,6 @@ export function useDevice(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-disconnect this device's serial port on tab close / page hide
-  useEffect(() => {
-    const handler = () => {
-      void serialRef.current.disconnect();
-      void ftdiRef.current.disconnect();
-    };
-    window.addEventListener('pagehide', handler);
-    window.addEventListener('beforeunload', handler);
-    return () => {
-      window.removeEventListener('pagehide', handler);
-      window.removeEventListener('beforeunload', handler);
-    };
-  }, []);
-
   // Keep deviceIdRef in sync for use in stable callbacks
   useEffect(() => { deviceIdRef.current = deviceId; }, [deviceId]);
 
