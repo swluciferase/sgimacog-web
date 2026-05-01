@@ -241,7 +241,7 @@ export const RecordView: FC<RecordViewProps> = ({
       // (2) Also draw a vertical marker on the waveform canvas (short label to fit)
       const shortLabel = `#${data.id ?? '?'}`;
       window.dispatchEvent(new CustomEvent('themynd-marker-visual', {
-        detail: { label: shortLabel, fullLabel },
+        detail: { label: shortLabel, fullLabel, wallclock: data.wallclock ?? Date.now() },
       }));
     };
 

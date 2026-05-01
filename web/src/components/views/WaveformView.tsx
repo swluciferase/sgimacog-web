@@ -381,10 +381,24 @@ export const WaveformView = ({
   // Visual-only marker draw — used when the marker list is already being
   // maintained elsewhere (e.g. THEMynd broadcast). Skips onEventMarker so the
   // right-side list isn't double-populated.
-  const drawMarkerVisualOnly = useCallback((label: string) => {
+  const drawMarkerVisualOnly = useCallback((label: string, originWallclock?: number) => {
     const id = Math.random().toString(36).substring(2, 9);
-    const time = Date.now();
-    const newMarker: EventMarker = { id, time, label, sweepPos: sweepPosRef.current, totalSweep: totalSweepRef.current };
+    const now = Date.now();
+    const time = originWallclock ?? now;
+    let markerSweepPos = sweepPosRef.current;
+    if (originWallclock != null && originWallclock < now) {
+      const offsetMs = now - originWallclock;
+      const sr = effectiveSampleRateRef.current ?? 1000;
+      const offsetUnits = offsetMs * (sr / 1000);
+      const total = totalSweepRef.current || 1;
+      markerSweepPos = sweepPosRef.current - offsetUnits;
+      while (markerSweepPos < 0) markerSweepPos += total;
+    }
+    const newMarker: EventMarker = {
+      id, time, label,
+      sweepPos: markerSweepPos,
+      totalSweep: totalSweepRef.current,
+    };
     markersRef.current = [...markersRef.current, newMarker];
     setMarkers(markersRef.current);
   }, []);
@@ -422,18 +436,17 @@ export const WaveformView = ({
 
   // Listen for THEMynd visual-only marker events (fired from RecordView when
   // a BroadcastChannel/postMessage marker arrives).
+  // No isFocused gate — markers must accumulate into markersRef even when the
+  // waveform tab is not focused, so switching back still shows markers that
+  // arrived while hidden (mirrors hardware-marker listener behaviour).
   useEffect(() => {
     const handler = (ev: Event) => {
-      const ce = ev as CustomEvent<{ label?: string }>;
-      const shouldFire = isFocused !== undefined
-        ? isFocused
-        : (canvasRef.current?.offsetParent !== null);
-      if (!shouldFire) return;
-      drawMarkerVisualOnly(ce.detail?.label || `M${markersRef.current.length + 1}`);
+      const ce = ev as CustomEvent<{ label?: string; fullLabel?: string; wallclock?: number }>;
+      drawMarkerVisualOnly(ce.detail?.label || `M${markersRef.current.length + 1}`, ce.detail?.wallclock);
     };
     window.addEventListener('themynd-marker-visual', handler);
     return () => window.removeEventListener('themynd-marker-visual', handler);
-  }, [drawMarkerVisualOnly, isFocused]);
+  }, [drawMarkerVisualOnly]);
 
   // Listen for hardware-event marker visual events (dispatched by useDevice — Task E3).
   // Filters by deviceId so each WaveformView only draws its own device's hardware markers.
