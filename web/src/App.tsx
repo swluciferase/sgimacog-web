@@ -120,6 +120,8 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
   const pendingMarkerRef = useRef<{ id: string; time: number; label: string } | null>(null);
   /** Hardware-marker value queued for the next packet (set by broadcast listener in Task E4). */
   const pendingHardwareMarkerRef = useRef<number | null>(null);
+  /** Source-device wallclock (Unix ms) paired with pendingHardwareMarkerRef (Option B). */
+  const pendingHardwareWallclockRef = useRef<number | null>(null);
 
   // Init WASM + wire serial callbacks
   useEffect(() => {
@@ -160,17 +162,24 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
   // ── Listen for cross-device hardware-marker broadcasts ──
   useEffect(() => {
     const handler = (ev: Event) => {
-      const ce = ev as CustomEvent<{ value: number; originDeviceId: string }>;
+      const ce = ev as CustomEvent<{ value: number; originDeviceId: string; originWallclock: number }>;
       const own = deviceIdRef.current;
       if (!own) return;
       // Skip our own broadcast — source already recorded it directly via pkt.event.
       if (ce.detail.originDeviceId === own) return;
-      // 1. Queue the value for CSV write on the next packet.
+      // 1. Queue the value + source wallclock for CSV write on the next packet.
       pendingHardwareMarkerRef.current = ce.detail.value;
+      pendingHardwareWallclockRef.current = ce.detail.originWallclock;
       // 2. Immediately fire visual + side-list — synchronous, no React batch wait (~17ms → <1ms).
       const evTimestamp = Date.now();
       window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
-        detail: { value: ce.detail.value, deviceId: own, timestamp: evTimestamp, source: 'broadcast' },
+        detail: {
+          value: ce.detail.value,
+          deviceId: own,
+          timestamp: evTimestamp,              // local arrival wallclock (for in-page side list)
+          source: 'broadcast',
+          originWallclock: ce.detail.originWallclock,  // forwarded source wallclock (for CSV)
+        },
       }));
       setEventMarkers((prev) => [...prev, {
         id: `hw-${own}-${evTimestamp}-${Math.random().toString(36).slice(2, 6)}`,
@@ -294,6 +303,7 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
       // RecordView re-dispatch listener uses this to avoid re-broadcasting broadcast-sourced events.
       let hardwareEvent: number | undefined;
       let hwSource: 'packet' | 'broadcast' = 'packet';
+      let hardwareEventWallclock: number | undefined;
       // For broadcast-sourced events the listener already fired visual + side-list synchronously;
       // we only need to consume the queued value here for CSV write.
       let shouldDispatchVisual = false;
@@ -301,11 +311,14 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
         hardwareEvent = pkt.event;
         hwSource = 'packet';
         shouldDispatchVisual = true;
+        hardwareEventWallclock = Date.now();   // primary source: stamp now
       } else if (pendingHardwareMarkerRef.current != null) {
         hardwareEvent = pendingHardwareMarkerRef.current;
         pendingHardwareMarkerRef.current = null;
         hwSource = 'broadcast';
         shouldDispatchVisual = false; // already dispatched by broadcast listener
+        hardwareEventWallclock = pendingHardwareWallclockRef.current ?? Date.now();
+        pendingHardwareWallclockRef.current = null;
       }
 
       // Software marker (BroadcastChannel) injection — only consumed during recording.
@@ -325,6 +338,7 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
           serialNumber: pkt.serialNumber,
           channels: new Float32Array(pkt.eegChannels),
           hardwareEvent,
+          hardwareEventWallclock,
           softwareMarkerId,
           softwareMarkerName,
         });
@@ -337,7 +351,13 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
         const evTimestamp = Date.now();
         // 1. Visual line on this device's waveform (WaveformView listens — Task G1)
         window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
-          detail: { value: hardwareEvent, deviceId: evDeviceId, timestamp: evTimestamp, source: hwSource },
+          detail: {
+            value: hardwareEvent,
+            deviceId: evDeviceId,
+            timestamp: evTimestamp,
+            source: hwSource,
+            originWallclock: evTimestamp,  // source='packet': originWallclock == timestamp
+          },
         }));
         // 2. Side-list entry — inline append (single-device path; multi-device uses callback via Task F2)
         setEventMarkers((prev) => [...prev, {

@@ -4,6 +4,14 @@ export interface RecordedSample {
   channels: Float32Array;   // raw µV values (unfiltered)
   /** Hardware event byte (TLV Tag 7), 1..255 when set; undefined when no event in this sample. */
   hardwareEvent?: number;
+  /**
+   * Unix ms wallclock of the trigger on the **source** device.
+   * Set for both local (source='packet') and broadcast (source='broadcast') events.
+   * When present, used as `Event Date` in the CSV so all devices in a broadcast session
+   * share a common timestamp for cross-device alignment.
+   * When absent, falls back to `startTime + timestamp * 1000` (legacy behaviour).
+   */
+  hardwareEventWallclock?: number;
   /** Software marker numeric ID as string (e.g. "1101"). Comes from BroadcastChannel marker. */
   softwareMarkerId?: string;
   /** Software marker label string (e.g. "stim_target"). Comes from BroadcastChannel marker. */
@@ -74,7 +82,11 @@ function generateCsvRows(
     ).join(',');
     const hwEvent = sample.hardwareEvent != null ? String(sample.hardwareEvent) : '';
     const eventDate = sample.hardwareEvent != null
-      ? formatDatetime(new Date(startTime.getTime() + sample.timestamp * 1000))
+      ? formatDatetime(
+          sample.hardwareEventWallclock != null
+            ? new Date(sample.hardwareEventWallclock)
+            : new Date(startTime.getTime() + sample.timestamp * 1000),
+        )
       : '';
     const swMarker = sample.softwareMarkerId ?? '';
     const swMarkerName = sample.softwareMarkerName ?? '';

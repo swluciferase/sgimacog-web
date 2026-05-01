@@ -197,11 +197,15 @@ export const RecordView: FC<RecordViewProps> = ({
   useEffect(() => {
     const handler = (ev: Event) => {
       if (!broadcastHardwareMarkerRef.current) return;
-      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number; source?: 'packet' | 'broadcast' }>;
+      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number; source?: 'packet' | 'broadcast'; originWallclock?: number }>;
       // Only re-broadcast events that originated from a primary packet.
       if (ce.detail.source !== 'packet') return;
       window.dispatchEvent(new CustomEvent('hardware-marker-broadcast', {
-        detail: { value: ce.detail.value, originDeviceId: ce.detail.deviceId },
+        detail: {
+          value: ce.detail.value,
+          originDeviceId: ce.detail.deviceId,
+          originWallclock: ce.detail.originWallclock ?? Date.now(),
+        },
       }));
     };
     window.addEventListener('hardware-marker-visual', handler);

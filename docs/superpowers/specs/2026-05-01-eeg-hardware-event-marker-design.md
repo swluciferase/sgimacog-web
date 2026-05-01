@@ -107,15 +107,20 @@ WaveformView listener 加 deviceId 過濾 → 只有 device A 的波形畫綠色
 
 Device A 收到 `event !== 0`：
 1. 同 Local 模式步驟 1–3（自己照記）
-2. **額外** dispatch `'hardware-marker-broadcast'` CustomEvent，detail = `{ value, originDeviceId: 'A', timestamp }`
+2. **額外** dispatch `'hardware-marker-broadcast'` CustomEvent，detail = `{ value, originDeviceId: 'A', originWallclock }`
 
 其他 device 的 `useDevice` hook 監聽此事件：
 - **過濾自己**：`if (originDeviceId === ownDeviceId) return;`（source 已經在步驟 1–3 自己記過，不重複）
-- 在自己 `pendingHardwareMarkerRef` 設下值（含 `value`）
-- **下一個收到的 sample**（用 receiver 自己封包時間軸的 timestamp）寫入該值（type=hardware）並走步驟 1–3 流程
+- 在自己 `pendingHardwareMarkerRef` 設下值（含 `value`），**同時** `pendingHardwareWallclockRef` 儲存 `originWallclock`
+- **下一個收到的 sample**（用 receiver 自己封包時間軸的 `Timestamp`）寫入該值（type=hardware）並走步驟 1–3 流程
 - 自己的 deviceId 標自己（不是 originDeviceId）
 
-→ 4 個 WaveformView 各自畫線、4 個 device CSV 都有同一筆 hardware event。**注意各自 CSV 的 `Event Date` 反映該 device 自己 packet 的 wallclock，不是 source 的 wallclock**（多裝置間封包時鐘可能有微小漂移，這是預期行為）。
+→ 4 個 WaveformView 各自畫線、4 個 device CSV 都有同一筆 hardware event。
+
+**Option B — Event Date / Timestamp 語意分離（跨裝置 CSV 對齊）：**
+- **`Event Date`** 反映**事件來源裝置**的 wallclock（`originWallclock`，broadcast 模式跨裝置對齊用）——所有裝置的同一觸發事件，`Event Date` 欄位相同。
+- **`Timestamp`** 維持**該 device 自己**的 packet 時間軸（訊號對齊用，各裝置獨立）。
+- 實作：`RecordedSample.hardwareEventWallclock`；`csvWriter` 優先用該欄，無則 fallback 到 `startTime + timestamp * 1000`（向後相容舊錄音）。
 
 ### 邊界情況
 
