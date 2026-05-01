@@ -75,6 +75,7 @@ impl SteegParser {
     ///   channels:          Float32Array | null,   // µV values
     ///   battery:           number | null,
     ///   gsensor:           Float32Array | null,   // [gx,gy,gz, ax,ay,az]
+    ///   event:             number | null,   // hardware event byte (Tag 7), 0..255 or null
     ///   impedanceResults:  Array | null,
     /// }
     /// ```
@@ -227,6 +228,13 @@ impl SteegParser {
             _ => JsValue::NULL,
         };
         let _ = Reflect::set(&obj, &"machineInfo".into(), &machine_info_val);
+
+        // event — hardware event byte (Tag 7), 0..255 or null if absent in this packet
+        let event_val = match packet.event {
+            Some(v) => JsValue::from(v),
+            None => JsValue::NULL,
+        };
+        let _ = Reflect::set(&obj, &"event".into(), &event_val);
 
         // impedanceResults — starts null, overridden by feed() if available
         let _ = Reflect::set(&obj, &"impedanceResults".into(), &JsValue::NULL);
