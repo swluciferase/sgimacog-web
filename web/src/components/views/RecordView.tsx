@@ -614,13 +614,6 @@ export const RecordView: FC<RecordViewProps> = ({
     }
   }, [shouldAutoStop, isRecording]);
 
-  // Auto-scroll markers list to bottom when new marker added
-  useEffect(() => {
-    if (markersScrollRef.current) {
-      markersScrollRef.current.scrollTop = markersScrollRef.current.scrollHeight;
-    }
-  }, [eventMarkers.length]);
-
   const addMarker = () => {
     const id = Math.random().toString(36).substring(2, 9);
     const time = Date.now();
@@ -1451,7 +1444,8 @@ export const RecordView: FC<RecordViewProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {eventMarkers.map((m, idx) => {
+                {eventMarkers.slice().reverse().map((m, displayIdx) => {
+                  const idx = eventMarkers.length - 1 - displayIdx;
                   const isHw = m.kind === 'hardware';
                   return (
                     <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', borderLeft: `3px solid ${isHw ? '#43a047' : '#e53935'}` }}>
