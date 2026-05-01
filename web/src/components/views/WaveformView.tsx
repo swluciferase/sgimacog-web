@@ -421,20 +421,20 @@ export const WaveformView = ({
 
   // Listen for hardware-event marker visual events (dispatched by useDevice — Task E3).
   // Filters by deviceId so each WaveformView only draws its own device's hardware markers.
+  // Note: no isFocused/visibility gate — markers must accumulate into markersRef even
+  // when this tab is hidden, otherwise switching back to 訊號 shows missing events
+  // that landed while the user was on the 記錄 tab. Canvas redraw runs on its own
+  // schedule and will paint the markers when the tab becomes visible again.
   useEffect(() => {
     const handler = (ev: Event) => {
       const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number }>;
       // Source filter — multi-device safety: only draw for this view's own device.
       if (deviceId && ce.detail.deviceId !== deviceId) return;
-      const shouldFire = isFocused !== undefined
-        ? isFocused
-        : (canvasRef.current?.offsetParent !== null);
-      if (!shouldFire) return;
       drawHardwareMarkerVisualOnly(`H${ce.detail.value}`);
     };
     window.addEventListener('hardware-marker-visual', handler);
     return () => window.removeEventListener('hardware-marker-visual', handler);
-  }, [drawHardwareMarkerVisualOnly, isFocused, deviceId]);
+  }, [drawHardwareMarkerVisualOnly, deviceId]);
 
   // Ingest packets
   useEffect(() => {
@@ -1079,69 +1079,7 @@ export const WaveformView = ({
         </div>
       </div>
 
-      {/* Event markers log */}
-      <div style={{
-        maxHeight: 160,
-        overflowY: 'auto',
-        border: '1px solid rgba(93,109,134,0.3)',
-        borderRadius: 10,
-        background: 'rgba(5,14,23,0.8)',
-        padding: '10px 14px',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 13, color: 'rgba(240,230,80,0.9)' }}>
-            {T(lang, 'signalMarkers')}
-          </h3>
-          <button
-            onClick={() => { markersRef.current = []; lappedMarkersRef.current = new Set(); setMarkers([]); }}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: 'rgba(200,210,230,0.7)',
-              borderRadius: 4, cursor: 'pointer',
-              fontSize: 11, padding: '3px 8px',
-            }}
-          >
-            {T(lang, 'signalClearMarkers')}
-          </button>
-        </div>
-        {markers.length === 0 ? (
-          <div style={{ color: 'rgba(140,155,175,0.5)', fontSize: 12 }}>
-            {T(lang, 'signalMarkerHint')}
-          </div>
-        ) : (
-          <table style={{ width: '100%', fontSize: 12, textAlign: 'left', borderCollapse: 'collapse' }}>
-            <tbody>
-              {markers.map(m => {
-                const isHw = m.kind === 'hardware';
-                return (
-                  <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', borderLeft: `3px solid ${isHw ? '#43a047' : '#e53935'}` }}>
-                    <td style={{ padding: '5px 4px', color: isHw ? 'rgba(102,187,106,0.95)' : 'rgba(239,108,99,0.95)', width: 50 }}>
-                      {m.label}
-                    </td>
-                    <td style={{ padding: '5px 0', color: 'rgba(200,215,235,0.8)' }}>{formatTime(m.time)}</td>
-                    <td style={{ padding: '5px 0', textAlign: 'right' }}>
-                      <button
-                        onClick={() => {
-                          markersRef.current = markersRef.current.filter(x => x.id !== m.id);
-                          setMarkers(markersRef.current);
-                        }}
-                        style={{
-                          background: 'transparent', border: 'none',
-                          color: 'rgba(248,81,73,0.7)', cursor: 'pointer', padding: '0 4px',
-                        }}
-                      >
-                        [×]
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {/* Event markers list moved to 記錄 tab — see RecordView/DevicePanel for the canonical list. */}
     </div>
   );
 };
