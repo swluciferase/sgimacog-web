@@ -42,15 +42,61 @@ describe('generateCsv — event column mapping', () => {
     expect(tail[4]).toBe('');                             // Software Marker Name empty
   });
 
-  it('writes software marker ID into Software Marker and name into Software Marker Name', () => {
+  it('writes software marker ID into Software Marker and name into Software Marker Name; Event Date falls back to startTime+ts', () => {
     const csv = generateCsv([sampleSoftware(0.5, '1101', 'stim_target')], startTime, 'STEEG_X', 'BP', 'NOTCH');
     const dataRow = csv.trim().split('\r\n').pop()!;
     const cols = dataRow.split(',');
     const tail = cols.slice(-5);
     expect(tail[0]).toBe('');                             // Event Id (hardware) empty
-    expect(tail[1]).toBe('');                             // Event Date empty
+    expect(tail[1]).not.toBe('');                         // Event Date filled (fallback to startTime+ts)
+    expect(tail[2]).toBe('');                             // Event Duration empty
     expect(tail[3]).toBe('1101');                         // Software Marker = ID
     expect(tail[4]).toBe('stim_target');                  // Software Marker Name
+  });
+
+  it('writes software marker source wallclock into Event Date when no hardware event', () => {
+    const swallclock = new Date('2026-05-01T10:00:00.500Z').getTime();
+    const sample: RecordedSample = {
+      ...sampleNoEvent(0.5),
+      softwareMarkerId: '1101',
+      softwareMarkerName: 'stim_target',
+      softwareMarkerWallclock: swallclock,
+    };
+    const csv = generateCsv([sample], startTime, 'STEEG_X', 'BP', 'NOTCH');
+    const dataRow = csv.trim().split('\r\n').pop()!;
+    const cols = dataRow.split(',');
+    const tail = cols.slice(-5);
+    expect(tail[0]).toBe('');                         // Event Id (hardware) empty
+    expect(tail[1]).not.toBe('');                     // Event Date filled from software wallclock
+    expect(tail[3]).toBe('1101');
+    expect(tail[4]).toBe('stim_target');
+    // Verify it uses the source wallclock and not startTime + timestamp fallback
+    const fallbackDate = new Date(startTime.getTime() + 0.5 * 1000);
+    const fallbackMs = fallbackDate.getMilliseconds();
+    const swMs = new Date(swallclock).getMilliseconds();
+    // The two wallclocks differ: swallclock=.500Z, fallback=startTime+500ms=.289Z
+    expect(tail[1]).toContain(`.${String(swMs).padStart(3, '0')}`);
+    expect(tail[1]).not.toContain(`.${String(fallbackMs).padStart(3, '0')}`);
+  });
+
+  it('hardware wallclock takes precedence over software when both on the same sample', () => {
+    const hwallclock = new Date('2026-05-01T10:00:00.250Z').getTime();
+    const swallclock = new Date('2026-05-01T10:00:00.500Z').getTime();
+    const sample: RecordedSample = {
+      ...sampleNoEvent(1),
+      hardwareEvent: 5,
+      hardwareEventWallclock: hwallclock,
+      softwareMarkerId: '1101',
+      softwareMarkerName: 'stim_target',
+      softwareMarkerWallclock: swallclock,
+    };
+    const csv = generateCsv([sample], startTime, 'STEEG_X', 'BP', 'NOTCH');
+    const dataRow = csv.trim().split('\r\n').pop()!;
+    const cols = dataRow.split(',');
+    // Event Date should reflect the hardware wallclock (.250), not software's (.500)
+    const eventDate = cols[cols.length - 4];
+    expect(eventDate).toContain('.250');
+    expect(eventDate).not.toContain('.500');
   });
 
   it('writes both columns when both hardware and software present on the same sample', () => {

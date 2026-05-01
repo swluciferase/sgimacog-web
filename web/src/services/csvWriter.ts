@@ -16,6 +16,12 @@ export interface RecordedSample {
   softwareMarkerId?: string;
   /** Software marker label string (e.g. "stim_target"). Comes from BroadcastChannel marker. */
   softwareMarkerName?: string;
+  /**
+   * Source wallclock (Unix ms) of the software marker — set by the sender (e.g. THEMynd) at
+   * trigger fire time. Used for cross-device alignment in CSV Event Date, mirroring
+   * hardwareEventWallclock (Option B). When absent, falls back to startTime + timestamp * 1000.
+   */
+  softwareMarkerWallclock?: number;
 }
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -81,13 +87,22 @@ function generateCsvRows(
       sample.channels[i] !== undefined ? sample.channels[i]!.toFixed(4) : '0.0000',
     ).join(',');
     const hwEvent = sample.hardwareEvent != null ? String(sample.hardwareEvent) : '';
-    const eventDate = sample.hardwareEvent != null
-      ? formatDatetime(
-          sample.hardwareEventWallclock != null
-            ? new Date(sample.hardwareEventWallclock)
-            : new Date(startTime.getTime() + sample.timestamp * 1000),
-        )
-      : '';
+    let eventDate = '';
+    if (sample.hardwareEvent != null) {
+      // Hardware takes precedence: use source wallclock (Option B) or fallback.
+      eventDate = formatDatetime(
+        sample.hardwareEventWallclock != null
+          ? new Date(sample.hardwareEventWallclock)
+          : new Date(startTime.getTime() + sample.timestamp * 1000),
+      );
+    } else if (sample.softwareMarkerId != null) {
+      // Software marker: use source wallclock (sent by sender at trigger time) or fallback.
+      eventDate = formatDatetime(
+        sample.softwareMarkerWallclock != null
+          ? new Date(sample.softwareMarkerWallclock)
+          : new Date(startTime.getTime() + sample.timestamp * 1000),
+      );
+    }
     const swMarker = sample.softwareMarkerId ?? '';
     const swMarkerName = sample.softwareMarkerName ?? '';
     lines.push(`${ts},${sn},${ch},${hwEvent},${eventDate},,${swMarker},${swMarkerName}`);

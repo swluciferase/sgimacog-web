@@ -320,9 +320,13 @@ export function useDevice(
       // Software marker (BroadcastChannel) injection — only consumed during recording.
       let softwareMarkerId: string | undefined;
       let softwareMarkerName: string | undefined;
+      let softwareMarkerWallclock: number | undefined;
       if (isRecording && pendingMarkerRef.current) {
         softwareMarkerId = pendingMarkerRef.current.id;
         softwareMarkerName = pendingMarkerRef.current.label;
+        // EventMarker.time is set to data.wallclock from the BroadcastChannel sender — use it
+        // for CSV Event Date alignment (Option B mirror for software markers).
+        softwareMarkerWallclock = pendingMarkerRef.current.time;
         pendingMarkerRef.current = null;
       }
 
@@ -337,6 +341,7 @@ export function useDevice(
           hardwareEventWallclock,
           softwareMarkerId,
           softwareMarkerName,
+          softwareMarkerWallclock,
         });
       }
 

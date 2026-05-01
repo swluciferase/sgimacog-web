@@ -120,7 +120,8 @@ Device A 收到 `event !== 0`：
 **Option B — Event Date / Timestamp 語意分離（跨裝置 CSV 對齊）：**
 - **`Event Date`** 反映**事件來源裝置**的 wallclock（`originWallclock`，broadcast 模式跨裝置對齊用）——所有裝置的同一觸發事件，`Event Date` 欄位相同。
 - **`Timestamp`** 維持**該 device 自己**的 packet 時間軸（訊號對齊用，各裝置獨立）。
-- 實作：`RecordedSample.hardwareEventWallclock`；`csvWriter` 優先用該欄，無則 fallback 到 `startTime + timestamp * 1000`（向後相容舊錄音）。
+- 實作（硬體）：`RecordedSample.hardwareEventWallclock`；`csvWriter` 優先用該欄，無則 fallback 到 `startTime + timestamp * 1000`（向後相容舊錄音）。
+- 實作（軟體，Option B 延伸）：`RecordedSample.softwareMarkerWallclock`；當無硬體 marker 但有軟體 marker 時，`csvWriter` 用該欄填 `Event Date`，同樣 fallback 至 `startTime + timestamp * 1000`。硬體優先。
 
 ### 邊界情況
 
@@ -214,10 +215,17 @@ Timestamp,Serial Number,<channels>,Event Id,Event Date,Event Duration,Software M
 | 欄位 | 改動前 | 改動後 |
 |------|--------|--------|
 | `Event Id` | 軟體 marker 數字 ID | **硬體 event byte 值**（1..255 整數字串） |
-| `Event Date` | 軟體 marker wallclock | **硬體 marker wallclock** |
+| `Event Date` | 軟體 marker wallclock | **來源 wallclock**（優先順序：硬體 > 軟體 > fallback） |
 | `Event Duration` | 始終空 | 維持空（保留欄位以保容） |
 | `Software Marker` | `"1"` 旗標 | **軟體 marker 數字 ID**（如 `"1101"`），無則空 |
 | `Software Marker Name` | 軟體 marker label | 不變（無則空） |
+
+**Event Date 優先順序（Option B 延伸至軟體 marker）：**
+1. **硬體 marker**（`hardwareEvent != null`）→ 用 `hardwareEventWallclock`（Option B），無則 fallback `startTime + timestamp * 1000`
+2. **軟體 marker**（`softwareMarkerId != null`，無硬體 marker）→ 用 `softwareMarkerWallclock`（sender 觸發時的 `Date.now()`），無則 fallback `startTime + timestamp * 1000`
+3. **無 marker** → 空字串
+
+硬體與軟體同時出現在同一 sample（極罕見）時，硬體優先。`softwareMarkerWallclock` 由 BroadcastChannel message 的 `data.wallclock` 欄位提供（sender 在觸發點設定），與 `hardwareEventWallclock` 的 Option B 語意完全對稱。
 
 ### RecordedSample 型別調整
 
