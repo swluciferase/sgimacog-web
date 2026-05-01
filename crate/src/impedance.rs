@@ -190,9 +190,9 @@ mod tests {
     #[test]
     fn test_compute_all_channel_impedances_sorted_and_complete() {
         let mut windows = HashMap::new();
-        windows.insert(3, vec![0; 100]);
-        windows.insert(0, vec![0; 100]);
-        windows.insert(7, vec![0; 100]);
+        windows.insert(3, vec![0.0; 100]);
+        windows.insert(0, vec![0.0; 100]);
+        windows.insert(7, vec![0.0; 100]);
 
         let results = compute_all_channel_impedances(&windows, SAMPLE_RATE);
         assert_eq!(results.len(), 3);
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_compute_all_channel_impedances_empty() {
-        let windows: HashMap<usize, Vec<i32>> = HashMap::new();
+        let windows: HashMap<usize, Vec<f64>> = HashMap::new();
         let results = compute_all_channel_impedances(&windows, SAMPLE_RATE);
         assert!(results.is_empty());
     }
