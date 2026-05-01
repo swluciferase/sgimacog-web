@@ -153,6 +153,11 @@ export function useDevice(
   // Keep deviceIdRef in sync for use in stable callbacks
   useEffect(() => { deviceIdRef.current = deviceId; }, [deviceId]);
 
+  // Keep onHardwareEventMarker in a ref so the broadcast listener (empty deps) can call it
+  // without needing to re-register on every render.
+  const onHardwareEventMarkerRef = useRef(onHardwareEventMarker);
+  useEffect(() => { onHardwareEventMarkerRef.current = onHardwareEventMarker; }, [onHardwareEventMarker]);
+
   // ── Listen for cross-device hardware-marker broadcasts ──
   useEffect(() => {
     const handler = (ev: Event) => {
@@ -161,8 +166,14 @@ export function useDevice(
       if (!own) return;
       // Skip our own broadcast — source already recorded it directly via pkt.event.
       if (ce.detail.originDeviceId === own) return;
-      // Queue the value for the next packet on this device.
+      // 1. Queue the value for CSV write on the next packet.
       pendingHardwareMarkerRef.current = ce.detail.value;
+      // 2. Immediately fire visual + side-list — synchronous, no React batch wait (~17ms → <1ms).
+      const evTimestamp = Date.now();
+      window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
+        detail: { value: ce.detail.value, deviceId: own, timestamp: evTimestamp, source: 'broadcast' },
+      }));
+      onHardwareEventMarkerRef.current?.({ value: ce.detail.value, deviceId: own, timestamp: evTimestamp });
     };
     window.addEventListener('hardware-marker-broadcast', handler);
     return () => window.removeEventListener('hardware-marker-broadcast', handler);
@@ -279,13 +290,18 @@ export function useDevice(
       // RecordView re-dispatch listener uses this to avoid re-broadcasting broadcast-sourced events.
       let hardwareEvent: number | undefined;
       let hwSource: 'packet' | 'broadcast' = 'packet';
+      // For broadcast-sourced events the listener already fired visual + callback synchronously;
+      // we only need to consume the queued value here for CSV write.
+      let shouldDispatchVisual = false;
       if (pkt.event != null && pkt.event !== 0) {
         hardwareEvent = pkt.event;
         hwSource = 'packet';
+        shouldDispatchVisual = true;
       } else if (pendingHardwareMarkerRef.current != null) {
         hardwareEvent = pendingHardwareMarkerRef.current;
         pendingHardwareMarkerRef.current = null;
         hwSource = 'broadcast';
+        shouldDispatchVisual = false; // already dispatched by broadcast listener
       }
 
       // Software marker (BroadcastChannel) injection — only consumed during recording.
@@ -311,7 +327,8 @@ export function useDevice(
       }
 
       // Always: dispatch visual line + side-list callback regardless of recording state.
-      if (hardwareEvent !== undefined) {
+      // Skipped for broadcast-sourced events — already fired by the broadcast listener synchronously.
+      if (hardwareEvent !== undefined && shouldDispatchVisual) {
         const evDeviceId = deviceIdRef.current ?? 'unknown';
         const evTimestamp = Date.now();
         // 1. Visual line on this device's waveform (WaveformView listens — Task G1)

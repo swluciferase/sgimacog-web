@@ -165,8 +165,20 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
       if (!own) return;
       // Skip our own broadcast — source already recorded it directly via pkt.event.
       if (ce.detail.originDeviceId === own) return;
-      // Queue the value for the next packet on this device.
+      // 1. Queue the value for CSV write on the next packet.
       pendingHardwareMarkerRef.current = ce.detail.value;
+      // 2. Immediately fire visual + side-list — synchronous, no React batch wait (~17ms → <1ms).
+      const evTimestamp = Date.now();
+      window.dispatchEvent(new CustomEvent('hardware-marker-visual', {
+        detail: { value: ce.detail.value, deviceId: own, timestamp: evTimestamp, source: 'broadcast' },
+      }));
+      setEventMarkers((prev) => [...prev, {
+        id: `hw-${own}-${evTimestamp}-${Math.random().toString(36).slice(2, 6)}`,
+        time: evTimestamp,
+        label: `H${ce.detail.value}`,
+        kind: 'hardware' as const,
+        deviceId: own,
+      }]);
     };
     window.addEventListener('hardware-marker-broadcast', handler);
     return () => window.removeEventListener('hardware-marker-broadcast', handler);
@@ -282,13 +294,18 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
       // RecordView re-dispatch listener uses this to avoid re-broadcasting broadcast-sourced events.
       let hardwareEvent: number | undefined;
       let hwSource: 'packet' | 'broadcast' = 'packet';
+      // For broadcast-sourced events the listener already fired visual + side-list synchronously;
+      // we only need to consume the queued value here for CSV write.
+      let shouldDispatchVisual = false;
       if (pkt.event != null && pkt.event !== 0) {
         hardwareEvent = pkt.event;
         hwSource = 'packet';
+        shouldDispatchVisual = true;
       } else if (pendingHardwareMarkerRef.current != null) {
         hardwareEvent = pendingHardwareMarkerRef.current;
         pendingHardwareMarkerRef.current = null;
         hwSource = 'broadcast';
+        shouldDispatchVisual = false; // already dispatched by broadcast listener
       }
 
       // Software marker (BroadcastChannel) injection — only consumed during recording.
@@ -314,7 +331,8 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
       }
 
       // Always: dispatch visual line + side-list entry regardless of recording state.
-      if (hardwareEvent !== undefined) {
+      // Skipped for broadcast-sourced events — already fired by the broadcast listener synchronously.
+      if (hardwareEvent !== undefined && shouldDispatchVisual) {
         const evDeviceId = deviceId ?? 'unknown';
         const evTimestamp = Date.now();
         // 1. Visual line on this device's waveform (WaveformView listens — Task G1)
