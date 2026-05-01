@@ -292,4 +292,21 @@ mod tests {
         assert_eq!(gs.accel_z, -16);
         assert_eq!(packet.battery, Some(BatteryStatus { level: 77 }));
     }
+
+    #[test]
+    fn protocol_parse_event_byte() {
+        // Tag count=1, TAG_EVENT, len=1, value=42
+        let payload = [1u8, TAG_EVENT, 1, 42];
+        let packet = parse_tlv_packet(&payload).expect("parse must succeed");
+        assert_eq!(packet.event, Some(42));
+    }
+
+    #[test]
+    fn protocol_parse_event_zero_byte_is_still_some() {
+        // Edge / one-shot firmware: idle = 0; we still parse it as Some(0).
+        // JS layer is responsible for filtering 0 (so debug visibility is preserved).
+        let payload = [1u8, TAG_EVENT, 1, 0];
+        let packet = parse_tlv_packet(&payload).expect("parse must succeed");
+        assert_eq!(packet.event, Some(0));
+    }
 }
