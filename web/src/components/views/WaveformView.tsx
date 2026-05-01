@@ -391,12 +391,28 @@ export const WaveformView = ({
 
   // Hardware-event visual-only marker draw — same structure as drawMarkerVisualOnly
   // but sets kind: 'hardware' so the overlay renders a green solid line.
-  const drawHardwareMarkerVisualOnly = useCallback((label: string) => {
+  // When originWallclock is provided (broadcast path), sweepPos is shifted backward
+  // by the broadcast offset so the green line lands at the same relative position
+  // on the signal as it does on the source device's canvas.
+  const drawHardwareMarkerVisualOnly = useCallback((label: string, originWallclock?: number) => {
     const id = Math.random().toString(36).substring(2, 9);
-    const time = Date.now();
+    const now = Date.now();
+    const time = originWallclock ?? now;
+    // Visual sync: when this marker came from a broadcast (originWallclock < now),
+    // shift sweepPos backward so the line lands at the source's time point on this
+    // device's signal, matching the CSV Event Date semantic introduced in Option B.
+    let markerSweepPos = sweepPosRef.current;
+    if (originWallclock != null && originWallclock < now) {
+      const offsetMs = now - originWallclock;
+      const sr = effectiveSampleRateRef.current ?? 1000;
+      const offsetUnits = offsetMs * (sr / 1000);
+      const total = totalSweepRef.current || 1;
+      markerSweepPos = sweepPosRef.current - offsetUnits;
+      while (markerSweepPos < 0) markerSweepPos += total;
+    }
     const newMarker: EventMarker = {
       id, time, label,
-      sweepPos: sweepPosRef.current,
+      sweepPos: markerSweepPos,
       totalSweep: totalSweepRef.current,
       kind: 'hardware',
     };
@@ -427,10 +443,10 @@ export const WaveformView = ({
   // schedule and will paint the markers when the tab becomes visible again.
   useEffect(() => {
     const handler = (ev: Event) => {
-      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number }>;
+      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number; originWallclock?: number }>;
       // Source filter — multi-device safety: only draw for this view's own device.
       if (deviceId && ce.detail.deviceId !== deviceId) return;
-      drawHardwareMarkerVisualOnly(`H${ce.detail.value}`);
+      drawHardwareMarkerVisualOnly(`H${ce.detail.value}`, ce.detail.originWallclock);
     };
     window.addEventListener('hardware-marker-visual', handler);
     return () => window.removeEventListener('hardware-marker-visual', handler);
