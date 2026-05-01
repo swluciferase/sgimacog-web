@@ -267,7 +267,8 @@ select option {
 .dev-panel {
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--dp-color) 6%, var(--bg));
+  border-top: 2px solid color-mix(in srgb, var(--dp-color) 70%, transparent);
   overflow: hidden;
   flex: 1;
   min-width: 0;
