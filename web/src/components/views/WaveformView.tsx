@@ -38,6 +38,8 @@ export interface WaveformViewProps {
   channelLabels?: readonly string[];
   /** Device sample rate — used for filter coefficients and window size (default 1001) */
   sampleRate?: number;
+  /** Device ID string (e.g. 'STEEG_A1B2C3') — used to filter hardware-marker-visual events */
+  deviceId?: string | null;
 }
 
 // Per-device palettes: 4 devices × 8 channels (RGBA float)
@@ -260,6 +262,7 @@ export const WaveformView = ({
   devicePalette = 0,
   channelLabels,
   sampleRate,
+  deviceId,
 }: WaveformViewProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wglpRef = useRef<WebglPlot | null>(null);
@@ -386,6 +389,21 @@ export const WaveformView = ({
     setMarkers(markersRef.current);
   }, []);
 
+  // Hardware-event visual-only marker draw — same structure as drawMarkerVisualOnly
+  // but sets kind: 'hardware' so the overlay renders a green solid line.
+  const drawHardwareMarkerVisualOnly = useCallback((label: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    const time = Date.now();
+    const newMarker: EventMarker = {
+      id, time, label,
+      sweepPos: sweepPosRef.current,
+      totalSweep: totalSweepRef.current,
+      kind: 'hardware',
+    };
+    markersRef.current = [...markersRef.current, newMarker];
+    setMarkers(markersRef.current);
+  }, []);
+
   // Listen for THEMynd visual-only marker events (fired from RecordView when
   // a BroadcastChannel/postMessage marker arrives).
   useEffect(() => {
@@ -400,6 +418,23 @@ export const WaveformView = ({
     window.addEventListener('themynd-marker-visual', handler);
     return () => window.removeEventListener('themynd-marker-visual', handler);
   }, [drawMarkerVisualOnly, isFocused]);
+
+  // Listen for hardware-event marker visual events (dispatched by useDevice — Task E3).
+  // Filters by deviceId so each WaveformView only draws its own device's hardware markers.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const ce = ev as CustomEvent<{ value: number; deviceId: string; timestamp: number }>;
+      // Source filter — multi-device safety: only draw for this view's own device.
+      if (deviceId && ce.detail.deviceId !== deviceId) return;
+      const shouldFire = isFocused !== undefined
+        ? isFocused
+        : (canvasRef.current?.offsetParent !== null);
+      if (!shouldFire) return;
+      drawHardwareMarkerVisualOnly(`H${ce.detail.value}`);
+    };
+    window.addEventListener('hardware-marker-visual', handler);
+    return () => window.removeEventListener('hardware-marker-visual', handler);
+  }, [drawHardwareMarkerVisualOnly, isFocused, deviceId]);
 
   // Ingest packets
   useEffect(() => {
@@ -962,31 +997,37 @@ export const WaveformView = ({
           position: 'absolute', top: 0, right: 0, bottom: 0, left: 64,
           pointerEvents: 'none', overflow: 'hidden', zIndex: 5,
         }}>
-          {markers.map(m => (
-            <div
-              key={m.id}
-              ref={el => {
-                if (el) markerDivsRef.current.set(m.id, el);
-                else markerDivsRef.current.delete(m.id);
-              }}
-              style={{
-                position: 'absolute', top: 0, bottom: 0, width: 0,
-                borderLeft: '2px dashed rgba(255,255,0,0.65)',
-                left: '0%',
-                display: 'block',
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 4, left: 4,
-                color: 'rgba(255,255,0,0.9)', fontSize: 11,
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                background: 'rgba(0,0,0,0.5)', padding: '2px 4px', borderRadius: 3,
-                whiteSpace: 'nowrap',
-              }}>
-                {m.label}
+          {markers.map(m => {
+            const isHw = m.kind === 'hardware';
+            return (
+              <div
+                key={m.id}
+                ref={el => {
+                  if (el) markerDivsRef.current.set(m.id, el);
+                  else markerDivsRef.current.delete(m.id);
+                }}
+                style={{
+                  position: 'absolute', top: 0, bottom: 0, width: 0,
+                  borderLeft: isHw
+                    ? '1.5px solid rgba(67,160,71,0.85)'
+                    : '2px dashed rgba(229,57,53,0.75)',
+                  left: '0%',
+                  display: 'block',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 4, left: 4,
+                  color: isHw ? 'rgba(102,187,106,0.95)' : 'rgba(239,108,99,0.95)',
+                  fontSize: 11,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  background: 'rgba(0,0,0,0.5)', padding: '2px 4px', borderRadius: 3,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {m.label}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Time grid lines (fixed positions, full-height) */}
@@ -1072,26 +1113,31 @@ export const WaveformView = ({
         ) : (
           <table style={{ width: '100%', fontSize: 12, textAlign: 'left', borderCollapse: 'collapse' }}>
             <tbody>
-              {markers.map(m => (
-                <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <td style={{ padding: '5px 0', color: 'rgba(240,230,80,0.9)', width: 50 }}>{m.label}</td>
-                  <td style={{ padding: '5px 0', color: 'rgba(200,215,235,0.8)' }}>{formatTime(m.time)}</td>
-                  <td style={{ padding: '5px 0', textAlign: 'right' }}>
-                    <button
-                      onClick={() => {
-                        markersRef.current = markersRef.current.filter(x => x.id !== m.id);
-                        setMarkers(markersRef.current);
-                      }}
-                      style={{
-                        background: 'transparent', border: 'none',
-                        color: 'rgba(248,81,73,0.7)', cursor: 'pointer', padding: '0 4px',
-                      }}
-                    >
-                      [×]
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {markers.map(m => {
+                const isHw = m.kind === 'hardware';
+                return (
+                  <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', borderLeft: `3px solid ${isHw ? '#43a047' : '#e53935'}` }}>
+                    <td style={{ padding: '5px 4px', color: isHw ? 'rgba(102,187,106,0.95)' : 'rgba(239,108,99,0.95)', width: 50 }}>
+                      {m.label}
+                    </td>
+                    <td style={{ padding: '5px 0', color: 'rgba(200,215,235,0.8)' }}>{formatTime(m.time)}</td>
+                    <td style={{ padding: '5px 0', textAlign: 'right' }}>
+                      <button
+                        onClick={() => {
+                          markersRef.current = markersRef.current.filter(x => x.id !== m.id);
+                          setMarkers(markersRef.current);
+                        }}
+                        style={{
+                          background: 'transparent', border: 'none',
+                          color: 'rgba(248,81,73,0.7)', cursor: 'pointer', padding: '0 4px',
+                        }}
+                      >
+                        [×]
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

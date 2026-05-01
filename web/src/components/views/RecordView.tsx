@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, type FC, type CSSProperties } from 'react';
+import type { EventMarker } from '../../hooks/useDevice';
 import type { SubjectInfo } from '../../types/eeg';
 import { CHANNEL_LABELS, CHANNEL_COUNT } from '../../types/eeg';
 import type { RecordedSample } from '../../services/csvWriter';
@@ -39,7 +40,7 @@ export interface RecordViewProps {
   notchDesc: string;
   startTime: Date | null;
   onEventMarker: (marker: { id: string; time: number; label: string }) => void;
-  eventMarkers: { id: string; time: number; label: string }[];
+  eventMarkers: EventMarker[];
   onClearEventMarkers: () => void;
   // Quality monitor props
   qualityConfig: QualityConfig;
@@ -1439,13 +1440,23 @@ export const RecordView: FC<RecordViewProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {eventMarkers.map((m, idx) => (
-                  <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '5px 8px 5px 0', color: 'rgba(120,140,170,0.7)' }}>{idx + 1}</td>
-                    <td style={{ padding: '5px 8px', color: 'rgba(240,230,80,0.9)' }}>{m.label}</td>
-                    <td style={{ padding: '5px 0', color: 'rgba(200,215,235,0.8)' }}>{formatTime(m.time)}</td>
-                  </tr>
-                ))}
+                {eventMarkers.map((m, idx) => {
+                  const isHw = m.kind === 'hardware';
+                  return (
+                    <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', borderLeft: `3px solid ${isHw ? '#43a047' : '#e53935'}` }}>
+                      <td style={{ padding: '5px 8px 5px 4px', color: 'rgba(120,140,170,0.7)' }}>{idx + 1}</td>
+                      <td style={{ padding: '5px 8px', color: isHw ? 'rgba(102,187,106,0.95)' : 'rgba(240,230,80,0.9)' }}>
+                        {m.label}
+                        {isHw && m.deviceId && (
+                          <span style={{ fontSize: '0.75em', opacity: 0.7, marginLeft: '0.4em' }}>
+                            {m.deviceId.replace('STEEG_', '')}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '5px 0', color: 'rgba(200,215,235,0.8)' }}>{formatTime(m.time)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -242,6 +242,7 @@ export const DevicePanel: FC<DevicePanelProps> = ({
             devicePalette={deviceIndex}
             channelLabels={d.channelLabels}
             sampleRate={d.effectiveSampleRate}
+            deviceId={d.deviceId}
           />
         </div>
 
