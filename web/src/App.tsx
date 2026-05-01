@@ -269,27 +269,18 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
     }
   }, [latestPackets]);
 
-  // Recording: collect raw samples
+  // Recording: collect raw samples + hardware event visual feedback
+  // Hardware event detection and dispatch run on every packet (independent of isRecording).
+  // CSV write is recording-gated. Software marker consumption is also recording-gated.
   useEffect(() => {
-    if (!isRecording) return;
     for (const pkt of latestPackets) {
       if (!pkt.eegChannels || pkt.eegChannels.length < deviceConfigRef.current.channels) continue;
-      recordTimestampRef.current += 1 / deviceConfigRef.current.sampleRate;
-
-      // Software marker (BroadcastChannel) injection — first non-null is consumed.
-      let softwareMarkerId: string | undefined;
-      let softwareMarkerName: string | undefined;
-      if (pendingMarkerRef.current) {
-        softwareMarkerId = pendingMarkerRef.current.id;
-        softwareMarkerName = pendingMarkerRef.current.label;
-        pendingMarkerRef.current = null;
-      }
 
       // Hardware event: prefer the byte from this packet; fall back to broadcast-injected value.
       // Filter 0 (firmware idle).
-      let hardwareEvent: number | undefined;
       // Bug #2 fix: track whether this event came from a primary packet or a broadcast injection.
       // RecordView re-dispatch listener uses this to avoid re-broadcasting broadcast-sourced events.
+      let hardwareEvent: number | undefined;
       let hwSource: 'packet' | 'broadcast' = 'packet';
       if (pkt.event != null && pkt.event !== 0) {
         hardwareEvent = pkt.event;
@@ -300,15 +291,29 @@ function SingleDeviceLayout({ lang, sessionInfo, cam }: { lang: Lang; sessionInf
         hwSource = 'broadcast';
       }
 
-      recordSamplesRef.current.push({
-        timestamp: recordTimestampRef.current,
-        serialNumber: pkt.serialNumber,
-        channels: new Float32Array(pkt.eegChannels),
-        hardwareEvent,
-        softwareMarkerId,
-        softwareMarkerName,
-      });
+      // Software marker (BroadcastChannel) injection — only consumed during recording.
+      let softwareMarkerId: string | undefined;
+      let softwareMarkerName: string | undefined;
+      if (isRecording && pendingMarkerRef.current) {
+        softwareMarkerId = pendingMarkerRef.current.id;
+        softwareMarkerName = pendingMarkerRef.current.label;
+        pendingMarkerRef.current = null;
+      }
 
+      // Recording-only: increment timestamp and write CSV row.
+      if (isRecording) {
+        recordTimestampRef.current += 1 / deviceConfigRef.current.sampleRate;
+        recordSamplesRef.current.push({
+          timestamp: recordTimestampRef.current,
+          serialNumber: pkt.serialNumber,
+          channels: new Float32Array(pkt.eegChannels),
+          hardwareEvent,
+          softwareMarkerId,
+          softwareMarkerName,
+        });
+      }
+
+      // Always: dispatch visual line + side-list entry regardless of recording state.
       if (hardwareEvent !== undefined) {
         const evDeviceId = deviceId ?? 'unknown';
         const evTimestamp = Date.now();
