@@ -1,8 +1,12 @@
 /**
  * creditApi.ts — Artise credit (service start/end) integration for SigmaCog.
- * Reads steeg_token from cookie or localStorage, then calls the artisebio API.
- * If the user is not logged in (no token), the check is skipped silently.
- * If credits are exhausted (403), throws an error with code 'no_credits'.
+ * Reads steeg_token from the cookie (set by artisebio-web's main.js) and
+ * forwards it as a Bearer to the artisebio API. If no cookie, the user is
+ * not logged in and the check is skipped silently. If credits are exhausted
+ * (403), throws an error with code 'no_credits'.
+ *
+ * H7 (2026-05-05): localStorage fallback removed. JWT in localStorage is
+ * XSS-readable by every script; cookie-only narrows the read path.
  */
 
 const ARTISEBIO_API = 'https://www.sigmacog.xyz/api';
@@ -10,8 +14,7 @@ const ARTISEBIO_API = 'https://www.sigmacog.xyz/api';
 function getAuthToken(): string | null {
   try {
     const m = document.cookie.match(/(?:^|;\s*)steeg_token=([^;]+)/);
-    if (m) return decodeURIComponent(m[1]);
-    return localStorage.getItem('steeg_token') || null;
+    return m ? decodeURIComponent(m[1]) : null;
   } catch {
     return null;
   }
