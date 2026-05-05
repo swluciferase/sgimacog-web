@@ -1249,15 +1249,18 @@ export async function openHtmlReport(
   const htmlBody = ReactDOMServer.renderToStaticMarkup(<EegReportTemplate {...finalProps} />);
   const fullHtml = buildFullHtml(props.subjectInfo.reportId, htmlBody, lang);
 
+  // H10 (2026-05-05): blob-URL navigation everywhere, no document.write.
+  // React's renderToStaticMarkup already escapes string children, but writing
+  // a full HTML document into a same-origin popup means any future stray
+  // dangerouslySetInnerHTML could let AI-generated text reach the DOM. The
+  // blob path runs the HTML in a fresh isolated parser, identical to opening
+  // a downloaded report file.
+  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
   if (win) {
-    // Write final HTML into the already-open window
-    win.document.open();
-    win.document.write(fullHtml);
-    win.document.close();
+    win.location.href = blobUrl;
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
   } else {
-    // Popup was blocked — fallback to blob URL (user may need to allow popups)
-    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
     const w2 = window.open(blobUrl, '_blank');
     if (w2) w2.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(blobUrl), 5000));
     else {
