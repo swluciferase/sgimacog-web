@@ -254,7 +254,10 @@ export const RecordView: FC<RecordViewProps> = ({
     }
 
     const onPostMsg = (ev: MessageEvent) => {
-      // Accept from any origin — THEMynd tags messages with source='themynd'
+      // H8: only accept event-markers from the sigmacog.xyz origin. Tagging
+      // with source='themynd' alone wasn't enough — any tab could postMessage
+      // a forged marker.
+      if (ev.origin !== 'https://www.sigmacog.xyz' && ev.origin !== 'https://sigmacog.xyz') return;
       handleMarker(ev.data);
     };
     window.addEventListener('message', onPostMsg);
