@@ -14,7 +14,12 @@ export type { SteegParser };
 // Vite resolves this to the hashed URL of the (encrypted) .wasm asset at build time
 import encWasmUrl from '../pkg/steeg_wasm_bg.wasm?url';
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://artisebio-api.swlucifer.workers.dev';
+// C4 (2026-05-06): default to the sigmacog.xyz Pages origin so requests go
+// through the /api/* Pages Function → service binding → Worker. The previous
+// workers.dev default bypassed CF WAF / Bot Mgmt rules bound to sigmacog.xyz
+// and stopped working once workers_dev was disabled. VITE_API_BASE override
+// kept for local dev (point at a local Worker).
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'https://www.sigmacog.xyz';
 
 export interface WasmApi {
   SteegParser: typeof SteegParser;
